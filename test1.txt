@@ -1,5 +1,7 @@
 changed in branch 2
 
+Hahaha Issue test
+
 branch test
 
 ttt Text
