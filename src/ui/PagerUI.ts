@@ -9,6 +9,7 @@ import { relationshipTier } from '../systems/CustomerSystem';
 import { Order } from '../game/GameState';
 
 export function landmarkName(id: string): string {
+  if (id === 'street') return 'on the street';
   return LANDMARKS.find((l) => l.id === id)?.name ?? id;
 }
 

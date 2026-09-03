@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createNewState } from '../src/systems/SaveSystem';
 import { addItem, countItem } from '../src/systems/InventorySystem';
-import { generateOrder, acceptOrder, completeSale, expireOrders, orderMatchesItem, counterOffer, rollTrend } from '../src/systems/OrderSystem';
+import { generateOrder, acceptOrder, completeSale, expireOrders, orderMatchesItem, counterOffer, rollTrend, streetSale } from '../src/systems/OrderSystem';
+import { offerSample } from '../src/systems/CustomerSystem';
 import { computeRecipe } from '../src/data/products';
 
 const seq = (vals: number[]) => {
@@ -114,5 +115,45 @@ describe('haggling + trend', () => {
     const r = completeSale(s, o.id, s.clockMinutes);
     expect(r.trendHit).toBe(true);
     expect(s.cash).toBe(cash + Math.round(o.price * 1.25));
+  });
+});
+
+describe('samples + street deals', () => {
+  it('a matching sample unlocks a locked customer and consumes one unit', () => {
+    const s = createNewState();
+    s.recipes['VELVET'] = { ...computeRecipe('VELVET', []) };
+    addItem(s, 'pkg:VELVET', 2);
+    expect(s.customers['gloria'].unlocked).toBe(false); // likes VELVET
+    const r = offerSample(s, 'gloria', 'pkg:VELVET');
+    expect(r.ok && r.unlocked && r.matched).toBe(true);
+    expect(s.customers['gloria'].unlocked).toBe(true);
+    expect(countItem(s, 'pkg:VELVET')).toBe(1);
+    expect(offerSample(s, 'gloria', 'pkg:VELVET').reason).toBe('already_unlocked');
+  });
+
+  it('a wrong sample needs a second try', () => {
+    const s = createNewState();
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    addItem(s, 'pkg:SUNSET', 3);
+    const r1 = offerSample(s, 'hector', 'pkg:SUNSET'); // likes VELVET / CHILL
+    expect(r1.unlocked).toBe(false);
+    const r2 = offerSample(s, 'hector', 'pkg:SUNSET');
+    expect(r2.unlocked).toBe(true);
+    expect(countItem(s, 'pkg:SUNSET')).toBe(1);
+  });
+
+  it('street sale sells from the backpack with a cooldown', () => {
+    const s = createNewState();
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    addItem(s, 'pkg:SUNSET', 4);
+    const cash = s.cash;
+    const r = streetSale(s, 'tasha', 1000, () => 0.1);
+    expect(r.ok).toBe(true);
+    expect(r.qty).toBe(2);
+    expect(s.cash).toBeGreaterThan(cash);
+    expect(countItem(s, 'pkg:SUNSET')).toBe(2);
+    expect(s.customers['tasha'].relationship).toBeGreaterThan(0);
+    expect(streetSale(s, 'tasha', 1005).reason).toBe('cooldown');
+    expect(streetSale(s, 'gloria', 1005).reason).toBe('locked');
   });
 });

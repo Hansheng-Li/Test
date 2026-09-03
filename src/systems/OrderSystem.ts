@@ -298,3 +298,57 @@ export function hasPackagedFor(state: GameState, order: Order): boolean {
 export function packagedCountFor(state: GameState, key: string): number {
   return countItem(state, packagedItemId(key));
 }
+
+export interface StreetSaleResult {
+  ok: boolean;
+  reason?: 'locked' | 'cooldown' | 'no_item';
+  earned?: number;
+  qty?: number;
+  itemKey?: string;
+  unlocked?: string[];
+  trendHit?: boolean;
+}
+
+export const STREET_SALE_COOLDOWN = 30; // game minutes
+
+/** What a walking customer would buy from the backpack right now (prefers their favourite base). */
+export function streetSaleCandidate(state: GameState, customerId: string): { id: string; key: string; qty: number } | null {
+  const def = customerDef(customerId);
+  const packs = packagedInInventory(state);
+  if (!packs.length) return null;
+  return packs.find((p) => parseRecipeKey(p.key)?.base === def.prefBase) ?? packs[0];
+}
+
+export function streetUnitPrice(state: GameState, customerId: string, key: string): number {
+  const parsed = parseRecipeKey(key)!;
+  const value = computeRecipe(parsed.base, parsed.mods).value;
+  return Math.round(offeredUnitPrice(state, customerDef(customerId), value) * 0.9);
+}
+
+/**
+ * Sell directly to a customer met on the street: no pager, no meeting spot, a small
+ * discount, 1-2 units. Uses the same relationship and trend rules as a pager deal.
+ */
+export function streetSale(state: GameState, customerId: string, now: number, rng: () => number = Math.random): StreetSaleResult {
+  const cs = customerState(state, customerId);
+  if (!cs.unlocked) return { ok: false, reason: 'locked' };
+  if (now - cs.lastOrderMinute < STREET_SALE_COOLDOWN) return { ok: false, reason: 'cooldown' };
+  const item = streetSaleCandidate(state, customerId);
+  if (!item) return { ok: false, reason: 'no_item' };
+  const qty = Math.min(item.qty, 1 + (rng() < 0.5 ? 1 : 0));
+  const unit = streetUnitPrice(state, customerId, item.key);
+  const parsed = parseRecipeKey(item.key)!;
+  const recipe = computeRecipe(parsed.base, parsed.mods);
+  const trendHit = !!state.trend && recipe.effects.includes(state.trend.effect);
+  let earned = unit * qty;
+  if (trendHit) earned = Math.round(earned * (1 + TREND_BONUS));
+  removeItem(state, item.id, qty);
+  addCash(state, earned);
+  cs.lastOrderMinute = now;
+  state.stats.sales += 1;
+  state.stats.earned += earned;
+  state.orders.push({ id: state.nextOrderId++, customerId, base: parsed.base, effects: [], recipeKey: item.key, qty, price: earned, locationId: 'street', windowStart: now, windowEnd: now, status: 'completed', createdMinute: now });
+  const def = customerDef(customerId);
+  const unlocked = recordSuccessfulDeal(state, customerId, { onTime: true, matchedPreference: def.prefEffects.some((e) => recipe.effects.includes(e)) });
+  return { ok: true, earned, qty, itemKey: item.key, unlocked, trendHit };
+}

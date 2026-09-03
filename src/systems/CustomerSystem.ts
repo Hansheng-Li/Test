@@ -1,5 +1,7 @@
 import { GameState, CustomerState } from '../game/GameState';
 import { CUSTOMERS, CUSTOMER_MAP, CustomerDef } from '../data/customers';
+import { parseRecipeKey, computeRecipe } from '../data/products';
+import { countItem, removeItem } from './InventorySystem';
 
 export const MAX_RELATIONSHIP = 100;
 
@@ -56,4 +58,42 @@ export function unlockedCustomers(state: GameState): CustomerDef[] {
 
 export function customerDef(id: string): CustomerDef {
   return CUSTOMER_MAP[id];
+}
+
+export interface SampleResult {
+  ok: boolean;
+  reason?: 'no_item' | 'already_unlocked' | 'unknown';
+  unlocked?: boolean;
+  matched?: boolean;
+  line?: string;
+}
+
+/**
+ * Hand a locked customer one free unit of a packaged product. A product that fits
+ * their taste unlocks them immediately; anything else needs a second try.
+ */
+export function offerSample(state: GameState, customerId: string, packagedItemId: string): SampleResult {
+  const def = CUSTOMER_MAP[customerId];
+  if (!def) return { ok: false, reason: 'unknown' };
+  const cs = customerState(state, customerId);
+  if (cs.unlocked) return { ok: false, reason: 'already_unlocked' };
+  if (!packagedItemId.startsWith('pkg:') || countItem(state, packagedItemId) < 1) return { ok: false, reason: 'no_item' };
+  const parsed = parseRecipeKey(packagedItemId.slice(4));
+  if (!parsed) return { ok: false, reason: 'no_item' };
+  removeItem(state, packagedItemId, 1);
+  const r = computeRecipe(parsed.base, parsed.mods);
+  const matched = parsed.base === def.prefBase || r.effects.some((e) => def.prefEffects.includes(e));
+  cs.samples = (cs.samples ?? 0) + 1;
+  const unlocked = matched || cs.samples >= 2;
+  if (unlocked) {
+    cs.unlocked = true;
+    cs.introduced = true;
+    cs.relationship = Math.max(cs.relationship, matched ? 3 : 1);
+  }
+  const line = unlocked
+    ? matched
+      ? `Oh. OH. This is exactly my thing. I will page you.`
+      : `Not really my taste… but you keep showing up. Fine, page me sometime.`
+    : `Hm. Not my thing. I like ${def.prefBase} with ${def.prefEffects.join(' or ')}.`;
+  return { ok: true, unlocked, matched, line };
 }

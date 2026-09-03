@@ -13,6 +13,8 @@ export interface CustomerState {
   lastOrderMinute: number;
   /** Set when this customer was introduced through a friend and the player got notified. */
   introduced: boolean;
+  /** Free samples handed to this customer while locked. */
+  samples?: number;
 }
 
 export type OrderStatus = 'pending' | 'accepted' | 'runner' | 'completed' | 'declined' | 'expired' | 'failed';

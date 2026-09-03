@@ -37,6 +37,10 @@ import { Civilian } from '../entities/NPC';
 import { Police } from '../entities/Police';
 import { CustomerNPC, REACTION_LINES } from '../entities/CustomerNPC';
 import { RunnerNPC } from '../entities/RunnerNPC';
+import { WanderingCustomer } from '../entities/WanderingCustomer';
+import { CUSTOMERS } from '../data/customers';
+import { offerSample } from '../systems/CustomerSystem';
+import { streetSale, streetSaleCandidate, streetUnitPrice, STREET_SALE_COOLDOWN } from '../systems/OrderSystem';
 import { lambert, boxGeo } from '../world/Materials';
 import { GameClock as Clock } from '../core/Time';
 
@@ -70,6 +74,8 @@ export class Game implements GameAPI {
   civilians: Civilian[] = [];
   police: Police[] = [];
   customers = new Map<number, CustomerNPC>();
+  wanderers = new Map<string, WanderingCustomer>();
+  private wandererTimer = 0;
   runnerNPC: RunnerNPC | null = null;
   workerFigure: THREE.Group | null = null;
   private workerToastTimer = 0;
@@ -220,6 +226,12 @@ export class Game implements GameAPI {
     this.player.teleport(s.player.x, s.player.y + 0.1, s.player.z, s.player.yaw);
     for (const c of this.customers.values()) this.dynamicGroup.remove(c.mesh);
     this.customers.clear();
+    for (const w of this.wanderers.values()) {
+      this.dynamicGroup.remove(w.mesh);
+      this.interaction.remove(w.id);
+    }
+    this.wanderers.clear();
+    this.wandererTimer = 0;
     for (const o of activeOrders(s)) if (o.status === 'accepted') this.spawnCustomerFor(o);
     if (this.runnerNPC) {
       this.dynamicGroup.remove(this.runnerNPC.mesh);
@@ -559,6 +571,22 @@ export class Game implements GameAPI {
         for (const c of this.civilians) if (c.state !== 'FLEE' && c.distanceTo(p.position.x, p.position.z) < 7) c.reactTo(p.position.x, p.position.z, true);
       }
     }
+    this.wandererTimer -= dt;
+    if (this.wandererTimer <= 0) {
+      this.wandererTimer = 2;
+      this.syncWanderers();
+    }
+    for (const w of this.wanderers.values()) {
+      const d2 = (w.position.x - px) ** 2 + (w.position.z - pz) ** 2;
+      w.lodAccum += dt;
+      const step = d2 > 120 * 120 ? 0.5 : d2 > 60 * 60 ? 0.12 : 0;
+      if (w.lodAccum < step) continue;
+      const ldt = Math.max(dt, w.lodAccum);
+      w.lodAccum = 0;
+      w.update(ldt, { playerX: px, playerZ: pz, night: this.clock.isNight });
+      w.attend(px, pz, ldt);
+      if (d2 < 200 * 200) w.syncVisual(ldt);
+    }
     for (const [id, c] of this.customers) {
       c.update(dt, px, pz);
       c.syncVisual(dt);
@@ -649,6 +677,117 @@ export class Game implements GameAPI {
       },
       onInteract: () => this.dealWith(npc),
     });
+  }
+
+  /** Keep one wandering NPC per customer who is not currently waiting at a meeting spot. */
+  private syncWanderers(): void {
+    const s = this.state;
+    const busy = new Set(s.orders.filter((o) => o.status === 'pending' || o.status === 'accepted' || o.status === 'runner').map((o) => o.customerId));
+    for (const def of CUSTOMERS) {
+      const cs = s.customers[def.id];
+      const shouldExist = !busy.has(def.id) && !(cs && cs.introduced === false && cs.unlocked);
+      const existing = this.wanderers.get(def.id);
+      if (shouldExist && !existing) {
+        const zoneNodes = this.city.waypoints.nodes.filter((n) => n.zone === def.homeZone);
+        const n = zoneNodes.length ? zoneNodes[Math.floor(Math.random() * zoneNodes.length)] : this.city.waypoints.random();
+        // do not pop into existence right in front of the player
+        if (Math.hypot(n.x - this.player.position.x, n.z - this.player.position.z) < 25) continue;
+        const w = new WanderingCustomer(def, n.x, n.z, this.city.colliders, this.city.waypoints, !!cs?.unlocked);
+        this.wanderers.set(def.id, w);
+        this.dynamicGroup.add(w.mesh);
+        this.interaction.add({
+          id: w.id,
+          position: w.position,
+          radius: 3.2,
+          prompt: () => this.wandererPrompt(w),
+          onInteract: () => this.talkToWanderer(w),
+        });
+      } else if (!shouldExist && existing) {
+        this.dynamicGroup.remove(existing.mesh);
+        this.interaction.remove(existing.id);
+        this.wanderers.delete(def.id);
+      } else if (existing) {
+        existing.setUnlockedIfChanged(!!cs?.unlocked);
+      }
+    }
+  }
+
+  private wandererPrompt(w: WanderingCustomer): string | null {
+    const s = this.state;
+    const cs = s.customers[w.def.id];
+    const first = w.def.name.split(' ')[0];
+    if (!cs?.unlocked) {
+      const sample = this.sampleItem();
+      return sample ? `[E] OFFER SAMPLE (1x ${resolveItem(s, sample).name}) · ${first}, ${w.def.personality}` : `[E] TALK · ${first} (${w.def.personality}) — bring a sample`;
+    }
+    const cand = streetSaleCandidate(s, w.def.id);
+    const cooling = this.clock.totalMinutes - cs.lastOrderMinute < STREET_SALE_COOLDOWN;
+    if (cand && !cooling) return `[E] SELL ${resolveItem(s, cand.id).name} · $${streetUnitPrice(s, w.def.id, cand.key)}/unit · ${first}`;
+    return `[E] TALK · ${first} (${w.def.personality})`;
+  }
+
+  /** Packaged product to hand out: the selected hotbar slot if it is one, else the first packaged stack. */
+  private sampleItem(): string | null {
+    const sel = this.state.inventory[this.hud.selectedSlot];
+    if (sel && sel.id.startsWith('pkg:')) return sel.id;
+    const any = this.state.inventory.find((st) => st && st.id.startsWith('pkg:'));
+    return any ? any.id : null;
+  }
+
+  private talkToWanderer(w: WanderingCustomer): void {
+    const s = this.state;
+    const def = w.def;
+    const cs = s.customers[def.id];
+    const first = def.name.split(' ')[0];
+    if (!cs?.unlocked) {
+      const sample = this.sampleItem();
+      if (!sample) {
+        w.say(`Do I know you? …No. Come back with something.`, '#b0bec5', 3);
+        this.toast(`${first} (${def.personality}) does not know you yet. Offer a free sample of a packaged product to win them over.`, 'info', 5000);
+        return;
+      }
+      const r = offerSample(s, def.id, sample);
+      if (!r.ok) return;
+      w.say(r.line!, r.unlocked ? '#7dff9a' : '#ffd166', 4);
+      if (r.unlocked) {
+        this.audio.play('unlock');
+        this.toast(`NEW CUSTOMER: ${def.name} liked the sample${r.matched ? '' : ' (eventually)'}. They will start paging you.`, 'pager', 6000);
+        w.setUnlocked(true);
+        const eff = r.matched ? def.prefEffects[0] : null;
+        if (eff) w.reactTo(this.player.position.x, this.player.position.z, false);
+      } else {
+        this.audio.play('click');
+        this.toast(`${first}: "${r.line}"`, 'info', 5000);
+      }
+      this.save();
+      return;
+    }
+    const r = streetSale(s, def.id, this.clock.totalMinutes);
+    if (!r.ok) {
+      const hint = r.reason === 'cooldown' ? `"I'm good for now. Page you later."` : `"I like ${def.prefBase} with ${def.prefEffects.join(' or ')}. Got anything?"`;
+      w.say(hint.replace(/"/g, ''), '#ffd166', 3);
+      this.toast(`${first}: ${hint}`, 'info', 4000);
+      return;
+    }
+    this.audio.play('cash');
+    const name = recipeDisplayName(s, r.itemKey!);
+    this.toast(`+$${r.earned} · Street deal: ${r.qty}x ${name} to ${def.name}${r.trendHit ? ' · TREND BONUS +25%' : ''}`, 'cash');
+    for (const id of r.unlocked ?? []) this.announceUnlock(id);
+    w.say(def.lines.thanks, '#7dff9a', 3);
+    // same exposure rules as a pager deal, but a street corner is a little riskier
+    let witnessed = false;
+    for (const p of this.police) {
+      if (p.distanceTo(w.position.x, w.position.z) < 28 && this.city.colliders.lineOfSight(p.position.x, p.position.y + 1.6, p.position.z, w.position.x, w.position.y + 1.2, w.position.z, 10)) {
+        witnessed = true;
+        break;
+      }
+    }
+    if (witnessed) {
+      witnessedDeal(s, r.earned!);
+      this.audio.play('siren');
+      this.toast('A cop saw that street deal. HEAT is rising.', 'warn');
+    } else if (Math.random() < def.risk * 0.4) addHeat(s, 5);
+    this.save();
   }
 
   private despawnCustomer(orderId: number): void {
