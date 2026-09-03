@@ -14,6 +14,7 @@ export class HUD {
   private staminaWrap: HTMLElement;
   stamina = 1;
   hiddenMode = false;
+  arrestMode = false;
   private objectiveEl: HTMLElement;
   private orderEl: HTMLElement;
   private orderBody: HTMLElement;
@@ -99,7 +100,7 @@ export class HUD {
     }
     this.heatBar.style.width = state.heat.toFixed(0) + '%';
     this.heatLabel.textContent = heatLevel(state.heat).toUpperCase() + (state.suspicion > 30 ? ' · KNOWN' : '');
-    this.vignette.className = this.hiddenMode ? 'hidden' : state.heat >= 60 ? 'hot' : '';
+    this.vignette.className = this.arrestMode ? 'arrest' : this.hiddenMode ? 'hidden' : state.heat >= 60 ? 'hot' : '';
     this.staminaWrap.style.display = this.stamina < 0.999 ? 'block' : 'none';
     this.staminaBar.style.width = (this.stamina * 100).toFixed(0) + '%';
     this.staminaBar.style.background = this.stamina < 0.3 ? '#ff5c5c' : '#7fdcff';
@@ -165,7 +166,4 @@ export class HUD {
     this.pagerTimer = 12;
   }
 
-  flashArrest(on: boolean): void {
-    this.vignette.className = on ? 'arrest' : '';
-  }
 }

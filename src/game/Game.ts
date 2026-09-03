@@ -290,6 +290,9 @@ export class Game implements GameAPI {
     if (s.runner?.hired) this.createRunnerNPC();
     this.updateWorkerFigure();
     this.driving = false;
+    this.hiding = null;
+    this.hud.hiddenMode = false;
+    this.hud.arrestMode = false;
     this.syncVehicle();
     // placed stations
     const stale: import('../physics/Colliders').AABB[] = [];
@@ -738,7 +741,8 @@ export class Game implements GameAPI {
     const pz = this.player.position.z;
     const py = this.player.position.y;
     const los = (ax: number, ay: number, az: number, bx: number, by: number, bz: number): boolean => this.city.colliders.lineOfSight(ax, ay, az, bx, by, bz, 10);
-    for (const c of this.pedestrians()) {
+    const peds = this.pedestrians();
+    for (const c of peds) {
       const d2 = (c.position.x - px) ** 2 + (c.position.z - pz) ** 2;
       // LOD: far pedestrians update at a lower rate
       c.lodAccum += dt;
@@ -761,7 +765,7 @@ export class Game implements GameAPI {
         this.toast('Stop-and-search: you were clean. The officer lost interest (Heat -15).', 'info', 4000);
       }
       if (p.pstate === 'CHASE') {
-        for (const c of this.pedestrians()) if (c.state !== 'FLEE' && c.distanceTo(p.position.x, p.position.z) < 7) c.reactTo(p.position.x, p.position.z, true);
+        for (const c of peds) if (c.state !== 'FLEE' && c.distanceTo(p.position.x, p.position.z) < 7) c.reactTo(p.position.x, p.position.z, true);
       }
     }
     this.wandererTimer -= dt;
@@ -1733,7 +1737,7 @@ export class Game implements GameAPI {
     this.arrested = true;
     this.arrestTimer = 3.2;
     this.audio.play('arrest');
-    this.hud.flashArrest(true);
+    this.hud.arrestMode = true;
     const r = applyArrest(this.state);
     this.clock.totalMinutes = this.state.clockMinutes;
     const items = r.confiscated.map((c) => `${c.qty}x ${resolveItem(this.state, c.id).name}`).join(', ');
@@ -1747,7 +1751,7 @@ export class Game implements GameAPI {
     this.arrestTimer -= dt;
     if (this.arrestTimer <= 0) {
       this.arrested = false;
-      this.hud.flashArrest(false);
+      this.hud.arrestMode = false;
       // released in front of the police station
       this.player.teleport(70, 0.3, -24, Math.PI);
       for (const p of this.police) p.pstate = 'PATROL';
