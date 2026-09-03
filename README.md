@@ -170,7 +170,7 @@ Design rules that shaped the code:
 - Drivable arcade sedan with horn, headlights and persisted parking spot; procedural synth radio.
 - Accelerated day/night with neon, lit windows, lamp pool, fog and sunset tint; procedural audio.
 - localStorage save/load with validation and repair of partial saves.
-- 48 Vitest tests covering behavioural contracts + Playwright smoke and core-loop tests.
+- 53 Vitest tests covering behavioural contracts + Playwright smoke and core-loop tests.
 
 ## Known limitations
 

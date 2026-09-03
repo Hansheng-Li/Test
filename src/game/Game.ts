@@ -1381,15 +1381,13 @@ export class Game implements GameAPI {
 
   private usePayphone(fromPhone = false): void {
     const s = this.state;
-    if (!fromPhone && s.cash < 1) {
-      this.toast('You need a dollar for the payphone.', 'warn');
-      return;
-    }
+    // broke players still get to call around: the operator takes pity
+    const broke = s.cash < 5;
     if (pendingOrders(s).length >= 2) {
       this.toast('Your pager is already full of messages. Deal with those first.', 'warn');
       return;
     }
-    if (!fromPhone) spendCash(s, 1);
+    if (!fromPhone && !broke) spendCash(s, 1);
     this.payphoneCooldown = fromPhone ? 30 : 45;
     this.audio.play('click');
     const o = generateOrder(s, { now: this.clock.totalMinutes, simple: s.stats.sales < 2 });
