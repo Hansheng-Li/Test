@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import {
   BUILDINGS, BuildingSpec, ROADS_X, ROADS_Z, ROAD_WIDTH, SIDEWALK_WIDTH, MAP_MIN_X, MAP_MAX_X, MAP_MIN_Z, MAP_MAX_Z,
-  OCEAN_X, CANAL_X, CANAL_Z, PAYPHONES, SUPPLIER_SPOT, RUNNER_CONTACT_SPOT, WAREHOUSE_SIGN, Facing,
+  OCEAN_X, CANAL_X, CANAL_Z, PAYPHONES, SUPPLIER_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT, WAREHOUSE_SIGN, Facing,
 } from '../data/city';
 import { CollisionWorld, aabbFromBottom } from '../physics/Colliders';
-import { lambert, basic, boxGeo, PALETTE } from './Materials';
+import { lambert, basic, boxGeo, cylGeo, PALETTE } from './Materials';
 import { facadeTexture, signTexture, asphaltTexture, sidewalkTexture, sandTexture, grassTexture } from './Textures';
 import {
   PropBuilder, buildPalms, buildStreetLights, buildBench, buildTrashCan, buildDumpster, buildCar, buildFence,
@@ -211,6 +211,52 @@ export function buildCity(): CityResult {
   buildContainer(pb, -165, -30, containerColors[1], 0);
   buildContainer(pb, -165, -22, containerColors[3], 0, 2.6);
   buildContainer(pb, -165, 0, containerColors[2], 0);
+  // more dock clutter: crates, a truck, extra containers near the warehouse, bollards
+  for (let i = 0; i < 14; i++) {
+    const cx = -200 + rnd() * 45;
+    const cz = 44 + rnd() * 26;
+    pb.solidBox(cx, SLAB, cz, 1.2, 0.9 + rnd() * 0.6, 1.2, lambert(rnd() < 0.5 ? '#a1887f' : '#8d6e63'), 'crate', true);
+  }
+  for (let i = 0; i < 6; i++) pb.solidBox(-150 + i * 8, SLAB, -100, 1.2, 1.1, 1.2, lambert('#a1887f'), 'crate', true);
+  buildContainer(pb, -175, -100, containerColors[4], 0);
+  buildContainer(pb, -175, -108, containerColors[0], 0);
+  buildContainer(pb, -175, -108, containerColors[2], 0, 2.6);
+  buildContainer(pb, -130 + 6, -132, containerColors[1], 0);
+  buildCar(pb, -150, 52, Math.PI / 2, '#ecf0f1');
+  buildCar(pb, -145, 62, Math.PI / 2, '#5d6d7e');
+  // box truck at the port
+  pb.solidBox(-160, SLAB, 70, 7, 3, 2.6, lambert('#f5f5f5'), 'truck', true);
+  pb.solidBox(-165.5, SLAB, 70, 2.2, 2.2, 2.4, lambert('#c0392b'), 'truck', true);
+  // north-west lots: fenced storage yard with junk cars
+  buildFence(pb, -121, -180, -59, -180);
+  buildFence(pb, -121, -180, -121, -110);
+  buildFence(pb, -59, -180, -59, -110);
+  buildCar(pb, -110, -150, 0.2, '#7f8c8d');
+  buildCar(pb, -95, -160, -0.3, '#b03a2e');
+  buildCar(pb, -75, -145, 0.8, '#1f618d');
+  buildCar(pb, -100, -125, 0.1, '#f4d03f');
+  // west block empty lot: basketball court + bleachers
+  pb.visualBox(-90, SLAB, -140, 26, 0.04, 16, lambert('#3e7c59'));
+  pb.solidBox(-103, SLAB, -140, 0.2, 3.2, 0.2, lambert(PALETTE.darkMetal), 'hoop');
+  pb.solidBox(-77, SLAB, -140, 0.2, 3.2, 0.2, lambert(PALETTE.darkMetal), 'hoop');
+  // parking lot behind Palmetto / Coral Arms (north row) with cars
+  for (let i = 0; i < 5; i++) buildCar(pb, 40 + i * 6, -150, Math.PI / 2, carColors[(i * 3) % carColors.length]);
+  for (let i = 0; i < 4; i++) buildCar(pb, -40 + i * 6, -155, Math.PI / 2, carColors[(i * 5 + 1) % carColors.length]);
+  // beach umbrellas + towels
+  for (let i = 0; i < 14; i++) {
+    const ux = 174 + rnd() * 20;
+    const uz = MAP_MIN_Z + 20 + rnd() * (CANAL_Z - MAP_MIN_Z - 40);
+    const pole = new THREE.Mesh(cylGeo(0.04, 0.04, 2.2, 5), lambert('#f5f5f5'));
+    pole.position.set(ux, SLAB + 1.1, uz);
+    const top = new THREE.Mesh(new THREE.ConeGeometry(1.3, 0.5, 8), lambert(['#ff6fb0', '#4ff2e8', '#ffe066', '#ff9a3c'][i % 4]));
+    top.position.set(ux, SLAB + 2.2, uz);
+    const towel = new THREE.Mesh(boxGeo(1, 0.03, 1.8), lambert(['#ff4fd8', '#b388ff', '#7dff9a'][i % 3]));
+    towel.position.set(ux + 1.2, SLAB + 0.02, uz);
+    group.add(pole, top, towel);
+  }
+  // south canal boardwalk benches + railing
+  buildFence(pb, -200, CANAL_Z - 1, 168, CANAL_Z - 1);
+  for (const bx of [-100, -27, 40, 110]) buildBench(pb, bx, CANAL_Z - 4, 0);
   // dock piers
   buildPier(pb, CANAL_X, 60, 30, 8, true);
   buildPier(pb, CANAL_X, 110, 30, 8, true);
@@ -251,6 +297,16 @@ export function buildCity(): CityResult {
   group.add(dizzy);
   colliders.add(aabbFromBottom(RUNNER_CONTACT_SPOT.x, SLAB, RUNNER_CONTACT_SPOT.z, 0.7, 1.9, 0.7, 'npc'));
   objects.push({ kind: 'runner_contact', id: 'runner_contact', position: dizzy.position.clone(), mesh: dizzy });
+
+  const marisol = makeFigure('#8e24aa', '#c68642', '#263238');
+  marisol.position.set(WORKER_CONTACT_SPOT.x, SLAB, WORKER_CONTACT_SPOT.z);
+  marisol.rotation.y = Math.PI / 2;
+  const marisolLabel = makeLabel('MARISOL', '#e1bee7');
+  marisolLabel.position.y = 2.3;
+  marisol.add(marisolLabel);
+  group.add(marisol);
+  colliders.add(aabbFromBottom(WORKER_CONTACT_SPOT.x, SLAB, WORKER_CONTACT_SPOT.z, 0.7, 1.9, 0.7, 'npc'));
+  objects.push({ kind: 'worker_contact', id: 'worker_contact', position: marisol.position.clone(), mesh: marisol });
 
   // warehouse for-sale sign
   const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(3, 1.2), new THREE.MeshBasicMaterial({ map: signTexture('FOR SALE', { color: '#ffffff', bg: '#c62828', glow: false, sub: 'WAREHOUSE 7 · SEE INSIDE' }), side: THREE.DoubleSide }));

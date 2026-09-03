@@ -4,6 +4,7 @@ import { resolveItem, countItem, looseProductsInInventory } from '../systems/Inv
 import { previewPrep, prepDuration, packagingPerUnitSeconds, recipeDisplayName } from '../systems/ProductionSystem';
 import { MODIFIER_IDS, BASE_SUPPLY_IDS } from '../data/items';
 import { MAX_MODIFIERS, parseRecipeKey } from '../data/products';
+import { workerNeeds } from '../systems/WorkerSystem';
 
 /**
  * PREP TABLE: choose input + modifiers, run a short stir minigame, collect product.
@@ -137,6 +138,29 @@ export class PrepUI extends Panel {
       }
     }
     body.appendChild(sec3);
+    // --- worker assignment
+    if (st.worker?.hired) {
+      const w = st.worker;
+      const sec4 = document.createElement('div');
+      sec4.innerHTML = `<h3>WORKER · ${w.name.toUpperCase()} (${w.property})</h3>`;
+      const info = document.createElement('div');
+      info.className = 'desc';
+      info.style.color = '#aaa';
+      if (w.recipeKey) {
+        const n = workerNeeds(st, w.property, w.recipeKey);
+        const missing = n ? [!n.hasBase ? 'base supply' : '', !n.hasMods ? 'modifiers' : '', !n.hasBags ? 'baggies (will output loose product)' : ''].filter(Boolean) : [];
+        info.innerHTML = `Making <b style="color:#ff8fd8">${recipeDisplayName(st, w.recipeKey)}</b> from ${w.property} storage · ${w.produced} units so far · progress ${Math.round(w.progress * 100)}%` + (missing.length ? `<br/><span style="color:#ffb3c1">Storage is missing: ${missing.join(', ')}</span>` : '');
+      } else info.textContent = 'Not assigned. Pick a recipe below; Marisol pulls supplies from storage and puts packaged product back.';
+      sec4.appendChild(info);
+      const rowW = document.createElement('div');
+      rowW.className = 'pager-btns';
+      for (const r of Object.values(st.recipes)) {
+        rowW.appendChild(this.button((r.customName ?? r.defaultName) + (w.recipeKey === r.key ? ' ✓' : ''), () => { this.api.assignWorker(r.key); this.render(); }, w.recipeKey === r.key ? 'primary' : 'cyan'));
+      }
+      if (w.recipeKey) rowW.appendChild(this.button('STOP', () => { this.api.assignWorker(null); this.render(); }));
+      sec4.appendChild(rowW);
+      body.appendChild(sec4);
+    }
   }
 
   private start(): void {

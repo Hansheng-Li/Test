@@ -14,6 +14,7 @@ export interface WorldObject {
     | 'warehouse_sign'
     | 'supplier'
     | 'runner_contact'
+    | 'worker_contact'
     | 'club_bar'
     | 'placement_area'
     | 'fax';

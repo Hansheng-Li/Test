@@ -22,6 +22,7 @@ export interface GameAPI {
   deposit(property: string, id: string, qty: number): number;
   withdraw(property: string, id: string, qty: number): number;
   hireRunner(): boolean;
+  assignWorker(recipeKey: string | null): boolean;
   buyWarehouse(): boolean;
   rest(): void;
   placeStation(kind: 'prep_table' | 'pack_table' | 'storage'): boolean;

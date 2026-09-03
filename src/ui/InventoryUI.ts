@@ -73,9 +73,16 @@ export class InventoryUI extends Panel {
         row.className = 'row';
         row.innerHTML = `<span class="name"><b>${r.customName ?? r.defaultName}</b> <span class="tag">${r.base}</span>${r.effects.map((e) => `<span class="tag effect">${e}</span>`).join('')}<span class="desc">${r.mods.length ? 'mods: ' + r.mods.map((m) => m.replace('mod_', '').replace('_', ' ')).join(' → ') : 'plain base'}</span></span><span class="price">$${r.value}/u</span>`;
         const rename = this.button('RENAME', () => {
-          const name = prompt('Street name for this product:', r.customName ?? r.defaultName);
-          if (name) this.api.nameRecipe(r.key, name);
-          this.render();
+          const inp = document.createElement('input');
+          inp.type = 'text';
+          inp.maxLength = 24;
+          inp.value = r.customName ?? r.defaultName;
+          inp.style.width = '180px';
+          const save = this.button('SAVE', () => { if (inp.value.trim()) this.api.nameRecipe(r.key, inp.value); this.render(); }, 'primary');
+          inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') save.click(); if (e.key === 'Escape') this.render(); });
+          rename.replaceWith(inp, save);
+          inp.focus();
+          inp.select();
         });
         row.appendChild(rename);
         book.appendChild(row);

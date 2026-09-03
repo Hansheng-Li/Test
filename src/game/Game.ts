@@ -8,8 +8,9 @@ import { PropBuilder } from '../world/Props';
 import { buildPlacedStation, InteriorContext } from '../world/Interiors';
 import { WorldObject } from '../world/WorldTypes';
 import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN } from '../data/city';
+import { makeFigure, makeLabel } from '../world/Interiors';
 import { CUSTOMER_MAP } from '../data/customers';
-import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, ITEMS } from '../data/items';
+import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, ITEMS } from '../data/items';
 import { computeRecipe, parseRecipeKey, Effect } from '../data/products';
 import { GameState, Order, PlacedStation } from './GameState';
 import { createNewState, saveToStorage, loadFromStorage, hasSave, clearSave } from '../systems/SaveSystem';
@@ -20,6 +21,7 @@ import { executePrep, executePackage, nameRecipe, recipeDisplayName, PrepPlan, P
 import { generateOrder, acceptOrder, declineOrder, activeOrders, pendingOrders, completeSale, expireOrders, findFulfillingItem, describeRequest } from '../systems/OrderSystem';
 import { decayHeat, witnessedDeal, applyArrest, addHeat, heatLevel } from '../systems/HeatSystem';
 import { hireRunner, assignRunner, tickRunner } from '../systems/RunnerSystem';
+import { hireWorker, assignWorkerRecipe, tickWorker } from '../systems/WorkerSystem';
 import { relationshipTier } from '../systems/CustomerSystem';
 import { AudioSystem, SfxName } from '../audio/Audio';
 import { HUD } from '../ui/HUD';
@@ -69,6 +71,9 @@ export class Game implements GameAPI {
   police: Police[] = [];
   customers = new Map<number, CustomerNPC>();
   runnerNPC: RunnerNPC | null = null;
+  workerFigure: THREE.Group | null = null;
+  private workerToastTimer = 0;
+  private workerBlockedTimer = 0;
   dancers: Civilian[] = [];
   private last = performance.now();
   private debugEl: HTMLElement;
@@ -89,6 +94,8 @@ export class Game implements GameAPI {
   private tips: string[] = [];
   private tipTimer = 0;
   private objectiveText = '';
+  /** Two-press confirmation (no browser dialogs: they would drop pointer lock). */
+  private pendingConfirm: { key: string; until: number } | null = null;
   /** Real elapsed time (lightly capped) for UI timers, independent of the physics step cap. */
   private uiDt = 0.016;
 
@@ -219,6 +226,7 @@ export class Game implements GameAPI {
       this.runnerNPC = null;
     }
     if (s.runner?.hired) this.createRunnerNPC();
+    this.updateWorkerFigure();
     // placed stations
     for (const o of this.placedObjects) {
       this.interaction.remove(o.id);
@@ -266,6 +274,9 @@ export class Game implements GameAPI {
         break;
       case 'runner_contact':
         add({ prompt: () => (this.state.runner?.hired ? null : `[E] TALK · DIZZY (HIRE RUNNER $${RUNNER_HIRE_PRICE})`), onInteract: () => this.talkToDizzy(), radius: 3.5 });
+        break;
+      case 'worker_contact':
+        add({ prompt: () => (this.state.worker?.hired ? null : `[E] TALK · MARISOL (HIRE WORKER $${WORKER_HIRE_PRICE})`), onInteract: () => this.talkToMarisol(), radius: 3.5 });
         break;
       case 'warehouse_sign':
         add({ prompt: () => (this.state.properties.includes('warehouse') ? null : `[E] BUY WAREHOUSE 7 ($${WAREHOUSE_PRICE})`), onInteract: () => { this.buyWarehouse(); }, radius: 3.5 });
@@ -430,6 +441,26 @@ export class Game implements GameAPI {
       this.despawnCustomer(rr.completed.order.id);
       this.save();
     }
+    // production worker
+    const wr = tickWorker(s, dt);
+    if (wr.produced) {
+      this.workerToastTimer -= 1;
+      if (this.workerToastTimer <= 0) {
+        this.workerToastTimer = 4;
+        this.toast(`Marisol finished ${wr.produced.packaged ? 'a packaged' : 'a loose'} ${recipeDisplayName(s, wr.produced.recipeKey)} (in ${s.worker!.property} storage).`, 'info', 3000);
+      }
+    } else if (wr.blocked && wr.blocked !== 'unassigned') {
+      this.workerBlockedTimer -= dt;
+      if (this.workerBlockedTimer <= 0) {
+        this.workerBlockedTimer = 90;
+        this.toast(`Marisol is idle: ${wr.blocked === 'no_base' ? 'no base supply' : wr.blocked === 'no_mods' ? 'no modifiers' : 'storage full'} in ${s.worker!.property} storage.`, 'warn', 4000);
+      }
+    }
+    if (this.workerFigure) {
+      const busy = !!s.worker?.recipeKey && !wr.blocked;
+      this.workerFigure.position.y = 0.15 + (busy ? Math.abs(Math.sin(performance.now() / 250)) * 0.08 : 0);
+      this.workerFigure.rotation.y = busy ? Math.sin(performance.now() / 600) * 0.3 : 0;
+    }
     if (this.runnerNPC) {
       const active = s.runner?.activeOrderId !== null && s.runner ? s.orders.find((o) => o.id === s.runner!.activeOrderId) : null;
       if (active && active.status === 'runner') this.runnerNPC.showProgress(active.runnerProgress ?? 0);
@@ -515,6 +546,9 @@ export class Game implements GameAPI {
       const result = p.update(dt, { playerX: px, playerZ: pz, playerY: py, heat: this.state.heat, playerSafe: safe, los });
       p.syncVisual(dt);
       if (result === 'arrest' && !this.arrested) this.beginArrest();
+      if (p.pstate === 'CHASE') {
+        for (const c of this.civilians) if (c.state !== 'FLEE' && c.distanceTo(p.position.x, p.position.z) < 7) c.reactTo(p.position.x, p.position.z, true);
+      }
     }
     for (const [id, c] of this.customers) {
       c.update(dt, px, pz);
@@ -780,6 +814,67 @@ export class Game implements GameAPI {
     return true;
   }
 
+  assignWorker(recipeKey: string | null): boolean {
+    const ok = assignWorkerRecipe(this.state, recipeKey);
+    if (ok) this.toast(recipeKey ? `Marisol will keep making ${recipeDisplayName(this.state, recipeKey)} from storage.` : 'Marisol is taking a break.');
+    return ok;
+  }
+
+  private updateWorkerFigure(): void {
+    if (this.workerFigure) {
+      this.dynamicGroup.remove(this.workerFigure);
+      this.workerFigure = null;
+    }
+    const contact = this.city.objects.find((o) => o.kind === 'worker_contact');
+    if (contact) contact.mesh.visible = !this.state.worker?.hired;
+    if (!this.state.worker?.hired) return;
+    const property = this.state.properties.includes(this.state.worker.property) ? this.state.worker.property : 'safehouse';
+    const station = [...this.city.objects, ...this.placedObjects].find((o) => o.kind === 'prep_table' && o.property === property) ?? this.city.objects.find((o) => o.kind === 'storage' && o.property === property);
+    const fig = makeFigure('#8e24aa', '#c68642', '#263238');
+    const label = makeLabel('MARISOL · WORKER', '#e1bee7');
+    label.position.y = 2.3;
+    fig.add(label);
+    const p = station ? station.position : new THREE.Vector3(WAREHOUSE_SIGN.x - 6, 0.15, WAREHOUSE_SIGN.z);
+    fig.position.set(p.x, 0.15, p.z + 1.4);
+    fig.rotation.y = Math.PI;
+    this.dynamicGroup.add(fig);
+    this.workerFigure = fig;
+  }
+
+  /** Returns true on the second press within 5 seconds; otherwise asks for confirmation. */
+  private confirmTwice(key: string, question: string): boolean {
+    const now = performance.now();
+    if (this.pendingConfirm && this.pendingConfirm.key === key && now < this.pendingConfirm.until) {
+      this.pendingConfirm = null;
+      return true;
+    }
+    this.pendingConfirm = { key, until: now + 5000 };
+    this.audio.play('click');
+    this.toast(`${question} — press E again to confirm.`, 'pager', 5000);
+    return false;
+  }
+
+  private talkToMarisol(): void {
+    const s = this.state;
+    if (s.worker?.hired) return;
+    if (!s.properties.includes('warehouse')) {
+      this.toast('Marisol: "I do production work, but not in somebody\'s back room. Get a real workspace and we talk."', 'info', 5000);
+      return;
+    }
+    if (s.cash < WORKER_HIRE_PRICE) {
+      this.toast(`Marisol: "$${WORKER_HIRE_PRICE} and I run your prep line all day. You have $${Math.floor(s.cash)}."`, 'info', 5000);
+      this.audio.play('error');
+      return;
+    }
+    if (!this.confirmTwice('worker', `Hire Marisol for $${WORKER_HIRE_PRICE}? She turns warehouse supplies into packaged product non-stop`)) return;
+    if (hireWorker(s, WORKER_HIRE_PRICE, 'warehouse')) {
+      this.audio.play('unlock');
+      this.toast('Marisol is hired! Stock base supplies, modifiers and baggies in WAREHOUSE STORAGE, then assign her a recipe at a PREP TABLE.', 'cash', 9000);
+      this.updateWorkerFigure();
+      this.save();
+    }
+  }
+
   private talkToDizzy(): void {
     if (this.state.runner?.hired) return;
     const s = this.state;
@@ -788,7 +883,7 @@ export class Game implements GameAPI {
       this.audio.play('error');
       return;
     }
-    if (confirm(`Hire Dizzy as your runner for $${RUNNER_HIRE_PRICE}? (Dizzy delivers orders from your storage and keeps 20%)`)) this.hireRunner();
+    if (this.confirmTwice('runner', `Hire Dizzy for $${RUNNER_HIRE_PRICE}? Dizzy delivers orders from your storage and keeps 20%`)) this.hireRunner();
   }
 
   buyWarehouse(): boolean {
@@ -799,7 +894,7 @@ export class Game implements GameAPI {
       this.toast(`Warehouse 7 costs $${WAREHOUSE_PRICE}. You have $${Math.floor(s.cash)}.`, 'warn');
       return false;
     }
-    if (!confirm(`Buy Warehouse 7 for $${WAREHOUSE_PRICE}? Big storage, room for equipment, and your runner works out of it.`)) return false;
+    if (!this.confirmTwice('warehouse', `Buy Warehouse 7 for $${WAREHOUSE_PRICE}? Big storage, room for equipment, runner base`)) return false;
     spendCash(s, WAREHOUSE_PRICE);
     s.properties.push('warehouse');
     s.storage.warehouse = s.storage.warehouse ?? [];
@@ -1048,6 +1143,8 @@ export class Game implements GameAPI {
     if (countItem(s, 'baggies') < 3) return 'Stock up on baggies at Quick Stop 24. Wait for the next page.';
     if (s.cash >= WAREHOUSE_PRICE && !s.properties.includes('warehouse')) return `You can afford WAREHOUSE 7 ($${WAREHOUSE_PRICE}) at the docks.`;
     if (s.cash >= RUNNER_HIRE_PRICE && !s.runner?.hired && s.stats.sales >= 4) return `Hire Dizzy the runner near the Ocean View Motel ($${RUNNER_HIRE_PRICE}).`;
+    if (s.properties.includes('warehouse') && !s.worker?.hired && s.cash >= WORKER_HIRE_PRICE) return `Hire Marisol (production worker) at the Port Authority ($${WORKER_HIRE_PRICE}).`;
+    if (s.worker?.hired && !s.worker.recipeKey) return 'Assign Marisol a recipe at a PREP TABLE and stock the warehouse storage.';
     if (s.cash >= 220 && !s.upgrades.includes('eq_mixer')) return 'Buy a Turbo Mixer at Sol Palma Pawn ($220) to prep faster.';
     if (packagedInInventory(s).length && s.runner?.hired) return 'Store packaged product in STORAGE so Dizzy can deliver it.';
     return 'Waiting for a page… restock, or use a payphone to call around for work.';

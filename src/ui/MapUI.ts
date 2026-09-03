@@ -7,7 +7,7 @@ import { CUSTOMER_MAP } from '../data/customers';
 /** "Paper map" of Sol Palma drawn on a canvas. */
 export class MapUI extends Panel {
   private canvas: HTMLCanvasElement;
-  private scale = 1.6;
+  private scale = 2.2;
 
   constructor(parent: HTMLElement, private api: GameAPI) {
     super('map-panel', 'SOL PALMA · TOURIST MAP', parent);
@@ -51,7 +51,7 @@ export class MapUI extends Panel {
       g.strokeRect(this.px(b.x - b.w / 2), this.pz(b.z - b.d / 2), b.w * s, b.d * s);
       if (b.w >= 26) {
         g.fillStyle = '#3a2a1a';
-        g.font = `${Math.max(8, 5 * s)}px Arial`;
+        g.font = `bold ${Math.max(9, 4.5 * s)}px Arial`;
         g.textAlign = 'center';
         g.fillText(b.name.toUpperCase().slice(0, 18), this.px(b.x), this.pz(b.z) + 3);
       }

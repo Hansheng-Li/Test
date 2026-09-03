@@ -3,6 +3,7 @@ import { CustomerDef } from '../data/customers';
 import { CollisionWorld } from '../physics/Colliders';
 import { WaypointGraph } from '../world/Waypoints';
 import { Effect } from '../data/products';
+import { makeLabel } from '../world/Interiors';
 
 export type CustomerVisualState = 'WAITING' | 'TALK' | 'REACT' | 'LEAVE' | 'DONE';
 
@@ -24,7 +25,11 @@ export class CustomerNPC extends NPC {
     this.baseY = this.position.y;
     this.currentNode = graph.nearest(x, z).id;
     const torso = this.mesh.children[1] as import('three').Mesh;
-    this.glowMat = torso.material as import('three').MeshLambertMaterial;
+    this.glowMat = (torso.material as import('three').MeshLambertMaterial).clone();
+    torso.material = this.glowMat;
+    const label = makeLabel(def.name.toUpperCase(), '#ffd166');
+    label.position.y = 2.25;
+    this.mesh.add(label);
   }
 
   update(dt: number, playerX: number, playerZ: number): void {
