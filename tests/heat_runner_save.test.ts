@@ -160,3 +160,28 @@ describe('save repair', () => {
     expect(typeof broken.vehicle!.x).toBe('number');
   });
 });
+
+describe('second review fixes', () => {
+  it('a null entry in the saved orders list does not discard the save', () => {
+    const s = deserialize(JSON.stringify({ cash: 99, inventory: [], orders: [null, { id: 3, customerId: 'moe', status: 'completed' }] }))!;
+    expect(s).not.toBeNull();
+    expect(s.cash).toBe(99);
+    expect(s.orders).toHaveLength(1);
+    expect(s.nextOrderId).toBe(4);
+  });
+
+  it('runner deliveries count toward customer boredom streaks', () => {
+    const s = createNewState();
+    s.cash = 1000;
+    hireRunner(s, 600);
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    storageAdd(s, 'safehouse', 'pkg:SUNSET', 20);
+    const o = generateOrder(s, { now: s.clockMinutes, customerId: 'moe', simple: true, rng: seq([0.1]) })!;
+    acceptOrder(s, o.id);
+    assignRunner(s, o.id);
+    expect(o.runnerFrom).toBe('safehouse');
+    tickRunner(s, runnerTripSeconds('safehouse', o.locationId) + 1, () => 0.9);
+    expect(s.customers['moe'].lastRecipe).toBe('SUNSET');
+    expect(s.customers['moe'].sameStreak).toBe(1);
+  });
+});

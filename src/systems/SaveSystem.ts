@@ -79,10 +79,10 @@ export function deserialize(json: string): GameState | null {
   // nested objects: repair anything that would crash a system tick
   const num = (v: unknown, d: number): number => (typeof v === 'number' && Number.isFinite(v) ? v : d);
   state.clockMinutes = num(r.clockMinutes, fresh.clockMinutes);
-  const maxOrderId = state.orders.reduce((m, o) => Math.max(m, typeof o.id === 'number' ? o.id : 0), 0);
+  state.orders = state.orders.filter((o) => o && typeof o.id === 'number' && typeof o.customerId === 'string' && typeof o.status === 'string');
+  const maxOrderId = state.orders.reduce((m, o) => Math.max(m, o.id), 0);
   state.nextOrderId = Math.max(num(r.nextOrderId, 1), maxOrderId + 1);
   state.lastOrderMinute = num(r.lastOrderMinute, 0);
-  state.orders = state.orders.filter((o) => o && typeof o.id === 'number' && typeof o.customerId === 'string' && typeof o.status === 'string');
   const rr = r.runner;
   state.runner = rr && typeof rr === 'object' && rr.hired ? { hired: true, name: typeof rr.name === 'string' ? rr.name : 'Dizzy', activeOrderId: typeof rr.activeOrderId === 'number' ? rr.activeOrderId : null, deliveries: num(rr.deliveries, 0), earned: num(rr.earned, 0), queue: Array.isArray(rr.queue) ? rr.queue.filter((x) => typeof x === 'number') : [] } : null;
   const rw = r.worker;

@@ -56,8 +56,7 @@ export class ShopUI extends Panel {
       } else {
         row.appendChild(this.button('BUY 1', () => buy(1), 'primary'));
         row.appendChild(this.button('BUY 5', () => buy(5)));
-        if (this.deliver) row.appendChild(this.button('BUY 20', () => buy(20)));
-        if (e.itemId === 'baggies') row.appendChild(this.button('BUY 20', () => buy(20)));
+        if (this.deliver || e.itemId === 'baggies') row.appendChild(this.button('BUY 20', () => buy(20)));
       }
       body.appendChild(row);
     }

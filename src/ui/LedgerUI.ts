@@ -17,7 +17,7 @@ export class LedgerUI extends Panel {
     const done = MILESTONES.filter((m) => milestoneDone(st, m.id)).length;
     const stat = (k: string, v: string | number): string => `<div class="row"><span class="name">${k}</span><span class="price">${v}</span></div>`;
     body.innerHTML = `
-      <div class="row"><span class="name"><b>CREW:</b> <span style="color:#ff8fd8">${st.crewName || '(unnamed — pick a name, it goes on your warehouse sign)'}</span></span><span class="crew-edit"></span></div>
+      <div class="row"><span class="name"><b>CREW:</b> <span class="crew-name" style="color:#ff8fd8"></span></span><span class="crew-edit"></span></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div>
           <h3>BUSINESS</h3>
@@ -43,6 +43,7 @@ export class LedgerUI extends Panel {
           }).join('')}
         </div>
       </div>`;
+    (body.querySelector('.crew-name') as HTMLElement).textContent = st.crewName || '(unnamed — pick a name, it goes on your warehouse sign)';
     const slot = body.querySelector('.crew-edit') as HTMLElement;
     const inp = document.createElement('input');
     inp.type = 'text';

@@ -28,7 +28,8 @@ const faceObject = (page: Page, kind: string, back: number) =>
     const o = g.city.objects.find((x) => x.kind === kind)!;
     const p = o.position;
     const px = p.x + back;
-    g.player.teleport(px, 0.3, p.z, Math.atan2(-(p.x - px), -(p.z - p.z)));
+    const pz = p.z;
+    g.player.teleport(px, 0.3, pz, Math.atan2(-(p.x - px), -(p.z - pz)));
     g.player.pitch = -0.35;
   }, { kind, back });
 
@@ -110,7 +111,8 @@ test('a new player can complete the first sale', async ({ page }) => {
     const g = (window as unknown as { game: G }).game;
     const c = Array.from(g.customers.values())[0];
     const px = c.position.x + 2;
-    g.player.teleport(px, 0.3, c.position.z + 0.5, Math.atan2(-(c.position.x - px), -(c.position.z - c.position.z - 0.5)));
+    const pz = c.position.z + 0.5;
+    g.player.teleport(px, 0.3, pz, Math.atan2(-(c.position.x - px), -(c.position.z - pz)));
     g.player.pitch = -0.1;
   });
   await frames(page, 4);

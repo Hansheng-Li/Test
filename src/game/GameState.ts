@@ -43,6 +43,8 @@ export interface Order {
   /** Runner progress 0..1 when status === 'runner'. */
   runnerProgress?: number;
   runnerItemKey?: string;
+  /** Property the runner picked the goods up from. */
+  runnerFrom?: string;
   /** Player already made a counter-offer on this order. */
   haggled?: boolean;
   /** Big-money rush order: double size, better pay, tight window. */

@@ -8,7 +8,7 @@ import { DayNight } from '../world/DayNight';
 import { PropBuilder } from '../world/Props';
 import { buildPlacedStation, InteriorContext } from '../world/Interiors';
 import { WorldObject } from '../world/WorldTypes';
-import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT, zoneAt } from '../data/city';
+import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT, PROPERTY_ANCHORS, zoneAt } from '../data/city';
 import { makeFigure, makeLabel } from '../world/Interiors';
 import { CUSTOMER_MAP } from '../data/customers';
 import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, VEHICLE_PRICE, MOTEL_PRICE, FRONT_PRICE, FRONT_DAILY_INCOME, FRONT_DAILY_SUSPICION, ITEMS } from '../data/items';
@@ -166,9 +166,9 @@ export class Game implements GameAPI {
       getSettings: () => this.settings,
       setSetting: (key, value) => this.applySetting(key, value),
     });
-    this.applySetting('sensitivity', this.settings.sensitivity);
-    this.applySetting('masterVolume', this.settings.masterVolume);
-    this.applySetting('radioVolume', this.settings.radioVolume);
+    this.applySetting('sensitivity', this.settings.sensitivity, false);
+    this.applySetting('masterVolume', this.settings.masterVolume, false);
+    this.applySetting('radioVolume', this.settings.radioVolume, false);
     window.addEventListener('beforeunload', () => this.save());
     this.hud.setVisible(false);
     this.debugEl = document.createElement('div');
@@ -236,12 +236,16 @@ export class Game implements GameAPI {
     this.input.requestLock();
   }
 
-  applySetting(key: keyof Settings, value: number): void {
+  private settingsSaveTimer: number | null = null;
+
+  applySetting(key: keyof Settings, value: number, persist = true): void {
     this.settings[key] = value;
     if (key === 'sensitivity') this.player.sensitivity = 0.0022 * value;
     if (key === 'masterVolume') this.audio.setMasterVolume(value);
     if (key === 'radioVolume') this.audio.radio.setVolume(value);
-    saveSettings(this.settings);
+    if (!persist) return;
+    if (this.settingsSaveTimer !== null) clearTimeout(this.settingsSaveTimer);
+    this.settingsSaveTimer = window.setTimeout(() => saveSettings(this.settings), 300);
   }
 
   pause(): void {
@@ -274,6 +278,8 @@ export class Game implements GameAPI {
       this.dynamicGroup.remove(this.runnerNPC.mesh);
       this.runnerNPC = null;
     }
+    this.runnerTripFor = null;
+    this.syncPoliceCount(false);
     if (s.runner?.hired) this.createRunnerNPC();
     this.updateWorkerFigure();
     this.driving = false;
@@ -407,14 +413,14 @@ export class Game implements GameAPI {
   }
 
   /** Long-term suspicion puts more officers on the street (4 base, up to 6). */
-  private syncPoliceCount(): void {
+  private syncPoliceCount(announce = true): void {
     const want = 4 + (this.state.suspicion >= 30 ? 1 : 0) + (this.state.suspicion >= 60 ? 1 : 0);
     while (this.police.length < want) {
       const n = this.city.waypoints.random();
       const p = new Police('cop' + this.police.length, n.x, n.z, this.city.colliders, this.city.waypoints);
       this.police.push(p);
       this.dynamicGroup.add(p.mesh);
-      this.toast('District 3 added a patrol. Your name is getting around.', 'warn', 5000);
+      if (announce) this.toast('District 3 added a patrol. Your name is getting around.', 'warn', 5000);
     }
     while (this.police.length > want) {
       const p = this.police.pop()!;
@@ -428,8 +434,10 @@ export class Game implements GameAPI {
     this.dynamicGroup.add(this.runnerNPC.mesh);
   }
 
-  private runnerHome(): { x: number; z: number } {
-    return this.state.properties.includes('warehouse') ? { x: WAREHOUSE_SIGN.x + 2, z: WAREHOUSE_SIGN.z + 4 } : { x: SAFEHOUSE_DOOR.x + 2, z: SAFEHOUSE_DOOR.z - 3 };
+  private runnerHome(property?: string): { x: number; z: number } {
+    const prop = property && this.state.properties.includes(property) ? property : this.state.properties.includes('warehouse') ? 'warehouse' : 'safehouse';
+    if (prop === 'motel') return { x: PROPERTY_ANCHORS.motel.x + 3, z: PROPERTY_ANCHORS.motel.z };
+    return prop === 'warehouse' ? { x: WAREHOUSE_SIGN.x + 2, z: WAREHOUSE_SIGN.z + 4 } : { x: SAFEHOUSE_DOOR.x + 2, z: SAFEHOUSE_DOOR.z - 3 };
   }
 
   private updateWarehouseSign(): void {
@@ -586,7 +594,7 @@ export class Game implements GameAPI {
       if (active && active.status === 'runner' && this.runnerTripFor !== active.id) {
         this.runnerTripFor = active.id;
         const l = LANDMARKS.find((x) => x.id === active.locationId)!;
-        const home = this.runnerHome();
+        const home = this.runnerHome(active.runnerFrom);
         this.runnerNPC.setHome(home.x, home.z);
         this.runnerNPC.setTrip(l.x, l.z);
       }
@@ -1107,7 +1115,7 @@ export class Game implements GameAPI {
       return;
     }
     if (this.runnerNPC) {
-      const home = this.runnerHome();
+      const home = this.runnerHome(r.property);
       this.runnerNPC.setHome(home.x, home.z);
       this.runnerNPC.setTrip(l.x, l.z);
       this.runnerTripFor = o.id;
@@ -1750,7 +1758,7 @@ export class Game implements GameAPI {
   }
 
   setCrewName(name: string): void {
-    const clean = name.trim().slice(0, 24).toUpperCase();
+    const clean = name.replace(/[<>]/g, '').trim().slice(0, 24).toUpperCase();
     if (!clean) return;
     this.state.crewName = clean;
     this.audio.play('unlock');

@@ -3,7 +3,7 @@ import { RUNNER_CUT } from '../data/items';
 import { LANDMARKS, PROPERTY_ANCHORS } from '../data/city';
 import { packagedItemId, parseRecipeKey, computeRecipe } from '../data/products';
 import { storageOf, storageRemove } from './InventorySystem';
-import { orderMatchesItem } from './OrderSystem';
+import { orderMatchesItem, noteRecipeBought } from './OrderSystem';
 import { addCash } from './EconomySystem';
 import { recordSuccessfulDeal } from './CustomerSystem';
 
@@ -51,6 +51,7 @@ export function assignRunner(state: GameState, orderId: number): AssignResult {
   o.status = 'runner';
   o.runnerProgress = 0;
   o.runnerItemKey = stock.key;
+  o.runnerFrom = stock.property;
   if (state.runner.activeOrderId === null) state.runner.activeOrderId = o.id;
   else {
     state.runner.queue = state.runner.queue ?? [];
@@ -105,7 +106,7 @@ export function tickRunner(state: GameState, dtSeconds: number, rng: () => numbe
     r.activeOrderId = null;
     return {};
   }
-  const property = state.properties.includes('warehouse') ? 'warehouse' : 'safehouse';
+  const property = o.runnerFrom && state.properties.includes(o.runnerFrom) ? o.runnerFrom : state.properties.includes('warehouse') ? 'warehouse' : 'safehouse';
   const total = runnerTripSeconds(property, o.locationId);
   o.runnerProgress = (o.runnerProgress ?? 0) + dtSeconds / total;
   if (o.runnerProgress < 1) return {};
@@ -121,6 +122,7 @@ export function tickRunner(state: GameState, dtSeconds: number, rng: () => numbe
   state.stats.earned += earned - cut;
   const parsed = parseRecipeKey(o.runnerItemKey ?? '');
   const matched = parsed ? computeRecipe(parsed.base, parsed.mods).effects.length > 1 : false;
+  if (o.runnerItemKey) noteRecipeBought(state, o.customerId, o.runnerItemKey);
   const unlocked = recordSuccessfulDeal(state, o.customerId, { onTime: true, matchedPreference: matched });
   // small chance of a comedic hiccup that costs a little heat
   if (rng() < 0.15) state.heat = Math.min(100, state.heat + 6);
