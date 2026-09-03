@@ -40,9 +40,10 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | `1`–`8` | Select hotbar slot |
 | `B` | Place equipment (inside your warehouse, with a station kit in your backpack) |
 | `N` | Walkman on/off (original procedural synth radio, also plays in the car) |
+| `H` | Hide/show the HUD (screenshot mode) |
 | `W S A D` / `Shift` / `Space` | In the car: drive / brake / horn |
 | `R` | Rotate equipment in placement mode |
-| `Esc` | Close panel / pause menu (save, quit to title) |
+| `Esc` | Close panel / pause menu (save, how to play, settings: sensitivity & volumes) |
 | `F3` | Performance overlay (fps, draw calls, triangles) |
 
 ## The first five minutes
@@ -98,6 +99,7 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
 * **Second stash**: rent Room 6 at the Ocean View Motel ($1,200) for beach-side storage and a bed.
 * **Wheels**: the '88 sedan at Rojas Auto Repair ($900) crosses town in seconds, honks pedestrians out
   of the way, and stays wherever you park it.
+* **VIP rush orders**: regulars sometimes page a double-size order at +60 % pay with a 50-minute window.
 * **Goals**: the fax/CRT ledger in your back room lists 14 milestones with cash rewards, crew status and
   today's street talk; each morning you get yesterday's numbers.
 * **Day / night**: 1 real second = 1 game minute. Night brings neon, club crowds and lamp-lit streets.
@@ -162,7 +164,7 @@ Design rules that shaped the code:
 - Drivable arcade sedan with horn, headlights and persisted parking spot; procedural synth radio.
 - Accelerated day/night with neon, lit windows, lamp pool, fog and sunset tint; procedural audio.
 - localStorage save/load with validation and repair of partial saves.
-- 39 Vitest tests covering behavioural contracts + Playwright smoke test.
+- 47 Vitest tests covering behavioural contracts + Playwright smoke test.
 
 ## Known limitations
 

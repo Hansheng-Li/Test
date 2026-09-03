@@ -53,6 +53,11 @@ export class Radio {
     }
   }
 
+  setVolume(v: number): void {
+    this.volume = v;
+    if (this.ctx && this.out && this.playing) this.out.gain.setTargetAtTime(v, this.ctx.currentTime, 0.2);
+  }
+
   /** 0..1 loudness (used for distance falloff). */
   setLevel(level: number): void {
     if (!this.ctx || !this.out || !this.playing) return;

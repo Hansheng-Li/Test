@@ -15,6 +15,7 @@ export class AudioSystem {
   private clubTimer = 0;
   private gullTimer = 3;
   enabled = true;
+  masterVolume = 0.5;
   private lastSfx = new Map<string, number>();
   radio = new Radio();
 
@@ -23,13 +24,18 @@ export class AudioSystem {
     try {
       this.ctx = new AudioContext();
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.5;
+      this.master.gain.value = this.masterVolume;
       this.master.connect(this.ctx.destination);
       this.startAmbient();
       this.radio.attach(this.ctx, this.master);
     } catch {
       this.ctx = null;
     }
+  }
+
+  setMasterVolume(v: number): void {
+    this.masterVolume = v;
+    if (this.master) this.master.gain.value = v;
   }
 
   resume(): void {

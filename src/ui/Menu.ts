@@ -5,7 +5,7 @@ export class Menu {
 
   constructor(
     parent: HTMLElement,
-    private actions: { newGame: () => void; continueGame: () => void; resetSave: () => void; resume: () => void; save: () => void; hasSave: () => boolean },
+    private actions: { newGame: () => void; continueGame: () => void; resetSave: () => void; resume: () => void; save: () => void; hasSave: () => boolean; getSettings: () => { sensitivity: number; masterVolume: number; radioVolume: number }; setSetting: (key: 'sensitivity' | 'masterVolume' | 'radioVolume', value: number) => void },
   ) {
     this.el = document.createElement('div');
     this.el.id = 'menu';
@@ -34,6 +34,7 @@ export class Menu {
       <h1>SUNSET SYNDICATE</h1>
       <div class="sub">SOL PALMA, FLORIDA · 1996</div>
       <div class="buttons"></div>
+      <div class="settings" style="display:none;min-width:360px;font-size:13px;color:#ddd;background:rgba(0,0,0,0.4);padding:12px 16px;border-radius:6px;border:1px solid #444"></div>
       <div class="howto" style="display:none;max-width:640px;font-size:13px;line-height:1.5;color:#ddd;background:rgba(0,0,0,0.4);padding:12px 16px;border-radius:6px;border:1px solid #444">
         <b style="color:#4ff2e8">THE LOOP</b> · Pager beeps → accept → buy supplies from Rico (docks) → PREP TABLE → PACKAGING → walk to the meeting spot → E to sell.<br/>
         <b style="color:#4ff2e8">CUSTOMERS</b> · They walk around their home zone. Offer locked ones a free sample; sell to unlocked ones on the street. Better relationship = bigger orders, friends unlock.<br/>
@@ -56,6 +57,35 @@ export class Menu {
       b.addEventListener('click', fn);
       btns.appendChild(b);
     };
+    const settingsEl = this.el.querySelector('.settings') as HTMLElement;
+    const st = this.actions.getSettings();
+    const slider = (label: string, key: 'sensitivity' | 'masterVolume' | 'radioVolume', min: number, max: number, step: number): void => {
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.justifyContent = 'space-between';
+      row.style.alignItems = 'center';
+      row.style.gap = '12px';
+      row.style.margin = '6px 0';
+      const lbl = document.createElement('span');
+      lbl.textContent = label;
+      const val = document.createElement('span');
+      val.style.minWidth = '40px';
+      val.style.textAlign = 'right';
+      val.textContent = st[key].toFixed(2);
+      const inp = document.createElement('input');
+      inp.type = 'range';
+      inp.min = String(min);
+      inp.max = String(max);
+      inp.step = String(step);
+      inp.value = String(st[key]);
+      inp.style.flex = '1';
+      inp.addEventListener('input', () => { const v = parseFloat(inp.value); val.textContent = v.toFixed(2); this.actions.setSetting(key, v); });
+      row.append(lbl, inp, val);
+      settingsEl.appendChild(row);
+    };
+    slider('Mouse sensitivity', 'sensitivity', 0.2, 3, 0.05);
+    slider('Master volume', 'masterVolume', 0, 1, 0.05);
+    slider('Radio volume', 'radioVolume', 0, 1, 0.05);
     if (this.mode === 'title') {
       if (hasSave) add('CONTINUE', this.actions.continueGame, 'big primary');
       add('NEW GAME', this.actions.newGame, hasSave ? 'big' : 'big primary');
@@ -63,6 +93,7 @@ export class Menu {
     } else {
       add('RESUME', this.actions.resume, 'big primary');
       add('HOW TO PLAY', () => { const h = this.el.querySelector('.howto') as HTMLElement; h.style.display = h.style.display === 'none' ? 'block' : 'none'; }, 'big');
+      add('SETTINGS', () => { const h = this.el.querySelector('.settings') as HTMLElement; h.style.display = h.style.display === 'none' ? 'block' : 'none'; }, 'big');
       add('SAVE GAME', () => { this.actions.save(); }, 'big');
       add('QUIT TO TITLE', () => { this.actions.save(); this.show('title'); }, 'big');
     }

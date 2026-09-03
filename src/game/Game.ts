@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Input } from '../core/Input';
+import { loadSettings, saveSettings, Settings } from '../core/Settings';
 import { GameClock } from '../core/Time';
 import { PlayerController } from '../player/PlayerController';
 import { buildCity, CityResult } from '../world/City';
@@ -91,6 +92,7 @@ export class Game implements GameAPI {
   workerFigure: THREE.Group | null = null;
   vehicle: Vehicle | null = null;
   boomboxOn = false;
+  settings: Settings = loadSettings();
   driving = false;
   private carHitTimer = 0;
   private carEye = new THREE.Vector3();
@@ -160,7 +162,13 @@ export class Game implements GameAPI {
       resume: () => this.resume(),
       save: () => { this.save(); this.toast('Game saved.'); },
       hasSave: () => hasSave(localStorage),
+      getSettings: () => this.settings,
+      setSetting: (key, value) => this.applySetting(key, value),
     });
+    this.applySetting('sensitivity', this.settings.sensitivity);
+    this.applySetting('masterVolume', this.settings.masterVolume);
+    this.applySetting('radioVolume', this.settings.radioVolume);
+    window.addEventListener('beforeunload', () => this.save());
     this.hud.setVisible(false);
     this.debugEl = document.createElement('div');
     this.debugEl.id = 'debug';
@@ -225,6 +233,14 @@ export class Game implements GameAPI {
     this.hud.setVisible(true);
     this.audio.init();
     this.input.requestLock();
+  }
+
+  applySetting(key: keyof Settings, value: number): void {
+    this.settings[key] = value;
+    if (key === 'sensitivity') this.player.sensitivity = 0.0022 * value;
+    if (key === 'masterVolume') this.audio.setMasterVolume(value);
+    if (key === 'radioVolume') this.audio.radio.setVolume(value);
+    saveSettings(this.settings);
   }
 
   pause(): void {
@@ -657,6 +673,7 @@ export class Game implements GameAPI {
       this.save();
     }
 
+    this.hud.setClickHint(!this.input.locked && !uiOpen && !this.arrested);
     this.hud.speedText = this.driving && this.vehicle ? `${Math.round(this.vehicle.mph)} MPH` : null;
     this.hudTextTimer -= dt;
     if (this.hudTextTimer <= 0) {
@@ -1772,6 +1789,9 @@ export class Game implements GameAPI {
         break;
       case 'KeyB':
         this.tryStartPlacementFromInventory();
+        break;
+      case 'KeyH':
+        this.hud.toggleHidden();
         break;
       case 'KeyN':
         this.boomboxOn = !this.boomboxOn;

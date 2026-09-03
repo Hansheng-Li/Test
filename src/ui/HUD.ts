@@ -40,7 +40,8 @@ export class HUD {
       <div id="prompt"></div>
       <div id="toasts"></div>
       <div id="pager-notify"><div class="screen"></div><div class="hint">[P] OPEN PAGER</div></div>
-      <div id="vignette"></div>`;
+      <div id="vignette"></div>
+      <div id="clickhint" style="display:none;position:absolute;left:50%;top:62%;transform:translateX(-50%);background:var(--panel);border:2px solid var(--cyan);padding:10px 18px;border-radius:6px;font-size:16px;letter-spacing:1px">CLICK TO CAPTURE THE MOUSE</div>`;
     parent.appendChild(this.root);
     this.cashEl = this.root.querySelector('#hud-cash .val')!;
     this.clockEl = this.root.querySelector('#hud-clock')!;
@@ -65,6 +66,17 @@ export class HUD {
 
   setVisible(v: boolean): void {
     this.root.style.display = v ? 'block' : 'none';
+  }
+
+  hidden = false;
+  toggleHidden(): void {
+    this.hidden = !this.hidden;
+    for (const c of Array.from(this.root.children) as HTMLElement[]) if (c.id !== 'clickhint') c.style.visibility = this.hidden ? 'hidden' : 'visible';
+  }
+
+  setClickHint(on: boolean): void {
+    const el = this.root.querySelector('#clickhint') as HTMLElement;
+    el.style.display = on ? 'block' : 'none';
   }
 
   speedText: string | null = null;
