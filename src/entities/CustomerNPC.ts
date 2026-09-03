@@ -4,6 +4,8 @@ import { CollisionWorld } from '../physics/Colliders';
 import { WaypointGraph } from '../world/Waypoints';
 import { Effect } from '../data/products';
 import { makeLabel } from '../world/Interiors';
+import { labelTexture } from '../world/Textures';
+import * as THREE from 'three';
 
 export type CustomerVisualState = 'WAITING' | 'TALK' | 'REACT' | 'LEAVE' | 'DONE';
 
@@ -18,6 +20,8 @@ export class CustomerNPC extends NPC {
   private spin = 0;
   private baseY = 0.15;
   private glowMat: import('three').MeshLambertMaterial | null = null;
+  private marker: THREE.Sprite;
+  private markerT = 0;
 
   constructor(public def: CustomerDef, public orderId: number, x: number, z: number, world: CollisionWorld, graph: WaypointGraph) {
     super('customer_' + def.id, x, z, def.shirt, def.skin, '#37474f', world, graph);
@@ -30,10 +34,21 @@ export class CustomerNPC extends NPC {
     const label = makeLabel(def.name.toUpperCase(), '#ffd166');
     label.position.y = 2.25;
     this.mesh.add(label);
+    // tall bobbing "$" marker so the meeting spot reads from a block away
+    this.marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture('$ MEET', '#7dff9a'), transparent: true, depthTest: false, sizeAttenuation: true }));
+    this.marker.scale.set(3, 0.6, 1);
+    this.marker.position.y = 3.4;
+    this.marker.renderOrder = 998;
+    this.mesh.add(this.marker);
   }
 
   update(dt: number, playerX: number, playerZ: number): void {
     this.stateTime += dt;
+    this.markerT += dt;
+    this.marker.visible = this.cstate === 'WAITING';
+    this.marker.position.y = 3.3 + Math.sin(this.markerT * 3) * 0.15;
+    const far = this.distanceTo(playerX, playerZ) > 40;
+    this.marker.scale.set(far ? 6 : 3, far ? 1.2 : 0.6, 1);
     switch (this.cstate) {
       case 'WAITING':
         this.velocity.set(0, 0, 0);
