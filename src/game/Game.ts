@@ -770,7 +770,8 @@ export class Game implements GameAPI {
       return;
     }
     const first = !s.flags.firstOrderSent;
-    const o = generateOrder(s, { now: this.clock.totalMinutes, customerId: first ? 'tasha' : undefined, simple: first || s.stats.sales < 2 });
+    // the scripted first page comes from Tasha, but never let an unavailable Tasha block the pager forever
+    const o = generateOrder(s, { now: this.clock.totalMinutes, customerId: first ? 'tasha' : undefined, simple: first || s.stats.sales < 2 }) ?? (first ? generateOrder(s, { now: this.clock.totalMinutes, simple: true }) : null);
     if (o) {
       if (first) s.flags.firstOrderSent = true;
       this.announceOrder(o);
