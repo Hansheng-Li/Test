@@ -176,8 +176,8 @@ Design rules that shaped the code:
 
 * Art is entirely procedural box geometry; characters are stylised block figures.
 * The car uses a square collision footprint and bounces off walls; there is no damage model.
-* Police navigate by steering toward the player through the collision world; they can get stuck on
-  dense props for a moment (they recover via SEARCH/RETURN_TO_PATROL).
+* Police navigate by steering toward the player through the collision world; when they get wedged on
+  props they detour along the sidewalk graph for a few seconds, then give up if they still cannot see you.
 * Balance is tuned for a 30–45 minute demonstration, not long-term play.
 * Headless/software-rendered browsers run far below 60 fps; a normal desktop GPU is expected.
 
