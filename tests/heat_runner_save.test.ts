@@ -122,3 +122,29 @@ describe('save / load', () => {
     expect(partial.properties).toEqual(['safehouse']);
   });
 });
+
+describe('runner queue', () => {
+  it('queues a second order and delivers it after the first', () => {
+    const s = createNewState();
+    s.cash = 1000;
+    hireRunner(s, 600);
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    storageAdd(s, 'safehouse', 'pkg:SUNSET', 20);
+    const o1 = generateOrder(s, { now: s.clockMinutes, customerId: 'moe', simple: true, rng: seq([0.1]) })!;
+    const o2 = generateOrder(s, { now: s.clockMinutes, customerId: 'tasha', simple: true, rng: seq([0.1]) })!;
+    acceptOrder(s, o1.id);
+    acceptOrder(s, o2.id);
+    expect(assignRunner(s, o1.id).ok).toBe(true);
+    const a2 = assignRunner(s, o2.id);
+    expect(a2.ok && a2.queued).toBe(true);
+    expect(s.runner!.queue).toEqual([o2.id]);
+    const trip1 = runnerTripSeconds('safehouse', o1.locationId);
+    expect(tickRunner(s, trip1 + 1, () => 0.9).completed?.order.id).toBe(o1.id);
+    // next tick picks up the queued order
+    tickRunner(s, 0.01, () => 0.9);
+    expect(s.runner!.activeOrderId).toBe(o2.id);
+    const trip2 = runnerTripSeconds('safehouse', o2.locationId);
+    expect(tickRunner(s, trip2 + 1, () => 0.9).completed?.order.id).toBe(o2.id);
+    expect(s.runner!.deliveries).toBe(2);
+  });
+});

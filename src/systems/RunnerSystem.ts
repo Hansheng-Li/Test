@@ -34,6 +34,7 @@ export interface AssignResult {
   reason?: 'no_runner' | 'busy' | 'no_stock' | 'bad_order';
   property?: string;
   key?: string;
+  queued?: boolean;
 }
 
 /**
@@ -42,7 +43,6 @@ export interface AssignResult {
  */
 export function assignRunner(state: GameState, orderId: number): AssignResult {
   if (!state.runner?.hired) return { ok: false, reason: 'no_runner' };
-  if (state.runner.activeOrderId !== null) return { ok: false, reason: 'busy' };
   const o = state.orders.find((x) => x.id === orderId);
   if (!o || o.status !== 'accepted') return { ok: false, reason: 'bad_order' };
   const stock = storageItemForOrder(state, o);
@@ -51,8 +51,29 @@ export function assignRunner(state: GameState, orderId: number): AssignResult {
   o.status = 'runner';
   o.runnerProgress = 0;
   o.runnerItemKey = stock.key;
-  state.runner.activeOrderId = o.id;
+  if (state.runner.activeOrderId === null) state.runner.activeOrderId = o.id;
+  else {
+    state.runner.queue = state.runner.queue ?? [];
+    state.runner.queue.push(o.id);
+    return { ok: true, property: stock.property, key: stock.key, queued: true };
+  }
   return { ok: true, property: stock.property, key: stock.key };
+}
+
+/** Pop the next queued order into the active slot. Returns it, or null. */
+export function advanceRunnerQueue(state: GameState): Order | null {
+  const r = state.runner;
+  if (!r?.hired || r.activeOrderId !== null) return null;
+  while (r.queue && r.queue.length) {
+    const id = r.queue.shift()!;
+    const o = state.orders.find((x) => x.id === id);
+    if (o && o.status === 'runner') {
+      r.activeOrderId = o.id;
+      o.runnerProgress = 0;
+      return o;
+    }
+  }
+  return null;
 }
 
 /** Trip time in seconds from the property to the landmark and back-ish (one way counts). */
@@ -74,7 +95,11 @@ export interface RunnerTickResult {
  */
 export function tickRunner(state: GameState, dtSeconds: number, rng: () => number = Math.random): RunnerTickResult {
   const r = state.runner;
-  if (!r?.hired || r.activeOrderId === null) return {};
+  if (!r?.hired) return {};
+  if (r.activeOrderId === null) {
+    const next = advanceRunnerQueue(state);
+    if (!next) return {};
+  }
   const o = state.orders.find((x) => x.id === r.activeOrderId);
   if (!o || o.status !== 'runner') {
     r.activeOrderId = null;

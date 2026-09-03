@@ -88,3 +88,4 @@ export const DEALER_MAX_STOCK = 60;
 export const DEALER_PRICE_FACTOR = 0.65;
 export const STARTING_CASH = 80;
 export const VEHICLE_PRICE = 900;
+export const MOTEL_PRICE = 1200;

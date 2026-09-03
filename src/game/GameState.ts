@@ -57,6 +57,8 @@ export interface RunnerState {
   name: string;
   /** Order id currently being delivered. */
   activeOrderId: number | null;
+  /** Orders waiting for the runner, in dispatch order. */
+  queue?: number[];
   /** Total delivered count. */
   deliveries: number;
   earned: number;

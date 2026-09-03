@@ -102,13 +102,13 @@ export class PagerUI extends Panel {
       card.innerHTML = `<b>${c.name}</b> · ${o.qty}x ${request} · $${o.price}<br/>` +
         `MEET: ${landmarkName(o.locationId)} · WINDOW ${GameClock.formatMinutes(o.windowStart)}-${GameClock.formatMinutes(o.windowEnd)}<br/>` +
         (o.status === 'runner'
-          ? `<span style="color:#7fffd4">RUNNER ON THE WAY · ${Math.round((o.runnerProgress ?? 0) * 100)}%</span>`
+          ? (st.runner?.activeOrderId === o.id ? `<span style="color:#7fffd4">RUNNER ON THE WAY · ${Math.round((o.runnerProgress ?? 0) * 100)}%</span>` : `<span style="color:#7fffd4">QUEUED FOR RUNNER</span>`)
           : have ? `<span style="color:#7dff9a">YOU ARE CARRYING THE GOODS</span>` : `<span style="color:#ffb3c1">YOU DO NOT HAVE ${o.qty}x ${request} YET</span>`);
       const actions = document.createElement('div');
       actions.className = 'actions';
       if (o.status === 'accepted' && st.runner?.hired) {
-        const btn = this.button(runnerBusy(st) ? 'RUNNER BUSY' : stock ? `SEND RUNNER (from ${stock.property})` : 'SEND RUNNER (no stock in storage)', () => { this.api.sendRunner(o.id); this.render(); }, 'cyan');
-        btn.disabled = runnerBusy(st) || !stock;
+        const btn = this.button(stock ? (runnerBusy(st) ? `QUEUE FOR RUNNER (from ${stock.property})` : `SEND RUNNER (from ${stock.property})`) : 'SEND RUNNER (no stock in storage)', () => { this.api.sendRunner(o.id); this.render(); }, 'cyan');
+        btn.disabled = !stock;
         actions.appendChild(btn);
       }
       card.appendChild(actions);

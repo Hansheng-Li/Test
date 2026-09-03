@@ -85,6 +85,7 @@ export class MapUI extends Panel {
     dot(SAFEHOUSE_DOOR.x, SAFEHOUSE_DOOR.z, '#2e7d32', 'BACK ROOM');
     dot(SUPPLIER_SPOT.x, SUPPLIER_SPOT.z, '#ff9800', 'RICO');
     if (st.properties.includes('warehouse')) dot(-149, -60, '#2e7d32', 'YOUR WAREHOUSE');
+    if (st.properties.includes('motel')) dot(151, -67, '#2e7d32', 'ROOM 6');
     dot(DEALER_CONTACT_SPOT.x, DEALER_CONTACT_SPOT.z, '#8e24aa', st.dealer?.hired ? `VINCE ($${Math.round(st.dealer.cash)})` : 'VINCE (dealer)');
     if (!st.runner?.hired) dot(RUNNER_CONTACT_SPOT.x, RUNNER_CONTACT_SPOT.z, '#00838f', 'DIZZY (runner)');
     if (!st.worker?.hired) dot(WORKER_CONTACT_SPOT.x, WORKER_CONTACT_SPOT.z, '#6a1b9a', 'MARISOL (worker)');

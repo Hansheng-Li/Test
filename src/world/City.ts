@@ -337,6 +337,14 @@ export function buildCity(): CityResult {
   group.add(carAnchor);
   objects.push({ kind: 'car_sale', id: 'car_sale', position: carAnchor.position.clone(), mesh: carSign });
 
+  // motel room 6 for rent (beach-side stash + safe spot)
+  const motelSpec = BUILDINGS.find((b) => b.id === 'motel')!;
+  const roomSign = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.9), new THREE.MeshBasicMaterial({ map: signTexture('ROOM 6', { color: '#ffffff', bg: '#00838f', glow: false, sub: 'WEEKLY RATES · ASK INSIDE' }), side: THREE.DoubleSide }));
+  roomSign.position.set(motelSpec.x + motelSpec.w / 2 + 0.3, SLAB + 2.4, motelSpec.z - 2.2);
+  roomSign.rotation.y = Math.PI / 2;
+  group.add(roomSign);
+  objects.push({ kind: 'motel_sign', id: 'motel_sign', position: new THREE.Vector3(motelSpec.x + motelSpec.w / 2 + 1, SLAB, motelSpec.z - 2), mesh: roomSign, property: 'motel' });
+
   // warehouse for-sale sign
   const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(3, 1.2), new THREE.MeshBasicMaterial({ map: signTexture('FOR SALE', { color: '#ffffff', bg: '#c62828', glow: false, sub: 'WAREHOUSE 7 · SEE INSIDE' }), side: THREE.DoubleSide }));
   signMesh.position.set(WAREHOUSE_SIGN.x, SLAB + 1.8, WAREHOUSE_SIGN.z);

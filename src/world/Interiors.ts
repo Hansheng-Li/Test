@@ -247,6 +247,12 @@ export function furnishInterior(spec: BuildingSpec, ctx: InteriorContext, doorDi
       const lbl = makeLabel('MOTEL BED · REST', '#ffb4d1');
       lbl.position.set(0, 1.6, 0);
       b.add(lbl);
+      // stash shelf: usable once the player rents the room
+      const stash = shelf(ctx, x + w / 2 - 7.6, z + 3, 2.4, Math.PI / 2, '#6d4c41');
+      const stashLabel = makeLabel('ROOM 6 STASH', '#b3ffb3');
+      stashLabel.position.set(0, 2.4, 0);
+      stash.add(stashLabel);
+      addObject(ctx, 'storage', 'motel_storage', stash, 'motel');
       const tvStand = table(ctx, x + w / 2 - 2, z + 2.5, 1.2, 0.6, '#5d4037');
       const tv = new THREE.Mesh(boxGeo(0.8, 0.6, 0.6), lambert('#37474f'));
       tv.position.set(0, 1.25, 0);

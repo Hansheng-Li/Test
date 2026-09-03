@@ -10,7 +10,7 @@ import { WorldObject } from '../world/WorldTypes';
 import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT } from '../data/city';
 import { makeFigure, makeLabel } from '../world/Interiors';
 import { CUSTOMER_MAP } from '../data/customers';
-import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, VEHICLE_PRICE, ITEMS } from '../data/items';
+import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, VEHICLE_PRICE, MOTEL_PRICE, ITEMS } from '../data/items';
 import { computeRecipe, parseRecipeKey, Effect } from '../data/products';
 import { GameState, Order, PlacedStation } from './GameState';
 import { createNewState, saveToStorage, loadFromStorage, hasSave, clearSave } from '../systems/SaveSystem';
@@ -88,6 +88,7 @@ export class Game implements GameAPI {
   private wandererTimer = 0;
   private gossip: string[] = [];
   runnerNPC: RunnerNPC | null = null;
+  private runnerTripFor: number | null = null;
   workerFigure: THREE.Group | null = null;
   vehicle: Vehicle | null = null;
   boomboxOn = false;
@@ -268,6 +269,8 @@ export class Game implements GameAPI {
     for (const p of s.placedStations) this.instantiateStation(p);
     this.updateWarehouseSign();
     this.updateRunnerContact();
+    const motelSign = this.city.objects.find((o) => o.kind === 'motel_sign');
+    if (motelSign) motelSign.mesh.visible = !s.properties.includes('motel');
     this.cancelChecked.clear();
     this.hud.selectedSlot = 0;
   }
@@ -312,6 +315,9 @@ export class Game implements GameAPI {
         break;
       case 'dealer_contact':
         add({ prompt: () => (this.state.dealer?.hired ? `[E] TALK · VINCE (DEALER · $${Math.round(this.state.dealer.cash)} waiting)` : `[E] TALK · VINCE (HIRE DEALER $${DEALER_HIRE_PRICE})`), onInteract: () => this.talkToVince(), radius: 3.5 });
+        break;
+      case 'motel_sign':
+        add({ prompt: () => (this.state.properties.includes('motel') ? null : `[E] RENT ROOM 6 ($${MOTEL_PRICE}) · beach stash + safe spot`), onInteract: () => this.rentMotel(), radius: 3.5 });
         break;
       case 'car_sale':
         add({ prompt: () => (this.state.vehicle?.owned ? null : `[E] BUY '88 SEDAN ($${VEHICLE_PRICE})`), onInteract: () => this.buyCar(), radius: 4 });
@@ -533,6 +539,13 @@ export class Game implements GameAPI {
     }
     if (this.runnerNPC) {
       const active = s.runner?.activeOrderId !== null && s.runner ? s.orders.find((o) => o.id === s.runner!.activeOrderId) : null;
+      if (active && active.status === 'runner' && this.runnerTripFor !== active.id) {
+        this.runnerTripFor = active.id;
+        const l = LANDMARKS.find((x) => x.id === active.locationId)!;
+        const home = this.runnerHome();
+        this.runnerNPC.setHome(home.x, home.z);
+        this.runnerNPC.setTrip(l.x, l.z);
+      }
       if (active && active.status === 'runner') this.runnerNPC.showProgress(active.runnerProgress ?? 0);
       else if (this.runnerNPC.velocity.lengthSq() > 0 || this.runnerNPC.distanceTo(this.runnerNPC.homeX, this.runnerNPC.homeZ) > 0.5) this.runnerNPC.clearTrip();
       this.runnerNPC.syncVisual(dt);
@@ -1024,10 +1037,17 @@ export class Game implements GameAPI {
     }
     const o = this.state.orders.find((x) => x.id === id)!;
     const l = LANDMARKS.find((x) => x.id === o.locationId)!;
+    if (r.queued) {
+      this.audio.play('click');
+      this.toast(`Queued for Dizzy: ${o.qty}x ${describeRequest(this.state, o)} to ${l.name} (after his current run).`);
+      this.despawnCustomer(o.id);
+      return;
+    }
     if (this.runnerNPC) {
       const home = this.runnerHome();
       this.runnerNPC.setHome(home.x, home.z);
       this.runnerNPC.setTrip(l.x, l.z);
+      this.runnerTripFor = o.id;
       this.runnerNPC.say('On it, boss!', '#7fffd4', 2.5);
     }
     this.audio.play('click');
@@ -1332,6 +1352,25 @@ export class Game implements GameAPI {
     });
   }
 
+  private rentMotel(): void {
+    const s = this.state;
+    if (s.properties.includes('motel')) return;
+    if (s.cash < MOTEL_PRICE) {
+      this.audio.play('error');
+      this.toast(`Room 6 is $${MOTEL_PRICE} for the season. You have $${Math.floor(s.cash)}.`, 'info', 5000);
+      return;
+    }
+    if (!this.confirmTwice('motel', `Rent Room 6 at the Ocean View Motel for $${MOTEL_PRICE}? Beach-side stash, bed, cops stay out`)) return;
+    spendCash(s, MOTEL_PRICE);
+    s.properties.push('motel');
+    s.storage.motel = s.storage.motel ?? [];
+    this.audio.play('unlock');
+    this.toast('Room 6 is yours: a stash by the beach strip, a bed to rest in, and no cops inside.', 'cash', 7000);
+    const sign = this.city.objects.find((o) => o.kind === 'motel_sign');
+    if (sign) sign.mesh.visible = false;
+    this.save();
+  }
+
   private buyCar(): void {
     const s = this.state;
     if (s.vehicle?.owned) return;
@@ -1588,6 +1627,7 @@ export class Game implements GameAPI {
     if (s.dealer?.hired && s.dealer.cash >= 200) return `Vince is holding $${Math.round(s.dealer.cash)} for you. Swing by Neptune Arcade.`;
     if (s.worker?.hired && !s.worker.recipeKey) return 'Assign Marisol a recipe at a PREP TABLE and stock the warehouse storage.';
     if (s.cash >= 220 && !s.upgrades.includes('eq_mixer')) return 'Buy a Turbo Mixer at Sol Palma Pawn ($220) to prep faster.';
+    if (!s.properties.includes('motel') && s.cash >= MOTEL_PRICE + 200 && s.properties.includes('warehouse')) return `Rent Room 6 at the Ocean View Motel ($${MOTEL_PRICE}) for a beach-side stash.`;
     if (!s.vehicle?.owned && s.cash >= VEHICLE_PRICE + 100 && s.stats.sales >= 6) return `Buy the '88 sedan at Rojas Auto Repair ($${VEHICLE_PRICE}) to cross town fast.`;
     if (packagedInInventory(s).length && s.runner?.hired) return 'Store packaged product in STORAGE so Dizzy can deliver it.';
     return 'Waiting for a page… restock, or use a payphone to call around for work.';

@@ -34,6 +34,14 @@ export class Menu {
       <h1>SUNSET SYNDICATE</h1>
       <div class="sub">SOL PALMA, FLORIDA · 1996</div>
       <div class="buttons"></div>
+      <div class="howto" style="display:none;max-width:640px;font-size:13px;line-height:1.5;color:#ddd;background:rgba(0,0,0,0.4);padding:12px 16px;border-radius:6px;border:1px solid #444">
+        <b style="color:#4ff2e8">THE LOOP</b> · Pager beeps → accept → buy supplies from Rico (docks) → PREP TABLE → PACKAGING → walk to the meeting spot → E to sell.<br/>
+        <b style="color:#4ff2e8">CUSTOMERS</b> · They walk around their home zone. Offer locked ones a free sample; sell to unlocked ones on the street. Better relationship = bigger orders, friends unlock.<br/>
+        <b style="color:#4ff2e8">PRODUCTS</b> · Base + up to 3 modifiers (order matters). Name your products. Watch the daily hot effect (+25%).<br/>
+        <b style="color:#4ff2e8">HEAT</b> · Cops who see a deal raise it. Break line of sight, go home, or rest. Clean hands survive a stop-and-search; contraband does not.<br/>
+        <b style="color:#4ff2e8">SCALE UP</b> · Pawn shop equipment → Dizzy the runner (motel) → Warehouse 7 (docks) → Marisol the worker (port) → Vince the dealer (arcade) → the '88 sedan (Rojas).<br/>
+        <b style="color:#4ff2e8">KEYS</b> · E interact · TAB backpack · P pager · M map · N walkman · B place equipment · F3 fps.
+      </div>
       <div class="controls">WASD move · MOUSE look · SHIFT sprint · SPACE jump<br/>E interact · TAB inventory · P pager · M map · N walkman · 1-8 select item · ESC pause<br/><br/><span style="color:#ff9a3c">All products in this game are fictional. Click to capture the mouse.</span></div>
       <div class="stripe bottom"></div>`;
     const btns = this.el.querySelector('.buttons') as HTMLElement;
@@ -54,6 +62,7 @@ export class Menu {
       if (hasSave) add('RESET SAVE', () => { if (confirm('Delete your save?')) { this.actions.resetSave(); this.render(); } }, 'big');
     } else {
       add('RESUME', this.actions.resume, 'big primary');
+      add('HOW TO PLAY', () => { const h = this.el.querySelector('.howto') as HTMLElement; h.style.display = h.style.display === 'none' ? 'block' : 'none'; }, 'big');
       add('SAVE GAME', () => { this.actions.save(); }, 'big');
       add('QUIT TO TITLE', () => { this.actions.save(); this.show('title'); }, 'big');
     }
