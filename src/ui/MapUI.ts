@@ -1,6 +1,6 @@
 import { Panel } from './Panel';
 import { GameAPI } from './UIContext';
-import { BUILDINGS, LANDMARKS, ROADS_X, ROADS_Z, MAP_MIN_X, MAP_MAX_X, MAP_MIN_Z, MAP_MAX_Z, OCEAN_X, CANAL_X, CANAL_Z, SAFEHOUSE_DOOR, SUPPLIER_SPOT } from '../data/city';
+import { BUILDINGS, LANDMARKS, ROADS_X, ROADS_Z, MAP_MIN_X, MAP_MAX_X, MAP_MIN_Z, MAP_MAX_Z, OCEAN_X, CANAL_X, CANAL_Z, SAFEHOUSE_DOOR, SUPPLIER_SPOT, DEALER_CONTACT_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT } from '../data/city';
 import { activeOrders } from '../systems/OrderSystem';
 import { CUSTOMER_MAP } from '../data/customers';
 
@@ -85,6 +85,9 @@ export class MapUI extends Panel {
     dot(SAFEHOUSE_DOOR.x, SAFEHOUSE_DOOR.z, '#2e7d32', 'BACK ROOM');
     dot(SUPPLIER_SPOT.x, SUPPLIER_SPOT.z, '#ff9800', 'RICO');
     if (st.properties.includes('warehouse')) dot(-149, -60, '#2e7d32', 'YOUR WAREHOUSE');
+    dot(DEALER_CONTACT_SPOT.x, DEALER_CONTACT_SPOT.z, '#8e24aa', st.dealer?.hired ? `VINCE ($${Math.round(st.dealer.cash)})` : 'VINCE (dealer)');
+    if (!st.runner?.hired) dot(RUNNER_CONTACT_SPOT.x, RUNNER_CONTACT_SPOT.z, '#00838f', 'DIZZY (runner)');
+    if (!st.worker?.hired) dot(WORKER_CONTACT_SPOT.x, WORKER_CONTACT_SPOT.z, '#6a1b9a', 'MARISOL (worker)');
     if (this.api.hasScanner()) for (const p of this.api.policeXZ()) dot(p.x, p.z, '#1e88e5', '');
     const r = this.api.runnerXZ();
     if (r) dot(r.x, r.z, '#00c2a8', 'RUNNER');

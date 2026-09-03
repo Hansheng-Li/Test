@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
   BUILDINGS, BuildingSpec, ROADS_X, ROADS_Z, ROAD_WIDTH, SIDEWALK_WIDTH, MAP_MIN_X, MAP_MAX_X, MAP_MIN_Z, MAP_MAX_Z,
-  OCEAN_X, CANAL_X, CANAL_Z, PAYPHONES, SUPPLIER_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT, WAREHOUSE_SIGN, Facing,
+  OCEAN_X, CANAL_X, CANAL_Z, PAYPHONES, SUPPLIER_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT, DEALER_CONTACT_SPOT, WAREHOUSE_SIGN, Facing,
 } from '../data/city';
 import { CollisionWorld, aabbFromBottom } from '../physics/Colliders';
 import { lambert, basic, boxGeo, cylGeo, PALETTE } from './Materials';
@@ -313,6 +313,20 @@ export function buildCity(): CityResult {
   group.add(marisol);
   colliders.add(aabbFromBottom(WORKER_CONTACT_SPOT.x, SLAB, WORKER_CONTACT_SPOT.z, 0.7, 1.9, 0.7, 'npc'));
   objects.push({ kind: 'worker_contact', id: 'worker_contact', position: marisol.position.clone(), mesh: marisol });
+
+  const vince = makeFigure('#212121', '#e0ac69', '#f5f5f5');
+  vince.position.set(DEALER_CONTACT_SPOT.x, SLAB, DEALER_CONTACT_SPOT.z);
+  vince.rotation.y = -Math.PI / 2;
+  const vinceLabel = makeLabel('VINCE', '#ffd166');
+  vinceLabel.position.y = 2.3;
+  vince.add(vinceLabel);
+  // sunglasses
+  const shades = new THREE.Mesh(boxGeo(0.36, 0.08, 0.05), lambert('#000'));
+  shades.position.set(0, 1.74, 0.17);
+  vince.add(shades);
+  group.add(vince);
+  colliders.add(aabbFromBottom(DEALER_CONTACT_SPOT.x, SLAB, DEALER_CONTACT_SPOT.z, 0.7, 1.9, 0.7, 'npc'));
+  objects.push({ kind: 'dealer_contact', id: 'dealer_contact', position: vince.position.clone(), mesh: vince });
 
   // warehouse for-sale sign
   const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(3, 1.2), new THREE.MeshBasicMaterial({ map: signTexture('FOR SALE', { color: '#ffffff', bg: '#c62828', glow: false, sub: 'WAREHOUSE 7 · SEE INSIDE' }), side: THREE.DoubleSide }));

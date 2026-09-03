@@ -44,7 +44,8 @@ export function generateOrder(state: GameState, opts: OrderGenOptions): Order | 
   const hour = (now % (24 * 60)) / 60;
   const isNight = hour >= 20 || hour < 6;
   const busy = new Set(state.orders.filter((o) => o.status === 'pending' || o.status === 'accepted' || o.status === 'runner').map((o) => o.customerId));
-  let candidates = unlockedCustomers(state).filter((c) => !busy.has(c.id));
+  const dealerHas = new Set(state.dealer?.customers ?? []);
+  let candidates = unlockedCustomers(state).filter((c) => !busy.has(c.id) && !dealerHas.has(c.id));
   if (opts.customerId) candidates = candidates.filter((c) => c.id === opts.customerId);
   candidates = candidates.filter((c) => now - customerState(state, c.id).lastOrderMinute > 40);
   const c = pickWeighted(

@@ -56,7 +56,7 @@ export class NPC {
     }
     const mat = new THREE.SpriteMaterial({ map: speechTexture(text, color), transparent: true, depthTest: false });
     this.bubble = new THREE.Sprite(mat);
-    this.bubble.scale.set(3.2, 1, 1);
+    this.bubble.scale.set(2.4, 0.75, 1);
     this.bubble.position.set(0, 2.5, 0);
     this.bubble.renderOrder = 999;
     this.mesh.add(this.bubble);

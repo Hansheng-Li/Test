@@ -72,6 +72,18 @@ export interface WorkerState {
   produced: number;
 }
 
+export interface DealerState {
+  hired: boolean;
+  name: string;
+  stock: ItemStack[];
+  /** Cash held by the dealer, waiting to be collected. */
+  cash: number;
+  customers: string[];
+  lastTickMinute: number;
+  sales: number;
+  earnedTotal: number;
+}
+
 export interface GameState {
   version: number;
   cash: number;
@@ -88,6 +100,7 @@ export interface GameState {
   placedStations: PlacedStation[];
   runner: RunnerState | null;
   worker: WorkerState | null;
+  dealer: DealerState | null;
   player: { x: number; y: number; z: number; yaw: number };
   stats: { sales: number; earned: number; arrests: number; declined: number; produced: number; playSeconds: number };
   flags: Record<string, boolean>;

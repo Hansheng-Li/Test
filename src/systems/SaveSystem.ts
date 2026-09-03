@@ -22,6 +22,7 @@ export function createNewState(): GameState {
     placedStations: [],
     runner: null,
     worker: null,
+    dealer: null,
     player: { x: SPAWN.x, y: SPAWN.y, z: SPAWN.z, yaw: SPAWN.yaw },
     stats: { sales: 0, earned: 0, arrests: 0, declined: 0, produced: 0, playSeconds: 0 },
     flags: {},

@@ -25,6 +25,10 @@ export interface GameAPI {
   hireRunner(): boolean;
   callAround(): void;
   assignWorker(recipeKey: string | null): boolean;
+  dealerGive(itemId: string, qty: number): number;
+  dealerTake(itemId: string, qty: number): number;
+  dealerAssign(customerId: string, on: boolean): boolean;
+  dealerCollect(): number;
   buyWarehouse(): boolean;
   rest(): void;
   placeStation(kind: 'prep_table' | 'pack_table' | 'storage'): boolean;

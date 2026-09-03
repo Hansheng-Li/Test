@@ -10,7 +10,7 @@ import { WorldObject } from '../world/WorldTypes';
 import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN } from '../data/city';
 import { makeFigure, makeLabel } from '../world/Interiors';
 import { CUSTOMER_MAP } from '../data/customers';
-import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, ITEMS } from '../data/items';
+import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, ITEMS } from '../data/items';
 import { computeRecipe, parseRecipeKey, Effect } from '../data/products';
 import { GameState, Order, PlacedStation } from './GameState';
 import { createNewState, saveToStorage, loadFromStorage, hasSave, clearSave } from '../systems/SaveSystem';
@@ -22,6 +22,8 @@ import { generateOrder, acceptOrder, declineOrder, activeOrders, pendingOrders, 
 import { decayHeat, witnessedDeal, applyArrest, addHeat, heatLevel } from '../systems/HeatSystem';
 import { hireRunner, assignRunner, tickRunner } from '../systems/RunnerSystem';
 import { hireWorker, assignWorkerRecipe, tickWorker } from '../systems/WorkerSystem';
+import { hireDealer, giveDealerStock, takeDealerStock, assignDealerCustomer, unassignDealerCustomer, collectDealerCash, tickDealer, dealerStockCount } from '../systems/DealerSystem';
+import { DealerUI } from '../ui/DealerUI';
 import { relationshipTier } from '../systems/CustomerSystem';
 import { AudioSystem, SfxName } from '../audio/Audio';
 import { HUD } from '../ui/HUD';
@@ -69,6 +71,8 @@ export class Game implements GameAPI {
   prepUI: PrepUI;
   packUI: PackUI;
   mapUI: MapUI;
+  dealerUI: DealerUI;
+  private dealerStarvedTimer = 0;
   openPanelId: string | null = null;
   running = false;
   civilians: Civilian[] = [];
@@ -132,7 +136,8 @@ export class Game implements GameAPI {
     this.prepUI = new PrepUI(root, this);
     this.packUI = new PackUI(root, this);
     this.mapUI = new MapUI(root, this);
-    for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI]) this.panels[p.id] = p;
+    this.dealerUI = new DealerUI(root, this);
+    for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI, this.dealerUI]) this.panels[p.id] = p;
     this.menu = new Menu(root, {
       newGame: () => this.startNewGame(),
       continueGame: () => this.continueGame(),
@@ -289,6 +294,9 @@ export class Game implements GameAPI {
         break;
       case 'worker_contact':
         add({ prompt: () => (this.state.worker?.hired ? null : `[E] TALK · MARISOL (HIRE WORKER $${WORKER_HIRE_PRICE})`), onInteract: () => this.talkToMarisol(), radius: 3.5 });
+        break;
+      case 'dealer_contact':
+        add({ prompt: () => (this.state.dealer?.hired ? `[E] TALK · VINCE (DEALER · $${Math.round(this.state.dealer.cash)} waiting)` : `[E] TALK · VINCE (HIRE DEALER $${DEALER_HIRE_PRICE})`), onInteract: () => this.talkToVince(), radius: 3.5 });
         break;
       case 'warehouse_sign':
         add({ prompt: () => (this.state.properties.includes('warehouse') ? null : `[E] BUY WAREHOUSE 7 ($${WAREHOUSE_PRICE})`), onInteract: () => { this.buyWarehouse(); }, radius: 3.5 });
@@ -470,6 +478,20 @@ export class Game implements GameAPI {
       if (this.workerBlockedTimer <= 0) {
         this.workerBlockedTimer = 90;
         this.toast(`Marisol is idle: ${wr.blocked === 'no_base' ? 'no base supply' : wr.blocked === 'no_mods' ? 'no modifiers' : 'storage full'} in ${s.worker!.property} storage.`, 'warn', 4000);
+      }
+    }
+    // dealer
+    const dr = tickDealer(s, this.clock.totalMinutes);
+    for (const sale of dr.sales) this.toast(`Vince sold ${sale.qty}x ${recipeDisplayName(s, sale.itemKey)} to ${CUSTOMER_MAP[sale.customerId].name.split(' ')[0]} (+$${sale.earned} held).`, 'info', 3000);
+    if (dr.hassled) {
+      this.audio.play('siren');
+      this.toast(`Cops shook Vince down: ${dr.hassled.lost} units lost, HEAT +8.`, 'warn', 6000);
+    }
+    if (dr.starved) {
+      this.dealerStarvedTimer -= 1;
+      if (this.dealerStarvedTimer <= 0) {
+        this.dealerStarvedTimer = 3;
+        this.toast('Vince is out of stock. Customers are walking away from his corner.', 'warn', 5000);
       }
     }
     if (this.workerFigure) {
@@ -979,6 +1001,58 @@ export class Game implements GameAPI {
     return true;
   }
 
+  dealerGive(itemId: string, qty: number): number {
+    const n = giveDealerStock(this.state, itemId, qty);
+    if (n > 0) this.audio.play('click');
+    else this.toast('Vince cannot carry more.', 'warn');
+    return n;
+  }
+  dealerTake(itemId: string, qty: number): number {
+    const n = takeDealerStock(this.state, itemId, qty);
+    if (n > 0) this.audio.play('click');
+    else this.toast('No room in your backpack.', 'warn');
+    return n;
+  }
+  dealerAssign(customerId: string, on: boolean): boolean {
+    const ok = on ? assignDealerCustomer(this.state, customerId) : unassignDealerCustomer(this.state, customerId);
+    if (ok) {
+      this.audio.play('click');
+      const first = CUSTOMER_MAP[customerId].name.split(' ')[0];
+      this.toast(on ? `${first} now buys from Vince. One less page for you.` : `${first} is back on your pager.`);
+      this.save();
+    }
+    return ok;
+  }
+  dealerCollect(): number {
+    const n = collectDealerCash(this.state);
+    if (n > 0) {
+      this.audio.play('cash');
+      this.toast(`Collected $${n} from Vince.`, 'cash');
+      this.save();
+    }
+    return n;
+  }
+
+  private talkToVince(): void {
+    const s = this.state;
+    if (s.dealer?.hired) {
+      this.openPanel('dealer-panel');
+      return;
+    }
+    if (s.cash < DEALER_HIRE_PRICE) {
+      this.toast(`Vince: "I move product for people who have product. $${DEALER_HIRE_PRICE} buys my corner. You have $${Math.floor(s.cash)}."`, 'info', 5000);
+      this.audio.play('error');
+      return;
+    }
+    if (!this.confirmTwice('dealer', `Hire Vince as a dealer for $${DEALER_HIRE_PRICE}? Give him stock, assign customers, collect cash`)) return;
+    if (hireDealer(s, DEALER_HIRE_PRICE)) {
+      this.audio.play('unlock');
+      this.toast('Vince works for you now. Hand him packaged product, assign up to 5 customers, and come back for the cash.', 'cash', 8000);
+      this.save();
+      this.openPanel('dealer-panel');
+    }
+  }
+
   assignWorker(recipeKey: string | null): boolean {
     const ok = assignWorkerRecipe(this.state, recipeKey);
     if (ok) this.toast(recipeKey ? `Marisol will keep making ${recipeDisplayName(this.state, recipeKey)} from storage.` : 'Marisol is taking a break.');
@@ -1319,6 +1393,9 @@ export class Game implements GameAPI {
     if (s.cash >= WAREHOUSE_PRICE && !s.properties.includes('warehouse')) return `You can afford WAREHOUSE 7 ($${WAREHOUSE_PRICE}) at the docks.`;
     if (s.cash >= RUNNER_HIRE_PRICE && !s.runner?.hired && s.stats.sales >= 4) return `Hire Dizzy the runner near the Ocean View Motel ($${RUNNER_HIRE_PRICE}).`;
     if (s.properties.includes('warehouse') && !s.worker?.hired && s.cash >= WORKER_HIRE_PRICE) return `Hire Marisol (production worker) at the Port Authority ($${WORKER_HIRE_PRICE}).`;
+    if (!s.dealer?.hired && s.cash >= DEALER_HIRE_PRICE && Object.values(s.customers).filter((c) => c.unlocked).length >= 5) return `Hire Vince as a dealer near Neptune Arcade ($${DEALER_HIRE_PRICE}) to offload customers.`;
+    if (s.dealer?.hired && dealerStockCount(s) === 0 && s.dealer.customers.length > 0) return 'Vince is out of stock: bring him packaged product at Neptune Arcade.';
+    if (s.dealer?.hired && s.dealer.cash >= 200) return `Vince is holding $${Math.round(s.dealer.cash)} for you. Swing by Neptune Arcade.`;
     if (s.worker?.hired && !s.worker.recipeKey) return 'Assign Marisol a recipe at a PREP TABLE and stock the warehouse storage.';
     if (s.cash >= 220 && !s.upgrades.includes('eq_mixer')) return 'Buy a Turbo Mixer at Sol Palma Pawn ($220) to prep faster.';
     if (packagedInInventory(s).length && s.runner?.hired) return 'Store packaged product in STORAGE so Dizzy can deliver it.';

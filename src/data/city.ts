@@ -125,4 +125,5 @@ export const SAFEHOUSE_DOOR = { x: -13, z: 14 };
 export const SUPPLIER_SPOT = { x: -158, z: 22, name: 'Rico' };
 export const RUNNER_CONTACT_SPOT = { x: 154, z: -84, name: 'Dizzy' };
 export const WORKER_CONTACT_SPOT = { x: -152, z: 86, name: 'Marisol' };
+export const DEALER_CONTACT_SPOT = { x: 154, z: 100, name: 'Vince' };
 export const WAREHOUSE_SIGN = { x: -149, z: -66 };
