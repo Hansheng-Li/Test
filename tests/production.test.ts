@@ -63,3 +63,13 @@ describe('production', () => {
     expect(recipeDisplayName(s, 'SUNSET')).toBe('PALM PANIC');
   });
 });
+
+describe('stir minigame bonus', () => {
+  it('a well-played batch yields extra units, capped at two', () => {
+    const s = createNewState();
+    addItem(s, 'pulp_sunset', 2);
+    const r = executePrep(s, { inputItem: 'pulp_sunset', mods: [], units: 2, bonusUnits: 5 });
+    expect(r.ok).toBe(true);
+    expect(countItem(s, 'prod:SUNSET')).toBe(4);
+  });
+});

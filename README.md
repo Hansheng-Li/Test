@@ -50,7 +50,8 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 ## The first five minutes
 
 1. Open the **STARTER BOX** in your back room (3× Sunset Pulp, 6× Zip Baggies).
-2. Use the **PREP TABLE**: pick the pulp, press START, tap `Space` when the needle is in the green zone.
+2. Use the **PREP TABLE**: pick the pulp, press START, tap `Space` when the needle is in the green zone
+   (3 good stirs = +1 bonus unit, 5 = +2).
 3. Give the result a street name (it shows up on pagers, in your backpack and in sale messages).
 4. Bag it at the **PACKAGING** table (one press per unit until you buy a Heat Sealer).
 5. Your pager beeps: `2x SUNSET · $68 · DEL MAR RECORDS · BY 17:40 -TASHA`. Press `P`, ACCEPT.

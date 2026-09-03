@@ -7,6 +7,8 @@ export interface PrepPlan {
   inputItem: string;
   mods: string[];
   units: number;
+  /** Extra units earned by a well-played stir minigame (0-2). */
+  bonusUnits?: number;
 }
 
 export interface PrepResult {
@@ -62,7 +64,7 @@ export function executePrep(state: GameState, plan: PrepPlan): PrepResult {
   if (countItem(state, plan.inputItem) < units) return { ok: false, reason: 'no_input' };
   for (const m of plan.mods) if (countItem(state, m) < units) return { ok: false, reason: 'no_mods' };
   const outId = preview.outputItem!;
-  const outUnits = units + (plan.inputItem.startsWith('prod:') ? 0 : prepYieldBonus(state));
+  const outUnits = units + (plan.inputItem.startsWith('prod:') ? 0 : prepYieldBonus(state)) + Math.max(0, Math.min(2, Math.floor(plan.bonusUnits ?? 0)));
   // space check: inputs free their slots, so simulate on a copy
   const sim: GameState = { ...state, inventory: state.inventory.map((s) => (s ? { ...s } : null)) };
   removeItem(sim, plan.inputItem, units);
