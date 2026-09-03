@@ -19,7 +19,7 @@ export function pagerLine(order: Order, request: string): string {
   const phone = '555-0' + (100 + (order.customerId.charCodeAt(0) * 7 + order.customerId.length * 13) % 900);
   const notes = PAGER_NOTES[order.customerId] ?? [];
   const note = notes.length ? notes[order.id % notes.length] : '';
-  return `${phone}\n${order.qty}x ${request}\n$${order.price}\n${landmarkName(order.locationId).toUpperCase()}\nBY ${GameClock.formatMinutes(order.windowEnd)}  -${c.name.split(' ')[0].toUpperCase()}${note ? '\n' + note : ''}`;
+  return `${phone}${order.vip ? '  *** VIP RUSH ***' : ''}\n${order.qty}x ${request}\n$${order.price}\n${landmarkName(order.locationId).toUpperCase()}\nBY ${GameClock.formatMinutes(order.windowEnd)}  -${c.name.split(' ')[0].toUpperCase()}${note ? '\n' + note : ''}`;
 }
 
 /** The pager: incoming orders, accepted orders, runner dispatch. */
@@ -80,7 +80,7 @@ export class PagerUI extends Panel {
       screen.textContent = pagerLine(o, describeRequest(st, o));
       card.appendChild(screen);
       const info = document.createElement('div');
-      info.innerHTML = `<span class="tag">${c.personality.toUpperCase()}</span><span class="tag">${relationshipTier(cs.relationship).toUpperCase()}</span><span class="tag">REL ${cs.relationship}</span>` +
+      info.innerHTML = (o.vip ? '<span class="tag" style="background:#5a3a00;color:#ffd166">VIP · BIG MONEY · TIGHT WINDOW</span>' : '') + `<span class="tag">${c.personality.toUpperCase()}</span><span class="tag">${relationshipTier(cs.relationship).toUpperCase()}</span><span class="tag">REL ${cs.relationship}</span>` +
         (o.effects.length ? o.effects.map((e) => `<span class="tag effect">${e}</span>`).join('') : '');
       card.appendChild(info);
       const actions = document.createElement('div');

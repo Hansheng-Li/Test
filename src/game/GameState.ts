@@ -42,6 +42,8 @@ export interface Order {
   runnerItemKey?: string;
   /** Player already made a counter-offer on this order. */
   haggled?: boolean;
+  /** Big-money rush order: double size, better pay, tight window. */
+  vip?: boolean;
 }
 
 export interface PlacedStation {

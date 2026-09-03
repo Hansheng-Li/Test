@@ -99,21 +99,26 @@ export function generateOrder(state: GameState, opts: OrderGenOptions): Order | 
   const unit = offeredUnitPrice(state, c, refValue);
   const spots = c.spots.filter((s) => LANDMARKS.some((l) => l.id === s));
   const locationId = spots[Math.floor(rng() * spots.length)] ?? LANDMARKS[0].id;
+  // VIP rush: regulars occasionally need a lot, fast, and pay for it
+  const vip = !opts.simple && (tier === 'regular' || tier === 'friend' || tier === 'family') && rng() < 0.12;
+  const finalQty = vip ? Math.min(12, qty * 2) : qty;
+  const finalUnit = vip ? Math.round(unit * 1.6) : unit;
   const windowStart = now + 5;
-  const windowEnd = now + 90 + Math.floor(rng() * 90);
+  const windowEnd = now + (vip ? 50 : 90 + Math.floor(rng() * 90));
   const order: Order = {
     id: state.nextOrderId++,
     customerId: c.id,
     base,
     effects,
     recipeKey,
-    qty,
-    price: unit * qty,
+    qty: finalQty,
+    price: finalUnit * finalQty,
     locationId,
     windowStart,
     windowEnd,
     status: 'pending',
     createdMinute: now,
+    vip: vip || undefined,
   };
   state.orders.push(order);
   cs.lastOrderMinute = now;

@@ -171,3 +171,20 @@ describe('friend unlock visibility', () => {
     expect(s.customers['dexter'].introduced).toBe(true);
   });
 });
+
+describe('VIP rush orders', () => {
+  it('regulars can send a VIP order: double size, better pay, tight window', () => {
+    const s = createNewState();
+    s.customers['moe'].relationship = 20;
+    // rng sequence: customer pick, want-roll (>=0.75 -> plain base), qty, spot, vip roll (<0.12)
+    const o = generateOrder(s, { now: 1000, customerId: 'moe', rng: seq([0.5, 0.9, 0.0, 0.0, 0.05]) })!;
+    expect(o.vip).toBe(true);
+    expect(o.qty).toBe(6); // (2 + 1 regular boost) x2
+    expect(o.windowEnd - o.createdMinute).toBe(50);
+    const plain = createNewState();
+    plain.customers['moe'].relationship = 20;
+    const p = generateOrder(plain, { now: 1000, customerId: 'moe', rng: seq([0.5, 0.9, 0.0, 0.0, 0.5]) })!;
+    expect(p.vip).toBeUndefined();
+    expect(o.price).toBeGreaterThan(p.price * 2);
+  });
+});
