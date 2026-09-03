@@ -33,30 +33,34 @@ export class Vehicle {
 
   constructor(x: number, z: number, yaw: number, private world: CollisionWorld) {
     this.mesh = new THREE.Group();
-    const body = new THREE.Mesh(boxGeo(4.4, 0.7, 1.9), lambert('#ff7eb6'));
+    // local +z is the front of the car; rotation.y = yaw maps it to world (sin yaw, cos yaw)
+    const body = new THREE.Mesh(boxGeo(1.9, 0.7, 4.4), lambert('#ff7eb6'));
     body.position.y = 0.55;
     body.castShadow = true;
-    const cabin = new THREE.Mesh(boxGeo(2.2, 0.65, 1.7), lambert('#2a1a3a', { transparent: true, opacity: 0.85 }));
-    cabin.position.set(-0.2, 1.2, 0);
-    const hood = new THREE.Mesh(boxGeo(1.2, 0.12, 1.7), lambert('#ff9ecb'));
-    hood.position.set(1.6, 0.95, 0);
+    const cabin = new THREE.Mesh(boxGeo(1.7, 0.65, 2.2), lambert('#2a1a3a', { transparent: true, opacity: 0.85 }));
+    cabin.position.set(0, 1.2, -0.2);
+    const hood = new THREE.Mesh(boxGeo(1.7, 0.12, 1.2), lambert('#ff9ecb'));
+    hood.position.set(0, 0.95, 1.6);
     this.headlights = lambert('#fff7d6', { emissive: '#fff2b0', emissiveIntensity: 0 });
     for (const side of [-0.65, 0.65]) {
-      const hl = new THREE.Mesh(boxGeo(0.1, 0.2, 0.35), this.headlights);
-      hl.position.set(2.2, 0.6, side);
+      const hl = new THREE.Mesh(boxGeo(0.35, 0.2, 0.1), this.headlights);
+      hl.position.set(side, 0.6, 2.2);
       this.mesh.add(hl);
-      const tl = new THREE.Mesh(boxGeo(0.1, 0.2, 0.35), lambert('#ff2d2d', { emissive: '#ff2d2d', emissiveIntensity: 0.6 }));
-      tl.position.set(-2.2, 0.6, side);
+      const tl = new THREE.Mesh(boxGeo(0.35, 0.2, 0.1), lambert('#ff2d2d', { emissive: '#ff2d2d', emissiveIntensity: 0.6 }));
+      tl.position.set(side, 0.6, -2.2);
       this.mesh.add(tl);
     }
     this.mesh.add(body, cabin, hood);
     const wheelGeo = cylGeo(0.36, 0.36, 0.26, 10);
-    for (const [wx, wz] of [[1.4, 0.95], [1.4, -0.95], [-1.4, 0.95], [-1.4, -0.95]]) {
+    for (const [wx, wz] of [[0.95, 1.4], [-0.95, 1.4], [0.95, -1.4], [-0.95, -1.4]]) {
+      const pivot = new THREE.Group();
+      pivot.rotation.order = 'YXZ';
+      pivot.position.set(wx, 0.36, wz);
       const w = new THREE.Mesh(wheelGeo, lambert('#151515'));
-      w.rotation.x = Math.PI / 2;
-      w.position.set(wx, 0.36, wz);
-      this.mesh.add(w);
-      this.wheels.push(w);
+      w.rotation.z = Math.PI / 2;
+      pivot.add(w);
+      this.mesh.add(pivot);
+      this.wheels.push(pivot as unknown as THREE.Mesh);
     }
     this.position.set(x, 0.15, z);
     this.yaw = yaw;
@@ -107,7 +111,7 @@ export class Vehicle {
     for (let i = 0; i < this.wheels.length; i++) {
       const w = this.wheels[i];
       w.rotation.y = i < 2 ? this.steer * 0.5 : 0;
-      w.rotation.z += (this.speed * dt) / 0.36;
+      w.rotation.x += (this.speed * dt) / 0.36;
     }
     this.sync();
     return result;
@@ -118,20 +122,29 @@ export class Vehicle {
     this.mesh.rotation.y = this.yaw;
   }
 
-  /** Driver eye position in world space. */
+  /** Local (x right, z forward) offset to world space. */
+  private local(x: number, z: number): { x: number; z: number } {
+    return {
+      x: this.position.x + x * Math.cos(this.yaw) + z * Math.sin(this.yaw),
+      z: this.position.z - x * Math.sin(this.yaw) + z * Math.cos(this.yaw),
+    };
+  }
+
+  /** Driver eye position in world space (left seat, a little behind the windshield). */
   eye(out: THREE.Vector3): THREE.Vector3 {
-    const ox = -0.3, oz = 0.4; // slightly back, left seat
-    out.set(
-      this.position.x + Math.sin(this.yaw) * ox + Math.cos(this.yaw) * oz,
-      this.position.y + 1.35,
-      this.position.z + Math.cos(this.yaw) * ox - Math.sin(this.yaw) * oz,
-    );
+    const p = this.local(-0.45, -0.2);
+    out.set(p.x, this.position.y + 1.35, p.z);
     return out;
   }
 
   /** Where the player stands after getting out (driver side). */
   exitSpot(): { x: number; z: number } {
-    return { x: this.position.x + Math.cos(this.yaw) * 2.2, z: this.position.z - Math.sin(this.yaw) * 2.2 };
+    return this.local(-2.3, 0);
+  }
+
+  /** Camera yaw that looks along the car's heading (player convention: forward = (-sin, -cos)). */
+  get cameraYaw(): number {
+    return this.yaw + Math.PI;
   }
 
   get kmh(): number {

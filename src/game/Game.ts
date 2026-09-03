@@ -1337,7 +1337,7 @@ export class Game implements GameAPI {
     if (!this.vehicle || this.driving) return;
     this.driving = true;
     this.player.pitch = 0;
-    this.player.yaw = this.vehicle.yaw;
+    this.player.yaw = this.vehicle.cameraYaw;
     this.audio.play('click');
     this.cancelPlacement();
   }
@@ -1347,7 +1347,7 @@ export class Game implements GameAPI {
     if (Math.abs(this.vehicle.speed) > 1) return;
     this.driving = false;
     const spot = this.vehicle.exitSpot();
-    this.player.teleport(spot.x, this.vehicle.position.y + 0.3, spot.z, this.vehicle.yaw);
+    this.player.teleport(spot.x, this.vehicle.position.y + 0.3, spot.z, this.vehicle.cameraYaw);
     this.state.vehicle = { owned: true, x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw };
     this.save();
   }
@@ -1365,8 +1365,8 @@ export class Game implements GameAPI {
       this.player.yaw -= dx * this.player.sensitivity;
       this.player.pitch = Math.max(-0.6, Math.min(0.5, this.player.pitch - dy * this.player.sensitivity));
       // ease the view back toward the heading when not looking around
-      const rel = ((this.player.yaw - v.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-      this.player.yaw = v.yaw + rel * Math.max(0, 1 - dt * 1.5);
+      const rel = ((this.player.yaw - v.cameraYaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      this.player.yaw = v.cameraYaw + rel * Math.max(0, 1 - dt * 1.5);
     }
     v.eye(this.carEye);
     this.camera.position.copy(this.carEye);
@@ -1490,7 +1490,7 @@ export class Game implements GameAPI {
       this.vehicle.speed = 0;
       this.driving = false;
       const spot = this.vehicle.exitSpot();
-      this.player.teleport(spot.x, 0.3, spot.z, this.vehicle.yaw);
+      this.player.teleport(spot.x, 0.3, spot.z, this.vehicle.cameraYaw);
     }
     this.arrested = true;
     this.arrestTimer = 3.2;
@@ -1615,7 +1615,7 @@ export class Game implements GameAPI {
     if (this.driving) {
       // never save the player "inside" the car: put them next to it
       const spot = this.vehicle!.exitSpot();
-      this.state.player = { x: spot.x, y: this.vehicle!.position.y, z: spot.z, yaw: this.vehicle!.yaw };
+      this.state.player = { x: spot.x, y: this.vehicle!.position.y, z: spot.z, yaw: this.vehicle!.cameraYaw };
     }
     saveToStorage(this.state, localStorage);
   }
