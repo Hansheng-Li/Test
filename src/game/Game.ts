@@ -1522,7 +1522,7 @@ export class Game implements GameAPI {
     this.camera.rotation.order = 'YXZ';
     this.camera.rotation.set(this.player.pitch, this.player.yaw, 0);
     if (r === 'hit') {
-      this.audio.play('error');
+      this.audio.play('bump');
       this.carHitTimer -= dt;
       if (this.carHitTimer <= 0) {
         this.carHitTimer = 2;
@@ -1530,7 +1530,7 @@ export class Game implements GameAPI {
       }
     }
     if (r === 'horn') {
-      this.audio.play('siren');
+      this.audio.play('horn');
       for (const c of this.civilians) if (c.distanceTo(v.position.x, v.position.z) < 12) c.reactTo(v.position.x, v.position.z, false);
       for (const w of this.wanderers.values()) if (w.distanceTo(v.position.x, v.position.z) < 12) w.say('HEY! I am walking here!', '#ffd166', 2);
     }

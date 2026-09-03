@@ -1,6 +1,6 @@
 import { Radio } from './Radio';
 
-export type SfxName = 'pager' | 'cash' | 'click' | 'error' | 'siren' | 'seal' | 'mix' | 'arrest' | 'unlock' | 'step';
+export type SfxName = 'pager' | 'cash' | 'click' | 'error' | 'siren' | 'seal' | 'mix' | 'arrest' | 'unlock' | 'step' | 'horn' | 'bump';
 
 /**
  * Procedural WebAudio sound effects and an ambient bed. No external assets.
@@ -174,6 +174,13 @@ export class AudioSystem {
         break;
       case 'step':
         this.tone(90, 0, 0.05, 'sine', 0.05);
+        break;
+      case 'horn':
+        this.tone(392, 0, 0.45, 'square', 0.14);
+        this.tone(494, 0, 0.45, 'square', 0.12);
+        break;
+      case 'bump':
+        this.tone(70, 0, 0.18, 'sawtooth', 0.2, 40);
         break;
     }
   }

@@ -36,8 +36,8 @@ export class CustomerNPC extends NPC {
     this.mesh.add(label);
     // tall bobbing "$" marker so the meeting spot reads from a block away
     this.marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture('$ MEET', '#7dff9a'), transparent: true, depthTest: false, sizeAttenuation: true }));
-    this.marker.scale.set(3, 0.6, 1);
-    this.marker.position.y = 3.4;
+    this.marker.scale.set(5, 1, 1);
+    this.marker.position.y = 4;
     this.marker.renderOrder = 998;
     this.mesh.add(this.marker);
   }
@@ -46,9 +46,10 @@ export class CustomerNPC extends NPC {
     this.stateTime += dt;
     this.markerT += dt;
     this.marker.visible = this.cstate === 'WAITING';
-    this.marker.position.y = 3.3 + Math.sin(this.markerT * 3) * 0.15;
-    const far = this.distanceTo(playerX, playerZ) > 40;
-    this.marker.scale.set(far ? 6 : 3, far ? 1.2 : 0.6, 1);
+    this.marker.position.y = 4 + Math.sin(this.markerT * 3) * 0.2;
+    const d = this.distanceTo(playerX, playerZ);
+    const k = d > 60 ? 2.2 : d > 25 ? 1.6 : 1;
+    this.marker.scale.set(5 * k, k, 1);
     switch (this.cstate) {
       case 'WAITING':
         this.velocity.set(0, 0, 0);
