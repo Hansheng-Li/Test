@@ -15,6 +15,9 @@ export interface CustomerState {
   introduced: boolean;
   /** Free samples handed to this customer while locked. */
   samples?: number;
+  /** Last recipe bought and how many times in a row (boredom drives requests for something new). */
+  lastRecipe?: string;
+  sameStreak?: number;
 }
 
 export type OrderStatus = 'pending' | 'accepted' | 'runner' | 'completed' | 'declined' | 'expired' | 'failed';
@@ -44,6 +47,8 @@ export interface Order {
   haggled?: boolean;
   /** Big-money rush order: double size, better pay, tight window. */
   vip?: boolean;
+  /** Customer is bored of their usual and explicitly wants something different. */
+  bored?: boolean;
 }
 
 export interface PlacedStation {

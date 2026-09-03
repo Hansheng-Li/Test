@@ -188,3 +188,28 @@ describe('VIP rush orders', () => {
     expect(o.price).toBeGreaterThan(p.price * 2);
   });
 });
+
+describe('customer boredom', () => {
+  it('after three identical buys the next order asks for a new effect and street sales of the same thing are refused', () => {
+    const s = createNewState();
+    s.customers['tasha'].relationship = 20;
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    addItem(s, 'pkg:SUNSET', 10);
+    for (let i = 0; i < 3; i++) {
+      const o = generateOrder(s, { now: 1000 + i * 100, customerId: 'tasha', simple: true, rng: seq([0.1]) })!;
+      acceptOrder(s, o.id);
+      completeSale(s, o.id, 1000 + i * 100);
+    }
+    expect(s.customers['tasha'].sameStreak).toBe(3);
+    const next = generateOrder(s, { now: 2000, customerId: 'tasha', rng: seq([0.5, 0.9, 0.0, 0.0, 0.5]) })!;
+    expect(next.bored).toBe(true);
+    expect(next.effects).toEqual(['SOCIAL']); // ENERGY is what plain SUNSET already has
+    expect(streetSale(s, 'tasha', 3000).reason).toBe('bored');
+    s.recipes['SUNSET+mod_velvet_drops'] = { ...computeRecipe('SUNSET', ['mod_velvet_drops']) };
+    addItem(s, 'pkg:SUNSET+mod_velvet_drops', 2);
+    const r = streetSale(s, 'tasha', 3000, () => 0.9);
+    expect(r.ok).toBe(true);
+    expect(r.itemKey).toBe('SUNSET+mod_velvet_drops');
+    expect(s.customers['tasha'].sameStreak).toBe(1);
+  });
+});

@@ -69,7 +69,13 @@ export function generateOrder(state: GameState, opts: OrderGenOptions): Order | 
   let effects: Effect[] = [];
   let recipeKey: string | undefined;
   const known = Object.values(state.recipes);
-  if (!opts.simple && tier !== 'stranger') {
+  const bored = !opts.simple && isBored(state, c.id);
+  if (bored) {
+    const last = parseRecipeKey(cs.lastRecipe!);
+    const lastEffects = last ? computeRecipe(last.base, last.mods).effects : [];
+    const wanted = c.prefEffects.find((e) => !lastEffects.includes(e)) ?? (['SOCIAL', 'FOCUS', 'DREAMY', 'CONFIDENT', 'CHAOTIC', 'GLOW', 'ENERGY', 'CHILL'] as Effect[]).find((e) => !lastEffects.includes(e))!;
+    effects = [wanted];
+  } else if (!opts.simple && tier !== 'stranger') {
     const roll = rng();
     const liked = known.filter((r) => r.customName && r.effects.some((e) => c.prefEffects.includes(e)));
     if (roll < 0.35 && liked.length > 0) {
@@ -119,6 +125,7 @@ export function generateOrder(state: GameState, opts: OrderGenOptions): Order | 
     status: 'pending',
     createdMinute: now,
     vip: vip || undefined,
+    bored: bored || undefined,
   };
   state.orders.push(order);
   cs.lastOrderMinute = now;
@@ -165,6 +172,21 @@ export function describeRequest(state: GameState, order: Order): string {
     return plain?.customName ? `${order.base} (your ${plain.customName})` : order.base;
   }
   return `${order.base} (${order.effects.join('+')})`;
+}
+
+/** Remember what a customer just bought so repeat purchases can bore them. */
+export function noteRecipeBought(state: GameState, customerId: string, key: string): void {
+  const cs = customerState(state, customerId);
+  cs.sameStreak = cs.lastRecipe === key ? (cs.sameStreak ?? 1) + 1 : 1;
+  cs.lastRecipe = key;
+}
+
+export const BORED_AFTER = 3;
+
+/** True when a customer has bought the same thing BORED_AFTER times in a row. */
+export function isBored(state: GameState, customerId: string): boolean {
+  const cs = customerState(state, customerId);
+  return (cs.sameStreak ?? 0) >= BORED_AFTER && !!cs.lastRecipe;
 }
 
 export const TREND_BONUS = 0.25;
@@ -277,6 +299,7 @@ export function completeSale(state: GameState, orderId: number, now: number): Sa
   state.stats.earned += earned;
   const cdef = unlockedCustomers(state).find((c) => c.id === o.customerId);
   const matchedPreference = !!cdef && cdef.prefEffects.some((e) => r.effects.includes(e));
+  noteRecipeBought(state, o.customerId, item.key);
   const unlocked = recordSuccessfulDeal(state, o.customerId, { onTime, matchedPreference });
   return { ok: true, earned, itemKey: item.key, onTime, unlocked, matchedPreference, trendHit };
 }
@@ -309,7 +332,7 @@ export function packagedCountFor(state: GameState, key: string): number {
 
 export interface StreetSaleResult {
   ok: boolean;
-  reason?: 'locked' | 'cooldown' | 'no_item';
+  reason?: 'locked' | 'cooldown' | 'no_item' | 'bored';
   earned?: number;
   qty?: number;
   itemKey?: string;
@@ -324,7 +347,10 @@ export function streetSaleCandidate(state: GameState, customerId: string): { id:
   const def = customerDef(customerId);
   const packs = packagedInInventory(state);
   if (!packs.length) return null;
-  return packs.find((p) => parseRecipeKey(p.key)?.base === def.prefBase) ?? packs[0];
+  const cs = customerState(state, customerId);
+  const fresh = isBored(state, customerId) ? packs.filter((p) => p.key !== cs.lastRecipe) : packs;
+  const pool = fresh.length ? fresh : packs;
+  return pool.find((p) => parseRecipeKey(p.key)?.base === def.prefBase) ?? pool[0];
 }
 
 export function streetUnitPrice(state: GameState, customerId: string, key: string): number {
@@ -343,6 +369,7 @@ export function streetSale(state: GameState, customerId: string, now: number, rn
   if (now - cs.lastOrderMinute < STREET_SALE_COOLDOWN) return { ok: false, reason: 'cooldown' };
   const item = streetSaleCandidate(state, customerId);
   if (!item) return { ok: false, reason: 'no_item' };
+  if (isBored(state, customerId) && cs.lastRecipe === item.key) return { ok: false, reason: 'bored' };
   const qty = Math.min(item.qty, 1 + (rng() < 0.5 ? 1 : 0));
   const unit = streetUnitPrice(state, customerId, item.key);
   const parsed = parseRecipeKey(item.key)!;
@@ -357,6 +384,7 @@ export function streetSale(state: GameState, customerId: string, now: number, rn
   state.stats.earned += earned;
   state.orders.push({ id: state.nextOrderId++, customerId, base: parsed.base, effects: [], recipeKey: item.key, qty, price: earned, locationId: 'street', windowStart: now, windowEnd: now, status: 'completed', createdMinute: now });
   const def = customerDef(customerId);
+  noteRecipeBought(state, customerId, item.key);
   const unlocked = recordSuccessfulDeal(state, customerId, { onTime: true, matchedPreference: def.prefEffects.some((e) => recipe.effects.includes(e)) });
   return { ok: true, earned, qty, itemKey: item.key, unlocked, trendHit };
 }

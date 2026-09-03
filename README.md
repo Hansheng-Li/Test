@@ -99,6 +99,8 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
 * **Second stash**: rent Room 6 at the Ocean View Motel ($1,200) for beach-side storage and a bed.
 * **Wheels**: the '88 sedan at Rojas Auto Repair ($900) crosses town in seconds, honks pedestrians out
   of the way, and stays wherever you park it.
+* **Boredom**: sell a customer the same product three times in a row and they start asking for a
+  different effect (and refuse the usual on the street) — keep experimenting.
 * **VIP rush orders**: regulars sometimes page a double-size order at +60 % pay with a 50-minute window.
 * **Name your crew** at the ledger: it goes up in neon on Warehouse 7.
 * **Goals**: the fax/CRT ledger in your back room lists 14 milestones with cash rewards, crew status and
@@ -165,7 +167,7 @@ Design rules that shaped the code:
 - Drivable arcade sedan with horn, headlights and persisted parking spot; procedural synth radio.
 - Accelerated day/night with neon, lit windows, lamp pool, fog and sunset tint; procedural audio.
 - localStorage save/load with validation and repair of partial saves.
-- 47 Vitest tests covering behavioural contracts + Playwright smoke test.
+- 48 Vitest tests covering behavioural contracts + Playwright smoke and core-loop tests.
 
 ## Known limitations
 

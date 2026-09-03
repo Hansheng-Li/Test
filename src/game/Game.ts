@@ -935,7 +935,7 @@ export class Game implements GameAPI {
     }
     const r = streetSale(s, def.id, this.clock.totalMinutes);
     if (!r.ok) {
-      const hint = r.reason === 'cooldown' ? `"I'm good for now. Page you later."` : `"I like ${def.prefBase} with ${def.prefEffects.join(' or ')}. Got anything?"`;
+      const hint = r.reason === 'cooldown' ? `"I'm good for now. Page you later."` : r.reason === 'bored' ? `"Same stuff again? Surprise me next time."` : `"I like ${def.prefBase} with ${def.prefEffects.join(' or ')}. Got anything?"`;
       w.say(hint.replace(/"/g, ''), '#ffd166', 3);
       this.toast(`${first}: ${hint}`, 'info', 4000);
       return;
