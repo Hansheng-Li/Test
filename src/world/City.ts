@@ -180,7 +180,10 @@ export function buildCity(): CityResult {
 
   // alleys between buildings: dumpsters
   const alleyDumpsters = [[-10, -52], [70, -52], [-10, 62], [70, 62], [-10, -10], [-10, 16], [-121 + 8, -66], [-121 + 8, 82]];
-  for (const [x, z] of alleyDumpsters) buildDumpster(pb, x, z, rnd() < 0.5 ? 0 : Math.PI / 2);
+  alleyDumpsters.forEach(([x, z], i) => {
+    const g = buildDumpster(pb, x, z, rnd() < 0.5 ? 0 : Math.PI / 2);
+    objects.push({ kind: 'dumpster', id: 'dumpster_' + i, position: new THREE.Vector3(x, SLAB, z), mesh: g });
+  });
 
   // parked cars along streets
   const carColors = ['#e74c3c', '#f1c40f', '#1abc9c', '#9b59b6', '#ecf0f1', '#3498db', '#e67e22', '#2c3e50'];

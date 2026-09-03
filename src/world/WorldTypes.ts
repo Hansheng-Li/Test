@@ -20,6 +20,7 @@ export interface WorldObject {
     | 'motel_sign'
     | 'front_sign'
     | 'crew_sign'
+    | 'dumpster'
     | 'club_bar'
     | 'placement_area'
     | 'fax';

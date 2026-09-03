@@ -53,6 +53,7 @@ canvas { display: block; }
 #vignette { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 0 rgba(255, 0, 60, 0); transition: box-shadow 0.4s; }
 #vignette.hot { box-shadow: inset 0 0 120px 20px rgba(255, 0, 60, 0.45); }
 #vignette.arrest { box-shadow: inset 0 0 200px 80px rgba(20, 40, 255, 0.7); }
+#vignette.hidden { box-shadow: inset 0 0 260px 160px rgba(0, 0, 0, 0.92); }
 /* panels */
 .panel { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: var(--panel); border: 2px solid var(--cyan); border-radius: 8px; padding: 18px 22px; min-width: 520px; max-width: 900px; max-height: 88vh; overflow: auto; pointer-events: auto; box-shadow: 0 0 30px rgba(79, 242, 232, 0.25); display: none; }
 .panel.open { display: block; }

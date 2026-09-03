@@ -95,6 +95,9 @@ export class Game implements GameAPI {
   boomboxOn = false;
   settings: Settings = loadSettings();
   driving = false;
+  /** Hiding inside a dumpster: invisible to police, cannot move. */
+  hiding: { x: number; z: number; exitX: number; exitZ: number } | null = null;
+  private hideLineTimer = 0;
   private carHitTimer = 0;
   private carEye = new THREE.Vector3();
   private workerToastTimer = 0;
@@ -348,6 +351,9 @@ export class Game implements GameAPI {
       case 'worker_contact':
         add({ prompt: () => (this.state.worker?.hired ? null : `[E] TALK · MARISOL (HIRE WORKER $${WORKER_HIRE_PRICE})`), onInteract: () => this.talkToMarisol(), radius: 3.5 });
         break;
+      case 'dumpster':
+        add({ prompt: () => (this.hiding ? null : this.state.heat >= 20 ? '[E] HIDE IN DUMPSTER' : '[E] HIDE IN DUMPSTER (nobody is looking for you… yet)'), onInteract: () => this.hideInDumpster(o), radius: 3, aimY: 0.8 });
+        break;
       case 'dealer_contact':
         add({ prompt: () => (this.state.dealer?.hired ? `[E] TALK · VINCE (DEALER · $${Math.round(this.state.dealer.cash)} waiting)` : `[E] TALK · VINCE (HIRE DEALER $${DEALER_HIRE_PRICE})`), onInteract: () => this.talkToVince(), radius: 3.5 });
         break;
@@ -506,7 +512,7 @@ export class Game implements GameAPI {
     const s = this.state;
     const uiOpen = !!this.openPanelId;
     this.input.uiCaptured = uiOpen;
-    this.player.frozen = uiOpen || this.arrested || this.driving;
+    this.player.frozen = uiOpen || this.arrested || this.driving || !!this.hiding;
     this.clock.tick(dt);
     s.clockMinutes = this.clock.totalMinutes;
     s.stats.playSeconds += dt;
@@ -517,10 +523,12 @@ export class Game implements GameAPI {
     if (this.arrested) this.updateArrest(dt);
 
     // interaction
-    const target = this.driving ? null : this.interaction.update(this.camera, this.camera.position);
-    this.hud.setPrompt(uiOpen || this.arrested ? null : this.driving ? (Math.abs(this.vehicle!.speed) < 1 ? '[E] GET OUT · SPACE HORN · SHIFT BRAKE' : null) : target ? target.prompt() : this.placement ? '[CLICK] PLACE · [R] ROTATE · [ESC] CANCEL' : null);
+    const target = this.driving || this.hiding ? null : this.interaction.update(this.camera, this.camera.position);
+    this.hud.setPrompt(uiOpen || this.arrested ? null : this.hiding ? '[E] CLIMB OUT' : this.driving ? (Math.abs(this.vehicle!.speed) < 1 ? '[E] GET OUT · SPACE HORN · SHIFT BRAKE' : null) : target ? target.prompt() : this.placement ? '[CLICK] PLACE · [R] ROTATE · [ESC] CANCEL' : null);
+    if (this.hiding) this.updateHiding(dt);
     if (!uiOpen && !this.arrested && this.input.wasPressed('KeyE') && this.input.locked) {
-      if (this.driving) this.exitCar();
+      if (this.hiding) this.leaveDumpster();
+      else if (this.driving) this.exitCar();
       else if (target) {
         this.audio.play('click');
         target.onInteract();
@@ -622,8 +630,8 @@ export class Game implements GameAPI {
     }
 
     // heat
-    const safe = this.playerInsideOwnedProperty();
-    decayHeat(s, dt, { atSafehouse: safe, hidden: this.playerInsideAnyInterior() });
+    const safe = this.playerInsideOwnedProperty() || !!this.hiding;
+    decayHeat(s, dt, { atSafehouse: this.playerInsideOwnedProperty(), hidden: this.playerInsideAnyInterior() || !!this.hiding });
     const lvl = heatLevel(s.heat);
     if (lvl !== this.lastHeatLevel) {
       if (lvl === 'hunted' || lvl === 'wanted') this.audio.play('siren');
@@ -1445,6 +1453,45 @@ export class Game implements GameAPI {
     return true;
   }
 
+  // ------------------------------------------------------------------ hiding
+
+  private hideInDumpster(o: WorldObject): void {
+    if (this.hiding || this.driving) return;
+    const px = this.player.position.x;
+    const pz = this.player.position.z;
+    this.hiding = { x: o.position.x, z: o.position.z, exitX: px, exitZ: pz };
+    this.player.velocity.set(0, 0, 0);
+    this.player.position.set(o.position.x, 0.2, o.position.z);
+    this.player.pitch = 0.35;
+    this.hud.hiddenMode = true;
+    this.hideLineTimer = 1.5;
+    this.audio.play('bump');
+    this.toast(this.state.heat >= 20 ? 'You are in a dumpster. Cops cannot see you here. It smells like 1994.' : 'You are in a dumpster for no reason. Respect.', 'info', 4000);
+    for (const p of this.police) if (p.pstate === 'CHASE' || p.pstate === 'APPROACH') p.say('Where did he go?!', '#9ecbff', 2.5);
+  }
+
+  private updateHiding(dt: number): void {
+    if (!this.hiding) return;
+    this.player.position.set(this.hiding.x, 0.2, this.hiding.z);
+    this.hideLineTimer -= dt;
+    if (this.hideLineTimer <= 0) {
+      this.hideLineTimer = 6 + Math.random() * 6;
+      const near = this.pedestrians().find((c) => c.distanceTo(this.hiding!.x, this.hiding!.z) < 8);
+      if (near) near.say(['Is somebody in there?', 'Raccoons are getting big.', 'I am NOT looking in there.'][Math.floor(Math.random() * 3)], '#bbbbbb', 3);
+    }
+  }
+
+  private leaveDumpster(): void {
+    if (!this.hiding) return;
+    const h = this.hiding;
+    this.hiding = null;
+    this.hud.hiddenMode = false;
+    this.player.teleport(h.exitX, 0.3, h.exitZ, this.player.yaw);
+    this.player.pitch = 0;
+    this.audio.play('bump');
+    this.state.flags.hidDumpster = true;
+  }
+
   // ------------------------------------------------------------------ vehicle
 
   private syncVehicle(): void {
@@ -1831,6 +1878,7 @@ export class Game implements GameAPI {
     if (!this.running || this.arrested) return;
     this.state.clockMinutes = this.clock.totalMinutes;
     if (this.vehicle && this.state.vehicle) this.state.vehicle = { owned: true, x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw };
+    if (this.hiding) this.state.player = { x: this.hiding.exitX, y: 0.15, z: this.hiding.exitZ, yaw: this.player.yaw };
     if (this.driving) {
       // never save the player "inside" the car: put them next to it
       const spot = this.vehicle!.exitSpot();

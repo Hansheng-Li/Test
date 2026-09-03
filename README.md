@@ -85,7 +85,7 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
 * **Police & Heat**: witnessed deals and loud customer reactions raise Heat (0–100). Officers escalate
   through PATROL → NOTICE → INVESTIGATE → APPROACH → SEARCH → CHASE. At medium heat they stop and
   search you: carrying contraband means arrest, being clean means they lose interest. Break line of
-  sight or get home. Arrest = contraband confiscated + fine + suspicion + 6 lost hours. Never a game over.
+  sight, dive into an alley dumpster (E), or get home. Arrest = contraband confiscated + fine + suspicion + 6 lost hours. Never a game over.
   Long-term suspicion puts extra patrols on the street (4 → 6 officers).
 * **Property**: buy **Warehouse 7** ($1,800) at the docks, then place shelves, prep stations and
   packaging tables inside it (grid-snapped placement mode).

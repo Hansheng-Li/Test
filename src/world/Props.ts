@@ -135,7 +135,7 @@ export function buildTrashCan(pb: PropBuilder, x: number, z: number): void {
   pb.collider(aabbFromBottom(x, 0.15, z, 0.7, 0.9, 0.7, 'trash'));
 }
 
-export function buildDumpster(pb: PropBuilder, x: number, z: number, rot = 0): void {
+export function buildDumpster(pb: PropBuilder, x: number, z: number, rot = 0): THREE.Group {
   const g = new THREE.Group();
   const body = new THREE.Mesh(boxGeo(2.4, 1.3, 1.4), lambert('#2f6b4f'));
   body.position.y = 0.75;
@@ -146,6 +146,7 @@ export function buildDumpster(pb: PropBuilder, x: number, z: number, rot = 0): v
   g.rotation.y = rot;
   pb.group.add(g);
   pb.collider(aabbFromBottom(x, 0.15, z, rot ? 1.5 : 2.5, 1.6, rot ? 2.5 : 1.5, 'dumpster'));
+  return g;
 }
 
 export function buildCar(pb: PropBuilder, x: number, z: number, rot: number, color: string): void {
