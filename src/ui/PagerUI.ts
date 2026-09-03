@@ -7,6 +7,7 @@ import { LANDMARKS } from '../data/city';
 import { GameClock } from '../core/Time';
 import { relationshipTier } from '../systems/CustomerSystem';
 import { Order } from '../game/GameState';
+import { activeEvent, describeEvent } from '../systems/EventSystem';
 
 export function landmarkName(id: string): string {
   if (id === 'street') return 'on the street';
@@ -44,6 +45,14 @@ export class PagerUI extends Panel {
       row.className = 'pager-btns';
       row.appendChild(this.button('BRICK PHONE · CALL AROUND FOR WORK', () => { this.api.callAround(); this.render(); }, 'cyan'));
       device.appendChild(row);
+    }
+    const evText = describeEvent(activeEvent(st));
+    if (evText) {
+      const e = document.createElement('div');
+      e.className = 'pager-screen';
+      e.style.background = '#ff8a80';
+      e.textContent = 'NEWS: ' + evText;
+      device.appendChild(e);
     }
     if (st.trend) {
       const t = document.createElement('div');

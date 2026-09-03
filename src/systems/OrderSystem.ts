@@ -2,6 +2,7 @@ import { GameState, Order } from '../game/GameState';
 import { CustomerDef } from '../data/customers';
 import { BASES, computeRecipe, Effect, packagedItemId, parseRecipeKey } from '../data/products';
 import { hashString } from '../utils/math';
+import { orderPriceMultiplier } from './EventSystem';
 import { LANDMARKS } from '../data/city';
 import { customerState, relationshipTier, unlockedCustomers, recordSuccessfulDeal, customerDef } from './CustomerSystem';
 import { countItem, removeItem, packagedInInventory } from './InventorySystem';
@@ -34,7 +35,9 @@ export function offeredUnitPrice(state: GameState, c: CustomerDef, recipeValue: 
   const rel = customerState(state, c.id).relationship;
   const relBonus = 1 + Math.min(0.3, rel / 200);
   const gen = 1.15 + c.generosity * 0.5;
-  return Math.round(recipeValue * gen * relBonus);
+  const hour = (state.clockMinutes % (24 * 60)) / 60;
+  const night = hour >= 20 || hour < 6;
+  return Math.round(recipeValue * gen * relBonus * orderPriceMultiplier(state, c.homeZone, night));
 }
 
 /** Create a pending pager order from an unlocked customer. Returns null if nobody is available. */

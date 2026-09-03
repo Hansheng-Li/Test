@@ -169,7 +169,7 @@ export class Civilian extends NPC {
     this.pickRandomNextNode();
   }
 
-  update(dt: number, ctx: { playerX: number; playerZ: number; night: boolean }): void {
+  update(dt: number, ctx: { playerX: number; playerZ: number; night: boolean; gossip?: string[] }): void {
     this.stateTime += dt;
     switch (this.state) {
       case 'WANDER':
@@ -178,7 +178,11 @@ export class Civilian extends NPC {
             this.state = 'WAIT';
             this.waitTimer = 1.5 + Math.random() * 4;
             this.velocity.set(0, 0, 0);
-            if (Math.random() < 0.25) this.say(IDLE_LINES[Math.floor(Math.random() * IDLE_LINES.length)], '#bbbbbb', 2.5);
+            if (Math.random() < 0.25) {
+              const useGossip = ctx.gossip && ctx.gossip.length && Math.random() < 0.4;
+              const pool = useGossip ? ctx.gossip! : IDLE_LINES;
+              this.say(pool[Math.floor(Math.random() * pool.length)], useGossip ? '#ff8fd8' : '#bbbbbb', 2.5);
+            }
           } else this.pickRandomNextNode();
         }
         break;

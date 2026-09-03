@@ -1,6 +1,7 @@
 import { GameState } from '../game/GameState';
 import { SHOPS, ITEMS } from '../data/items';
 import { addItem, spaceFor } from './InventorySystem';
+import { shopPriceMultiplier } from './EventSystem';
 
 export interface PurchaseResult {
   ok: boolean;
@@ -22,6 +23,13 @@ export function spendCash(state: GameState, amount: number): boolean {
   return true;
 }
 
+/** Effective shop price today (events can change it). */
+export function shopPrice(state: GameState, shopId: string, itemId: string): number {
+  const entry = SHOPS[shopId]?.entries.find((e) => e.itemId === itemId);
+  if (!entry) return 0;
+  return Math.round(entry.price * shopPriceMultiplier(state, itemId));
+}
+
 /** Buy `qty` of a shop entry. Equipment goes to upgrades, everything else to inventory. */
 export function buyFromShop(state: GameState, shopId: string, itemId: string, qty = 1): PurchaseResult {
   const shop = SHOPS[shopId];
@@ -31,7 +39,7 @@ export function buyFromShop(state: GameState, shopId: string, itemId: string, qt
   const def = ITEMS[itemId];
   const isEquipment = def.category === 'equipment';
   if (isEquipment && !itemId.endsWith('_kit') && state.upgrades.includes(itemId)) return { ok: false, reason: 'owned' };
-  const total = entry.price * (isEquipment ? 1 : qty);
+  const total = shopPrice(state, shopId, itemId) * (isEquipment ? 1 : qty);
   if (state.cash < total) return { ok: false, reason: 'no_cash' };
   if (!isEquipment && spaceFor(state, itemId) < qty) return { ok: false, reason: 'no_space' };
   spendCash(state, total);

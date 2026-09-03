@@ -26,6 +26,7 @@ import { hireDealer, giveDealerStock, takeDealerStock, assignDealerCustomer, una
 import { DealerUI } from '../ui/DealerUI';
 import { LedgerUI } from '../ui/LedgerUI';
 import { checkMilestones } from '../systems/MilestoneSystem';
+import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent } from '../systems/EventSystem';
 import { relationshipTier } from '../systems/CustomerSystem';
 import { AudioSystem, SfxName } from '../audio/Audio';
 import { HUD } from '../ui/HUD';
@@ -84,6 +85,7 @@ export class Game implements GameAPI {
   customers = new Map<number, CustomerNPC>();
   wanderers = new Map<string, WanderingCustomer>();
   private wandererTimer = 0;
+  private gossip: string[] = [];
   runnerNPC: RunnerNPC | null = null;
   workerFigure: THREE.Group | null = null;
   private workerToastTimer = 0;
@@ -442,9 +444,15 @@ export class Game implements GameAPI {
     // panels
     if (this.openPanelId) this.panels[this.openPanelId].update(this.uiDt);
 
-    // daily trend
+    // daily trend + world event
     if (rollTrend(s, this.clock.day)) {
       this.toast(`STREET TALK: ${s.trend!.effect} is the hot effect today — products with it sell for +25%.`, 'pager', 7000);
+    }
+    const ev = rollWorldEvent(s, this.clock.day);
+    if (ev) {
+      this.audio.play('pager');
+      this.hud.pagerNotify('NEWS FLASH\n' + describeEvent(ev)!.toUpperCase().slice(0, 60));
+      this.toast('NEWS: ' + describeEvent(ev), 'warn', 9000);
     }
     // orders
     this.orderTimer -= dt;
@@ -600,12 +608,13 @@ export class Game implements GameAPI {
       if (c.lodAccum < step) continue;
       const ldt = Math.max(dt, c.lodAccum);
       c.lodAccum = 0;
-      c.update(ldt, { playerX: px, playerZ: pz, night: this.clock.isNight });
+      c.update(ldt, { playerX: px, playerZ: pz, night: this.clock.isNight, gossip: this.gossip });
       if (d2 < 200 * 200) c.syncVisual(ldt);
     }
     const holding = this.state.inventory.some((st) => st && (st.id.startsWith('pkg:') || st.id.startsWith('prod:')));
     for (const p of this.police) {
-      const result = p.update(dt, { playerX: px, playerZ: pz, playerY: py, heat: this.state.heat, playerSafe: safe, playerHolding: holding, los });
+      const crack = heatMultiplier(this.state, this.zoneAt(p.position.x)) > 1;
+      const result = p.update(dt, { playerX: px, playerZ: pz, playerY: py, heat: this.state.heat + (crack ? 15 : 0), playerSafe: safe, playerHolding: holding, los });
       p.syncVisual(dt);
       if (result === 'arrest' && !this.arrested) this.beginArrest();
       if (result === 'searched') {
@@ -621,6 +630,7 @@ export class Game implements GameAPI {
     if (this.wandererTimer <= 0) {
       this.wandererTimer = 2;
       this.syncWanderers();
+      this.gossip = this.buildGossip();
     }
     for (const w of this.wanderers.values()) {
       const d2 = (w.position.x - px) ** 2 + (w.position.z - pz) ** 2;
@@ -723,6 +733,25 @@ export class Game implements GameAPI {
       },
       onInteract: () => this.dealWith(npc),
     });
+  }
+
+  /** Pedestrian gossip about the player's named products once they are known around town. */
+  private buildGossip(): string[] {
+    const s = this.state;
+    const sold = new Map<string, number>();
+    for (const o of s.orders) if (o.status === 'completed' && o.recipeKey) sold.set(o.recipeKey, (sold.get(o.recipeKey) ?? 0) + o.qty);
+    const out: string[] = [];
+    for (const r of Object.values(s.recipes)) {
+      if (!r.customName) continue;
+      const n = (sold.get(r.key) ?? 0) + (s.stats.sales >= 3 ? 1 : 0);
+      if (n < 2) continue;
+      out.push(`Have you tried ${r.customName}?`, `${r.customName}… who names these?`, `My cousin swears by ${r.customName}.`);
+    }
+    if (s.stats.arrests > 0) out.push('Heard somebody got busted downtown.');
+    const ev = activeEvent(s);
+    if (ev?.id === 'crackdown') out.push(`Cops are all over the ${ev.param} today.`);
+    if (ev?.id === 'club_night') out.push('Mirage is going OFF tonight.');
+    return out;
   }
 
   /** Keep one wandering NPC per customer who is not currently waiting at a meeting spot. */
@@ -828,11 +857,13 @@ export class Game implements GameAPI {
         break;
       }
     }
+    const zoneMult = heatMultiplier(s, this.zoneAt(w.position.x));
     if (witnessed) {
-      witnessedDeal(s, r.earned!);
+      witnessedDeal(s, r.earned! * zoneMult);
+      if (zoneMult > 1) addHeat(s, 10);
       this.audio.play('siren');
-      this.toast('A cop saw that street deal. HEAT is rising.', 'warn');
-    } else if (Math.random() < def.risk * 0.4) addHeat(s, 5);
+      this.toast(zoneMult > 1 ? 'Crackdown day and a cop saw that street deal. HEAT spikes!' : 'A cop saw that street deal. HEAT is rising.', 'warn');
+    } else if (Math.random() < def.risk * 0.4 * zoneMult) addHeat(s, 5);
     this.save();
   }
 
@@ -884,10 +915,12 @@ export class Game implements GameAPI {
         break;
       }
     }
+    const zoneMult = heatMultiplier(s, this.zoneAt(npc.position.x));
     if (witnessed) {
-      witnessedDeal(s, r.earned!);
+      witnessedDeal(s, r.earned! * zoneMult);
+      if (zoneMult > 1) addHeat(s, 10);
       this.audio.play('siren');
-      this.toast('A cop saw that. HEAT is rising — get out of sight.', 'warn');
+      this.toast(zoneMult > 1 ? 'A cop saw that — and it is crackdown day here. HEAT spikes!' : 'A cop saw that. HEAT is rising — get out of sight.', 'warn');
     } else if (loud && def.risk > 0.3) {
       addHeat(s, 6);
     } else if (Math.random() < def.risk * 0.3) {
@@ -1359,6 +1392,10 @@ export class Game implements GameAPI {
       this.orderTimer = 15;
       this.save();
     }
+  }
+
+  private zoneAt(x: number): string {
+    return x > 116 ? 'beach' : x < -110 ? 'docks' : 'downtown';
   }
 
   private playerInsideBuilding(id: string): boolean {

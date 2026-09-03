@@ -108,6 +108,8 @@ export interface GameState {
   lastOrderMinute: number;
   /** Daily trend: products with this effect sell for a bonus. */
   trend: { effect: import('../data/products').Effect; day: number } | null;
+  /** Daily world event (crackdown / shortage / club night). */
+  event: import('../systems/EventSystem').WorldEvent | null;
 }
 
 export const INVENTORY_SLOTS = 8;
