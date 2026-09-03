@@ -64,7 +64,10 @@ export function executePrep(state: GameState, plan: PrepPlan): PrepResult {
   if (countItem(state, plan.inputItem) < units) return { ok: false, reason: 'no_input' };
   for (const m of plan.mods) if (countItem(state, m) < units) return { ok: false, reason: 'no_mods' };
   const outId = preview.outputItem!;
-  const outUnits = units + (plan.inputItem.startsWith('prod:') ? 0 : prepYieldBonus(state)) + Math.max(0, Math.min(2, Math.floor(plan.bonusUnits ?? 0)));
+  const refine = plan.inputItem.startsWith('prod:');
+  // skill bonus scales with the batch (at most one extra per two units) and never applies to refines
+  const skill = refine ? 0 : Math.max(0, Math.min(2, Math.ceil(units / 2), Math.floor(plan.bonusUnits ?? 0)));
+  const outUnits = units + (refine ? 0 : prepYieldBonus(state)) + skill;
   // space check: inputs free their slots, so simulate on a copy
   const sim: GameState = { ...state, inventory: state.inventory.map((s) => (s ? { ...s } : null)) };
   removeItem(sim, plan.inputItem, units);

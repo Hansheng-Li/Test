@@ -67,9 +67,15 @@ describe('production', () => {
 describe('stir minigame bonus', () => {
   it('a well-played batch yields extra units, capped at two', () => {
     const s = createNewState();
-    addItem(s, 'pulp_sunset', 2);
-    const r = executePrep(s, { inputItem: 'pulp_sunset', mods: [], units: 2, bonusUnits: 5 });
-    expect(r.ok).toBe(true);
-    expect(countItem(s, 'prod:SUNSET')).toBe(4);
+    addItem(s, 'pulp_sunset', 3);
+    const one = executePrep(s, { inputItem: 'pulp_sunset', mods: [], units: 1, bonusUnits: 2 });
+    expect(one.units).toBe(2); // one-unit batch: at most +1
+    const two = executePrep(s, { inputItem: 'pulp_sunset', mods: [], units: 2, bonusUnits: 5 });
+    expect(two.units).toBe(3); // two units: at most +1
+    expect(countItem(s, 'prod:SUNSET')).toBe(5);
+    // refining loose product never gets the skill bonus
+    addItem(s, 'mod_flux', 1);
+    const refine = executePrep(s, { inputItem: 'prod:SUNSET', mods: ['mod_flux'], units: 1, bonusUnits: 2 });
+    expect(refine.units).toBe(1);
   });
 });

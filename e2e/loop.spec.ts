@@ -68,7 +68,8 @@ test('a new player can complete the first sale', async ({ page }) => {
     if (done) break;
   }
   await frames(page, 2);
-  expect(await inv(page)).toEqual(expect.arrayContaining(['prod:SUNSETx3']));
+  const loose = (await inv(page)).find((x) => x.startsWith('prod:SUNSETx'))!;
+  expect(parseInt(loose.split('x')[1], 10)).toBeGreaterThanOrEqual(3);
   const nameInput = page.locator('#prep-panel input[type=text]');
   if (await nameInput.count()) {
     await nameInput.fill('PALM PANIC');

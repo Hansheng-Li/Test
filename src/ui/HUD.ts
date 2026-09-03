@@ -147,8 +147,9 @@ export class HUD {
     setTimeout(() => t.remove(), ms);
   }
 
-  pagerNotify(text: string): void {
+  pagerNotify(text: string, hint = '[Y] ACCEPT · [X] DECLINE · [P] PAGER'): void {
     this.pagerScreen.textContent = text;
+    (this.pagerEl.querySelector('.hint') as HTMLElement).textContent = hint;
     this.pagerEl.classList.remove('on');
     void this.pagerEl.offsetWidth; // restart animation
     this.pagerEl.classList.add('on');

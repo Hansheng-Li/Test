@@ -21,7 +21,7 @@ import { buyFromShop, buyDelivered, spendCash, PurchaseResult } from '../systems
 import { executePrep, executePackage, nameRecipe, recipeDisplayName, PrepPlan, PrepResult, PackageResult } from '../systems/ProductionSystem';
 import { generateOrder, acceptOrder, declineOrder, activeOrders, pendingOrders, completeSale, expireOrders, findFulfillingItem, describeRequest, counterOffer, rollTrend } from '../systems/OrderSystem';
 import { decayHeat, witnessedDeal, applyArrest, addHeat, heatLevel } from '../systems/HeatSystem';
-import { hireRunner, assignRunner, tickRunner } from '../systems/RunnerSystem';
+import { hireRunner, assignRunner, tickRunner, runnerPickupProperty } from '../systems/RunnerSystem';
 import { hireWorker, assignWorkerRecipe, tickWorker } from '../systems/WorkerSystem';
 import { hireDealer, giveDealerStock, takeDealerStock, assignDealerCustomer, unassignDealerCustomer, collectDealerCash, tickDealer, dealerStockCount } from '../systems/DealerSystem';
 import { DealerUI } from '../ui/DealerUI';
@@ -436,7 +436,7 @@ export class Game implements GameAPI {
   }
 
   private runnerHome(property?: string): { x: number; z: number } {
-    const prop = property && this.state.properties.includes(property) ? property : this.state.properties.includes('warehouse') ? 'warehouse' : 'safehouse';
+    const prop = runnerPickupProperty(this.state, property);
     if (prop === 'motel') return { x: PROPERTY_ANCHORS.motel.x + 3, z: PROPERTY_ANCHORS.motel.z };
     return prop === 'warehouse' ? { x: WAREHOUSE_SIGN.x + 2, z: WAREHOUSE_SIGN.z + 4 } : { x: SAFEHOUSE_DOOR.x + 2, z: SAFEHOUSE_DOOR.z - 3 };
   }
@@ -525,7 +525,7 @@ export class Game implements GameAPI {
     const ev = rollWorldEvent(s, this.clock.day);
     if (ev) {
       this.audio.play('pager');
-      this.hud.pagerNotify('NEWS FLASH\n' + describeEvent(ev)!.toUpperCase().slice(0, 60));
+      this.hud.pagerNotify('NEWS FLASH\n' + describeEvent(ev)!.toUpperCase().slice(0, 60), '[P] PAGER');
       this.toast('NEWS: ' + describeEvent(ev), 'warn', 9000);
       if (ev.id === 'inspection') {
         const r = applyInspection(s);
@@ -1059,7 +1059,7 @@ export class Game implements GameAPI {
         if (Math.random() > def.reliability && s.flags.firstOrderSent && s.stats.sales > 0) {
           o.status = 'failed';
           this.audio.play('pager');
-          this.hud.pagerNotify(`${def.name.split(' ')[0].toUpperCase()}: CANT MAKE IT\nSORRY. NEXT TIME.`);
+          this.hud.pagerNotify(`${def.name.split(' ')[0].toUpperCase()}: CANT MAKE IT\nSORRY. NEXT TIME.`, '[P] PAGER');
           this.toast(`${def.name.split(' ')[0]} cancelled while you were on the way. Classic ${def.personality}.`, 'warn');
           npc.startLeaving();
         }
@@ -1795,6 +1795,11 @@ export class Game implements GameAPI {
   }
 
   save(): void {
+    if (this.settingsSaveTimer !== null) {
+      clearTimeout(this.settingsSaveTimer);
+      this.settingsSaveTimer = null;
+      saveSettings(this.settings);
+    }
     if (!this.running || this.arrested) return;
     this.state.clockMinutes = this.clock.totalMinutes;
     if (this.vehicle && this.state.vehicle) this.state.vehicle = { owned: true, x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw };

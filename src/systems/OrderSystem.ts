@@ -1,6 +1,6 @@
 import { GameState, Order } from '../game/GameState';
 import { CustomerDef } from '../data/customers';
-import { BASES, computeRecipe, Effect, packagedItemId, parseRecipeKey } from '../data/products';
+import { BASES, computeRecipe, Effect, ALL_EFFECTS, packagedItemId, parseRecipeKey } from '../data/products';
 import { hashString } from '../utils/math';
 import { orderPriceMultiplier } from './EventSystem';
 import { LANDMARKS } from '../data/city';
@@ -73,7 +73,7 @@ export function generateOrder(state: GameState, opts: OrderGenOptions): Order | 
   if (bored) {
     const last = parseRecipeKey(cs.lastRecipe!);
     const lastEffects = last ? computeRecipe(last.base, last.mods).effects : [];
-    const wanted = c.prefEffects.find((e) => !lastEffects.includes(e)) ?? (['SOCIAL', 'FOCUS', 'DREAMY', 'CONFIDENT', 'CHAOTIC', 'GLOW', 'ENERGY', 'CHILL'] as Effect[]).find((e) => !lastEffects.includes(e))!;
+    const wanted = c.prefEffects.find((e) => !lastEffects.includes(e)) ?? ALL_EFFECTS.find((e) => !lastEffects.includes(e))!;
     effects = [wanted];
   } else if (!opts.simple && tier !== 'stranger') {
     const roll = rng();
@@ -190,7 +190,7 @@ export function isBored(state: GameState, customerId: string): boolean {
 }
 
 export const TREND_BONUS = 0.25;
-const TREND_EFFECTS: Effect[] = ['ENERGY', 'CHILL', 'SOCIAL', 'FOCUS', 'DREAMY', 'CONFIDENT', 'CHAOTIC', 'GLOW'];
+const TREND_EFFECTS: Effect[] = ALL_EFFECTS;
 
 /** Deterministic daily trend so save/load and tests agree. Returns true when the trend changed. */
 export function rollTrend(state: GameState, day: number): boolean {

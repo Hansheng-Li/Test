@@ -77,6 +77,12 @@ export function advanceRunnerQueue(state: GameState): Order | null {
   return null;
 }
 
+/** Which owned property the runner works out of for an order (its pickup spot if still owned, else the best base). */
+export function runnerPickupProperty(state: GameState, from?: string): string {
+  if (from && state.properties.includes(from)) return from;
+  return state.properties.includes('warehouse') ? 'warehouse' : 'safehouse';
+}
+
 /** Trip time in seconds from the property to the landmark and back-ish (one way counts). */
 export function runnerTripSeconds(property: string, locationId: string): number {
   const from = PROPERTY_ANCHORS[property] ?? PROPERTY_ANCHORS.safehouse;
@@ -106,8 +112,7 @@ export function tickRunner(state: GameState, dtSeconds: number, rng: () => numbe
     r.activeOrderId = null;
     return {};
   }
-  const property = o.runnerFrom && state.properties.includes(o.runnerFrom) ? o.runnerFrom : state.properties.includes('warehouse') ? 'warehouse' : 'safehouse';
-  const total = runnerTripSeconds(property, o.locationId);
+  const total = runnerTripSeconds(runnerPickupProperty(state, o.runnerFrom), o.locationId);
   o.runnerProgress = (o.runnerProgress ?? 0) + dtSeconds / total;
   if (o.runnerProgress < 1) return {};
   // delivered

@@ -3,6 +3,7 @@
  * base + ordered modifiers -> effect tags + value multiplier. No real-world meaning.
  */
 export type Effect = 'ENERGY' | 'CHILL' | 'SOCIAL' | 'FOCUS' | 'DREAMY' | 'CONFIDENT' | 'CHAOTIC' | 'GLOW';
+export const ALL_EFFECTS: Effect[] = ['ENERGY', 'CHILL', 'SOCIAL', 'FOCUS', 'DREAMY', 'CONFIDENT', 'CHAOTIC', 'GLOW'];
 export type BaseId = 'SUNSET' | 'VELVET' | 'NEON';
 
 export interface BaseProduct {
