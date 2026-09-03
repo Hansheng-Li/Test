@@ -946,7 +946,8 @@ export class Game implements GameAPI {
     }
     const cand = streetSaleCandidate(s, w.def.id);
     const cooling = this.clock.totalMinutes - cs.lastOrderMinute < STREET_SALE_COOLDOWN;
-    if (cand && !cooling) return `[E] SELL ${resolveItem(s, cand.id).name} · $${streetUnitPrice(s, w.def.id, cand.key)}/unit · ${first}`;
+    const viaDealer = !!s.dealer?.customers.includes(w.def.id);
+    if (cand && !cooling && !viaDealer) return `[E] SELL ${resolveItem(s, cand.id).name} · $${streetUnitPrice(s, w.def.id, cand.key)}/unit · ${first}`;
     return `[E] TALK · ${first} (${w.def.personality})`;
   }
 
@@ -988,7 +989,7 @@ export class Game implements GameAPI {
     }
     const r = streetSale(s, def.id, this.clock.totalMinutes);
     if (!r.ok) {
-      const hint = r.reason === 'cooldown' ? `"I'm good for now. Page you later."` : r.reason === 'bored' ? `"Same stuff again? Surprise me next time."` : `"I like ${def.prefBase} with ${def.prefEffects.join(' or ')}. Got anything?"`;
+      const hint = r.reason === 'cooldown' ? `"I'm good for now. Page you later."` : r.reason === 'dealer' ? `"Vince takes care of me now. Nice guy. Weird sunglasses."` : r.reason === 'bored' ? `"Same stuff again? Surprise me next time."` : `"I like ${def.prefBase} with ${def.prefEffects.join(' or ')}. Got anything?"`;
       w.say(hint.replace(/"/g, ''), '#ffd166', 3);
       this.toast(`${first}: ${hint}`, 'info', 4000);
       return;

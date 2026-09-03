@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createNewState } from '../src/systems/SaveSystem';
 import { addItem, countItem } from '../src/systems/InventorySystem';
 import { hireDealer, giveDealerStock, takeDealerStock, assignDealerCustomer, tickDealer, collectDealerCash, DEALER_INTERVAL } from '../src/systems/DealerSystem';
-import { generateOrder } from '../src/systems/OrderSystem';
+import { generateOrder, streetSale } from '../src/systems/OrderSystem';
 import { computeRecipe } from '../src/data/products';
 
 describe('dealer network', () => {
@@ -32,13 +32,16 @@ describe('dealer network', () => {
     expect(takeDealerStock(s, 'pkg:SUNSET', 10)).toBe(4);
   });
 
-  it('dealer customers stop paging the player', () => {
+  it('dealer customers stop paging the player and buy only from the dealer', () => {
     const s = createNewState();
     s.cash = 2000;
     hireDealer(s, 1200);
     assignDealerCustomer(s, 'moe');
     const o = generateOrder(s, { now: s.clockMinutes, customerId: 'moe', simple: true, rng: () => 0.1 });
     expect(o).toBeNull();
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    addItem(s, 'pkg:SUNSET', 2);
+    expect(streetSale(s, 'moe', 5000).reason).toBe('dealer');
   });
 
   it('a shakedown costs stock and adds heat, but never breaks the state', () => {

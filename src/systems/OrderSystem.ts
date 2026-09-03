@@ -334,7 +334,7 @@ export function packagedCountFor(state: GameState, key: string): number {
 
 export interface StreetSaleResult {
   ok: boolean;
-  reason?: 'locked' | 'cooldown' | 'no_item' | 'bored';
+  reason?: 'locked' | 'cooldown' | 'no_item' | 'bored' | 'dealer';
   earned?: number;
   qty?: number;
   itemKey?: string;
@@ -368,6 +368,7 @@ export function streetUnitPrice(state: GameState, customerId: string, key: strin
 export function streetSale(state: GameState, customerId: string, now: number, rng: () => number = Math.random): StreetSaleResult {
   const cs = customerState(state, customerId);
   if (!cs.unlocked) return { ok: false, reason: 'locked' };
+  if (state.dealer?.customers.includes(customerId)) return { ok: false, reason: 'dealer' };
   if (now - cs.lastOrderMinute < STREET_SALE_COOLDOWN) return { ok: false, reason: 'cooldown' };
   const item = streetSaleCandidate(state, customerId);
   if (!item) return { ok: false, reason: 'no_item' };
