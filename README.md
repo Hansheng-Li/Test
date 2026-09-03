@@ -31,7 +31,7 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | --- | --- |
 | `W A S D` | Move |
 | Mouse | Look |
-| `Shift` | Sprint |
+| `Shift` | Sprint (drains stamina; refills when you slow down) |
 | `Space` | Jump (also: STIR / SEAL inside station panels) |
 | `E` | Interact (talk, buy, use station, sell, open storage…) |
 | `Tab` | Backpack, product book, customer book |

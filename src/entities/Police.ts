@@ -128,7 +128,7 @@ export class Police extends NPC {
         break;
       case 'CHASE': {
         const target = sees ? { x: ctx.playerX, z: ctx.playerZ } : { x: this.lastSeen.x, z: this.lastSeen.z };
-        this.moveToward(target.x, target.z, dt, 4.6);
+        this.moveToward(target.x, target.z, dt, 5.8);
         if (this.lineTimer <= 0) {
           this.say(CHASE_LINES[Math.floor(Math.random() * CHASE_LINES.length)], '#ff5c5c', 2);
           this.lineTimer = 4;

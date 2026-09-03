@@ -22,6 +22,11 @@ export class PlayerController {
   /** Set by gameplay: player cannot move (arrested, menus). */
   frozen = false;
   sprinting = false;
+  /** 0..1; sprinting drains it, resting refills it. Makes police chases a real decision. */
+  stamina = 1;
+  staminaDrain = 1 / 6;
+  staminaRegen = 1 / 4;
+  private staminaLock = false;
   private forward = new THREE.Vector3();
   private right = new THREE.Vector3();
 
@@ -58,7 +63,12 @@ export class PlayerController {
       mx /= len;
       mz /= len;
     }
-    this.sprinting = len > 0 && this.input.isDown('ShiftLeft') && !this.frozen;
+    const wantSprint = len > 0 && this.input.isDown('ShiftLeft') && !this.frozen;
+    if (this.stamina <= 0) this.staminaLock = true;
+    if (this.stamina >= 0.3) this.staminaLock = false;
+    this.sprinting = wantSprint && !this.staminaLock && this.stamina > 0;
+    if (this.sprinting) this.stamina = Math.max(0, this.stamina - this.staminaDrain * dt);
+    else this.stamina = Math.min(1, this.stamina + this.staminaRegen * dt);
     const speed = this.sprinting ? this.sprintSpeed : this.walkSpeed;
     const targetX = (this.forward.x * mz + this.right.x * mx) * speed;
     const targetZ = (this.forward.z * mz + this.right.z * mx) * speed;

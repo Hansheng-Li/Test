@@ -708,6 +708,7 @@ export class Game implements GameAPI {
 
     this.hud.setClickHint(!this.input.locked && !uiOpen && !this.arrested);
     this.hud.speedText = this.driving && this.vehicle ? `${Math.round(this.vehicle.mph)} MPH` : null;
+    this.hud.stamina = this.player.stamina;
     this.hudTextTimer -= dt;
     if (this.hudTextTimer <= 0) {
       this.hudTextTimer = 0.2;

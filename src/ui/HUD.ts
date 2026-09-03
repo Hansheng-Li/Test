@@ -10,6 +10,9 @@ export class HUD {
   private clockEl: HTMLElement;
   private heatBar: HTMLElement;
   private heatLabel: HTMLElement;
+  private staminaBar: HTMLElement;
+  private staminaWrap: HTMLElement;
+  stamina = 1;
   private objectiveEl: HTMLElement;
   private orderEl: HTMLElement;
   private orderBody: HTMLElement;
@@ -32,7 +35,7 @@ export class HUD {
     this.root.innerHTML = `
       <div id="hud-cash" class="hud-box"><small>CASH</small><span class="val">$0</span></div>
       <div id="hud-clock" class="hud-box">DAY 1 · 15:30</div>
-      <div id="hud-heat" class="hud-box"><div class="label"><span>HEAT</span><span class="lvl">CALM</span></div><div class="bar"><div></div></div></div>
+      <div id="hud-heat" class="hud-box"><div class="label"><span>HEAT</span><span class="lvl">CALM</span></div><div class="bar"><div></div></div><div class="stamina"><div></div></div></div>
       <div id="hud-objective" class="hud-box"><div class="title">OBJECTIVE</div><div class="text"></div></div>
       <div id="hud-order" class="hud-box"><div class="title">CURRENT ORDER</div><div class="obody"></div></div>
       <div id="hud-item" class="hud-box"></div>
@@ -47,6 +50,8 @@ export class HUD {
     this.clockEl = this.root.querySelector('#hud-clock')!;
     this.heatBar = this.root.querySelector('#hud-heat .bar > div')!;
     this.heatLabel = this.root.querySelector('#hud-heat .lvl')!;
+    this.staminaBar = this.root.querySelector('#hud-heat .stamina > div')!;
+    this.staminaWrap = this.root.querySelector('#hud-heat .stamina')!;
     this.objectiveEl = this.root.querySelector('#hud-objective .text')!;
     this.orderEl = this.root.querySelector('#hud-order')!;
     this.orderBody = this.root.querySelector('#hud-order .obody')!;
@@ -94,6 +99,9 @@ export class HUD {
     this.heatBar.style.width = state.heat.toFixed(0) + '%';
     this.heatLabel.textContent = heatLevel(state.heat).toUpperCase() + (state.suspicion > 30 ? ' · KNOWN' : '');
     this.vignette.className = state.heat >= 60 ? 'hot' : '';
+    this.staminaWrap.style.display = this.stamina < 0.999 ? 'block' : 'none';
+    this.staminaBar.style.width = (this.stamina * 100).toFixed(0) + '%';
+    this.staminaBar.style.background = this.stamina < 0.3 ? '#ff5c5c' : '#7fdcff';
     if (objective !== this.lastObjective) {
       this.objectiveEl.textContent = objective;
       this.lastObjective = objective;

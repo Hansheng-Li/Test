@@ -39,7 +39,7 @@ export class Menu {
         <b style="color:#4ff2e8">THE LOOP</b> · Pager beeps → accept → buy supplies from Rico (docks) → PREP TABLE → PACKAGING → walk to the meeting spot → E to sell.<br/>
         <b style="color:#4ff2e8">CUSTOMERS</b> · They walk around their home zone. Offer locked ones a free sample; sell to unlocked ones on the street. Better relationship = bigger orders, friends unlock.<br/>
         <b style="color:#4ff2e8">PRODUCTS</b> · Base + up to 3 modifiers (order matters). Name your products. Watch the daily hot effect (+25%).<br/>
-        <b style="color:#4ff2e8">HEAT</b> · Cops who see a deal raise it. Break line of sight, go home, or rest. Clean hands survive a stop-and-search; contraband does not.<br/>
+        <b style="color:#4ff2e8">HEAT</b> · Cops who see a deal raise it. Break line of sight, go home, or rest. Clean hands survive a stop-and-search; contraband does not. Sprint has stamina — you cannot outrun a chase forever.<br/>
         <b style="color:#4ff2e8">SCALE UP</b> · Pawn shop equipment → Dizzy the runner (motel) → Warehouse 7 (docks) → Marisol the worker (port) → Vince the dealer (arcade) → the '88 sedan (Rojas).<br/>
         <b style="color:#4ff2e8">KEYS</b> · E interact · TAB backpack · P pager · M map · N walkman · B place equipment · F3 fps.
       </div>
