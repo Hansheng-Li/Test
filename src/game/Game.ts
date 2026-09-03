@@ -520,7 +520,10 @@ export class Game implements GameAPI {
     s.clockMinutes = this.clock.totalMinutes;
     s.stats.playSeconds += dt;
     if (this.driving && this.vehicle) this.updateDriving(dt, uiOpen);
-    else this.player.update(dt);
+    else {
+      this.player.update(dt);
+      if (this.player.stepped && !this.hiding) this.audio.play('step');
+    }
     s.player = { x: this.player.position.x, y: this.player.position.y, z: this.player.position.z, yaw: this.player.yaw };
 
     if (this.arrested) this.updateArrest(dt);

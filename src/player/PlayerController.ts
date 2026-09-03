@@ -19,6 +19,9 @@ export class PlayerController {
   gravity = -18;
   sensitivity = 0.0022;
   bobTime = 0;
+  /** Set to true for one frame whenever a footstep lands (for audio). */
+  stepped = false;
+  private lastBobPhase = 0;
   /** Set by gameplay: player cannot move (arrested, menus). */
   frozen = false;
   sprinting = false;
@@ -95,6 +98,15 @@ export class PlayerController {
 
     const moving = len > 0 && this.grounded;
     this.bobTime += dt * (moving ? (this.sprinting ? 13 : 9) : 0);
+    // a footstep lands every time the bob crosses its bottom (sin goes negative -> positive)
+    const phase = Math.sin(this.bobTime);
+    this.stepped = moving && this.lastBobPhase < 0 && phase >= 0;
+    this.lastBobPhase = phase;
+    const targetFov = this.sprinting ? 80 : 75;
+    if (Math.abs(this.camera.fov - targetFov) > 0.05) {
+      this.camera.fov += (targetFov - this.camera.fov) * Math.min(1, dt * 6);
+      this.camera.updateProjectionMatrix();
+    }
     this.syncCamera(moving ? (this.sprinting ? 0.045 : 0.03) : 0);
   }
 

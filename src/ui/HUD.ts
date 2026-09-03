@@ -25,6 +25,7 @@ export class HUD {
   private pagerScreen: HTMLElement;
   private vignette: HTMLElement;
   private lastCash = NaN;
+  private shownCash = NaN;
   private lastObjective = '';
   private lastOrder: string | null = '';
   private lastClock = '';
@@ -89,9 +90,13 @@ export class HUD {
   speedText: string | null = null;
 
   update(state: GameState, clockText: string, day: number, objective: string, orderText: string | null, dt: number): void {
-    if (state.cash !== this.lastCash) {
-      this.cashEl.textContent = '$' + Math.floor(state.cash).toLocaleString();
-      this.lastCash = state.cash;
+    // the counter rolls toward the real value so payouts read as a satisfying tick-up
+    if (Number.isNaN(this.shownCash) || Math.abs(state.cash - this.shownCash) > 5000) this.shownCash = state.cash;
+    else this.shownCash += (state.cash - this.shownCash) * Math.min(1, dt * 6);
+    if (Math.abs(state.cash - this.shownCash) < 0.6) this.shownCash = state.cash;
+    if (this.shownCash !== this.lastCash) {
+      this.cashEl.textContent = '$' + Math.floor(this.shownCash).toLocaleString();
+      this.lastCash = this.shownCash;
     }
     const clockStr = `DAY ${day} · ${clockText}` + (this.speedText ? ` · ${this.speedText}` : '');
     if (clockStr !== this.lastClock) {

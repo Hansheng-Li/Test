@@ -173,7 +173,7 @@ export class AudioSystem {
         this.tone(1046, 0.3, 0.25, 'triangle', 0.25);
         break;
       case 'step':
-        this.tone(90, 0, 0.05, 'sine', 0.05);
+        this.tone(70 + Math.random() * 30, 0, 0.06, 'triangle', 0.045, 45);
         break;
       case 'horn':
         this.tone(392, 0, 0.45, 'square', 0.14);
