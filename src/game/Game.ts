@@ -935,14 +935,19 @@ export class Game implements GameAPI {
     const effects = parsed ? computeRecipe(parsed.base, parsed.mods).effects : [];
     const custom = s.recipes[r.itemKey!]?.customName;
     npc.cstate = 'TALK';
-    const reaction: Effect | null = effects.length ? effects[Math.floor(Math.random() * effects.length)] : null;
+    const tooStrong = !!parsed && parsed.mods.length >= 3;
+    const reaction: Effect | null = tooStrong ? 'CHAOTIC' : effects.length ? effects[Math.floor(Math.random() * effects.length)] : null;
+    if (tooStrong) {
+      this.toast(`${def.name.split(' ')[0]} was not ready for a triple-modifier ${name}. Half the block is watching.`, 'warn', 5000);
+      addHeat(s, 8);
+    }
     const line = custom && Math.random() < 0.5 ? `"${custom}"? Who names these things?!` : reaction ? REACTION_LINES[reaction][Math.floor(Math.random() * 3)] : def.lines.thanks;
     npc.say(line, reaction === 'CHAOTIC' || reaction === 'ENERGY' ? '#ff5c5c' : '#7dff9a', 3.5);
     setTimeout(() => npc.startReaction(reaction), 900);
     // loud reactions draw attention
-    const loud = reaction === 'SOCIAL' || reaction === 'CHAOTIC' || reaction === 'CONFIDENT' || reaction === 'ENERGY';
+    const loud = tooStrong || reaction === 'SOCIAL' || reaction === 'CHAOTIC' || reaction === 'CONFIDENT' || reaction === 'ENERGY';
     if (loud) {
-      for (const c of this.civilians) if (c.distanceTo(npc.position.x, npc.position.z) < 14) c.reactTo(npc.position.x, npc.position.z, reaction === 'CHAOTIC' && Math.random() < 0.5);
+      for (const c of this.civilians) if (c.distanceTo(npc.position.x, npc.position.z) < (tooStrong ? 22 : 14)) c.reactTo(npc.position.x, npc.position.z, (tooStrong || reaction === 'CHAOTIC') && Math.random() < 0.6);
     }
     // police witness check
     let witnessed = false;

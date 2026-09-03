@@ -59,3 +59,19 @@ export const CUSTOMERS: CustomerDef[] = [
 ];
 
 export const CUSTOMER_MAP: Record<string, CustomerDef> = Object.fromEntries(CUSTOMERS.map((c) => [c.id, c]));
+
+/** Short pager-style notes, one is appended to each page so customers sound like themselves. */
+export const PAGER_NOTES: Record<string, string[]> = {
+  tasha: ['PARTY TONITE', 'NEED THE USUAL', 'DONT B LATE'],
+  moe: ['ON MY BREAK', 'SHOP CLOSES AT 6', 'CASH READY'],
+  brandy: ['B4 MY SHIFT', 'BACK DOOR OK', 'TIPS WERE GOOD'],
+  kenji: ['EXAM TMRW', 'LIBRARY IS DEAD', 'STUDENT DISCOUNT?'],
+  gloria: ['ROOM 12 IS FREE', 'AFTER HOUSEKEEPING', 'QUIET PLEASE'],
+  dexter: ['VIP ROOM', 'BRING EXTRA', 'DJ NEEDS IT TOO'],
+  sunny: ['IS THIS LEGAL LOL', 'FLIGHT SUNDAY', 'BEACH GUY?'],
+  ray: ['MTG AT 2', 'CASH NO QUESTIONS', 'BE PUNCTUAL'],
+  luz: ['MURAL DAY', 'BRING COLORS', 'SUNSET SHIFT'],
+  chip: ['TOWER 3', 'LOW TIDE', 'B4 SUNSET'],
+  hector: ['DOUBLE SHIFT', 'BY THE CRANES', 'UNION RATES'],
+  nadia: ['NIGHT SHIFT', 'STAFF ENTRANCE', 'DONT MAKE ME WAIT'],
+};

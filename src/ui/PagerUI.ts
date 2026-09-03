@@ -2,7 +2,7 @@ import { Panel } from './Panel';
 import { GameAPI } from './UIContext';
 import { pendingOrders, activeOrders, describeRequest, findFulfillingItem } from '../systems/OrderSystem';
 import { storageItemForOrder, runnerBusy } from '../systems/RunnerSystem';
-import { CUSTOMER_MAP } from '../data/customers';
+import { CUSTOMER_MAP, PAGER_NOTES } from '../data/customers';
 import { LANDMARKS } from '../data/city';
 import { GameClock } from '../core/Time';
 import { relationshipTier } from '../systems/CustomerSystem';
@@ -17,7 +17,9 @@ export function landmarkName(id: string): string {
 export function pagerLine(order: Order, request: string): string {
   const c = CUSTOMER_MAP[order.customerId];
   const phone = '555-0' + (100 + (order.customerId.charCodeAt(0) * 7 + order.customerId.length * 13) % 900);
-  return `${phone}\n${order.qty}x ${request}\n$${order.price}\n${landmarkName(order.locationId).toUpperCase()}\nBY ${GameClock.formatMinutes(order.windowEnd)}  -${c.name.split(' ')[0].toUpperCase()}`;
+  const notes = PAGER_NOTES[order.customerId] ?? [];
+  const note = notes.length ? notes[order.id % notes.length] : '';
+  return `${phone}\n${order.qty}x ${request}\n$${order.price}\n${landmarkName(order.locationId).toUpperCase()}\nBY ${GameClock.formatMinutes(order.windowEnd)}  -${c.name.split(' ')[0].toUpperCase()}${note ? '\n' + note : ''}`;
 }
 
 /** The pager: incoming orders, accepted orders, runner dispatch. */
