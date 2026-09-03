@@ -43,7 +43,7 @@ export class Menu {
         <b style="color:#4ff2e8">SCALE UP</b> · Pawn shop equipment → Dizzy the runner (motel) → Warehouse 7 (docks) → Marisol the worker (port) → Vince the dealer (arcade) → the '88 sedan (Rojas).<br/>
         <b style="color:#4ff2e8">KEYS</b> · E interact · TAB backpack · P pager · M map · N walkman · B place equipment · F3 fps.
       </div>
-      <div class="controls">WASD move · MOUSE look · SHIFT sprint · SPACE jump<br/>E interact · TAB inventory · P pager · M map · N walkman · 1-8 select item · ESC pause<br/><br/><span style="color:#ff9a3c">All products in this game are fictional. Click to capture the mouse.</span></div>
+      <div class="controls">WASD move · MOUSE look · SHIFT sprint · SPACE jump<br/>E interact · TAB inventory · P pager · Y/X accept/decline page · M map · N walkman · 1-8 select item · ESC pause<br/><br/><span style="color:#ff9a3c">All products in this game are fictional. Click to capture the mouse.</span></div>
       <div class="stripe bottom"></div>`;
     const btns = this.el.querySelector('.buttons') as HTMLElement;
     btns.style.display = 'flex';

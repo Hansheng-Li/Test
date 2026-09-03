@@ -39,7 +39,7 @@ export class HUD {
       <div id="crosshair"></div>
       <div id="prompt"></div>
       <div id="toasts"></div>
-      <div id="pager-notify"><div class="screen"></div><div class="hint">[P] OPEN PAGER</div></div>
+      <div id="pager-notify"><div class="screen"></div><div class="hint">[Y] ACCEPT · [X] DECLINE · [P] PAGER</div></div>
       <div id="vignette"></div>
       <div id="clickhint" style="display:none;position:absolute;left:50%;top:62%;transform:translateX(-50%);background:var(--panel);border:2px solid var(--cyan);padding:10px 18px;border-radius:6px;font-size:16px;letter-spacing:1px">CLICK TO CAPTURE THE MOUSE</div>`;
     parent.appendChild(this.root);

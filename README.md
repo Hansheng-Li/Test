@@ -35,7 +35,8 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | `Space` | Jump (also: STIR / SEAL inside station panels) |
 | `E` | Interact (talk, buy, use station, sell, open storage…) |
 | `Tab` | Backpack, product book, customer book |
-| `P` | Pager (accept / decline orders, send the runner) |
+| `P` | Pager (accept / decline / haggle, send the runner) |
+| `Y` / `X` | Accept / decline the newest page without opening the pager |
 | `M` | Paper map of Sol Palma |
 | `1`–`8` | Select hotbar slot |
 | `B` | Place equipment (inside your warehouse, with a station kit in your backpack) |

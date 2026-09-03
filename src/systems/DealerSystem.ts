@@ -6,8 +6,8 @@ import { customerState, customerDef } from './CustomerSystem';
 import { offeredUnitPrice } from './OrderSystem';
 import { addCash } from './EconomySystem';
 
-/** Game minutes between dealer sales rounds. */
-export const DEALER_INTERVAL = 20;
+/** Game minutes between dealer sales rounds (1.5 real minutes): passive income, not a money printer. */
+export const DEALER_INTERVAL = 90;
 
 export function hireDealer(state: GameState, price: number): boolean {
   if (state.dealer?.hired) return false;
@@ -110,7 +110,7 @@ export function tickDealer(state: GameState, nowMinutes: number, rng: () => numb
   }
   d.starvedRounds = 0;
   for (const cid of d.customers) {
-    if (rng() > 0.6) continue;
+    if (rng() > 0.5) continue;
     if (dealerStockCount(state) === 0) break;
     const def = customerDef(cid);
     const item = d.stock.find((s) => parseRecipeKey(s.id.slice(4))?.base === def.prefBase) ?? d.stock[0];

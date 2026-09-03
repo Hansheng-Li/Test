@@ -1831,6 +1831,18 @@ export class Game implements GameAPI {
       case 'KeyH':
         this.hud.toggleHidden();
         break;
+      case 'KeyY':
+      case 'KeyX': {
+        const pending = pendingOrders(this.state);
+        if (!pending.length) break;
+        const o = pending[pending.length - 1];
+        if (e.code === 'KeyY') this.acceptOrder(o.id);
+        else {
+          this.declineOrder(o.id);
+          this.toast(`Declined ${CUSTOMER_MAP[o.customerId].name.split(' ')[0]}'s order.`);
+        }
+        break;
+      }
       case 'KeyN':
         this.boomboxOn = !this.boomboxOn;
         this.audio.init();

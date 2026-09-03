@@ -55,7 +55,7 @@ export class DealerUI extends Panel {
     body.appendChild(stockSec);
 
     const custSec = document.createElement('div');
-    custSec.innerHTML = `<h3>CUSTOMERS HANDLED BY VINCE (${d.customers.length}/${DEALER_MAX_CUSTOMERS})</h3><div class="desc" style="color:#999">Assigned customers stop paging you; Vince sells to them on his own every 20 minutes if he has stock.</div>`;
+    custSec.innerHTML = `<h3>CUSTOMERS HANDLED BY VINCE (${d.customers.length}/${DEALER_MAX_CUSTOMERS})</h3><div class="desc" style="color:#999">Assigned customers stop paging you; Vince sells to them on his own about every hour and a half if he has stock.</div>`;
     for (const c of CUSTOMERS) {
       const cs = st.customers[c.id];
       if (!cs?.unlocked) continue;
