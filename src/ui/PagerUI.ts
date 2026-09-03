@@ -1,0 +1,103 @@
+import { Panel } from './Panel';
+import { GameAPI } from './UIContext';
+import { pendingOrders, activeOrders, describeRequest, findFulfillingItem } from '../systems/OrderSystem';
+import { storageItemForOrder, runnerBusy } from '../systems/RunnerSystem';
+import { CUSTOMER_MAP } from '../data/customers';
+import { LANDMARKS } from '../data/city';
+import { GameClock } from '../core/Time';
+import { relationshipTier } from '../systems/CustomerSystem';
+import { Order } from '../game/GameState';
+
+export function landmarkName(id: string): string {
+  return LANDMARKS.find((l) => l.id === id)?.name ?? id;
+}
+
+export function pagerLine(order: Order, request: string): string {
+  const c = CUSTOMER_MAP[order.customerId];
+  const phone = '555-0' + (100 + (order.customerId.charCodeAt(0) * 7 + order.customerId.length * 13) % 900);
+  return `${phone}\n${order.qty}x ${request}\n$${order.price}\n${landmarkName(order.locationId).toUpperCase()}\nBY ${GameClock.formatMinutes(order.windowEnd)}  -${c.name.split(' ')[0].toUpperCase()}`;
+}
+
+/** The pager: incoming orders, accepted orders, runner dispatch. */
+export class PagerUI extends Panel {
+  constructor(parent: HTMLElement, private api: GameAPI) {
+    super('pager-panel', 'PAGER · MOTOROLA-STYLE BEEPER', parent);
+  }
+
+  render(): void {
+    const st = this.api.state;
+    const body = this.body;
+    body.innerHTML = '';
+    const device = document.createElement('div');
+    device.className = 'pager-device';
+    body.appendChild(device);
+    const pending = pendingOrders(st);
+    const active = activeOrders(st);
+    const h = (t: string): void => {
+      const e = document.createElement('h3');
+      e.textContent = t;
+      device.appendChild(e);
+    };
+    h(`NEW MESSAGES (${pending.length})`);
+    if (pending.length === 0) {
+      const e = document.createElement('div');
+      e.className = 'pager-screen';
+      e.textContent = 'NO NEW PAGES.\nCUSTOMERS PAGE YOU WHEN THEY NEED SOMETHING.';
+      device.appendChild(e);
+    }
+    for (const o of pending) {
+      const card = document.createElement('div');
+      card.className = 'order-card';
+      const c = CUSTOMER_MAP[o.customerId];
+      const cs = st.customers[o.customerId];
+      const screen = document.createElement('div');
+      screen.className = 'pager-screen';
+      screen.textContent = pagerLine(o, describeRequest(st, o));
+      card.appendChild(screen);
+      const info = document.createElement('div');
+      info.innerHTML = `<span class="tag">${c.personality.toUpperCase()}</span><span class="tag">${relationshipTier(cs.relationship).toUpperCase()}</span><span class="tag">REL ${cs.relationship}</span>` +
+        (o.effects.length ? o.effects.map((e) => `<span class="tag effect">${e}</span>`).join('') : '');
+      card.appendChild(info);
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+      actions.appendChild(this.button('ACCEPT', () => { this.api.acceptOrder(o.id); this.render(); }, 'primary'));
+      actions.appendChild(this.button('DECLINE', () => { this.api.declineOrder(o.id); this.render(); }));
+      card.appendChild(actions);
+      device.appendChild(card);
+    }
+    h(`ACTIVE ORDERS (${active.length})`);
+    for (const o of active) {
+      const card = document.createElement('div');
+      card.className = 'order-card active';
+      const c = CUSTOMER_MAP[o.customerId];
+      const have = findFulfillingItem(st, o);
+      const stock = storageItemForOrder(st, o);
+      const request = describeRequest(st, o);
+      card.innerHTML = `<b>${c.name}</b> · ${o.qty}x ${request} · $${o.price}<br/>` +
+        `MEET: ${landmarkName(o.locationId)} · WINDOW ${GameClock.formatMinutes(o.windowStart)}-${GameClock.formatMinutes(o.windowEnd)}<br/>` +
+        (o.status === 'runner'
+          ? `<span style="color:#7fffd4">RUNNER ON THE WAY · ${Math.round((o.runnerProgress ?? 0) * 100)}%</span>`
+          : have ? `<span style="color:#7dff9a">YOU ARE CARRYING THE GOODS</span>` : `<span style="color:#ffb3c1">YOU DO NOT HAVE ${o.qty}x ${request} YET</span>`);
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+      if (o.status === 'accepted' && st.runner?.hired) {
+        const btn = this.button(runnerBusy(st) ? 'RUNNER BUSY' : stock ? `SEND RUNNER (from ${stock.property})` : 'SEND RUNNER (no stock in storage)', () => { this.api.sendRunner(o.id); this.render(); }, 'cyan');
+        btn.disabled = runnerBusy(st) || !stock;
+        actions.appendChild(btn);
+      }
+      card.appendChild(actions);
+      device.appendChild(card);
+    }
+    const done = st.orders.filter((o) => o.status === 'completed').slice(-5).reverse();
+    if (done.length) {
+      h('RECENT DEALS');
+      for (const o of done) {
+        const e = document.createElement('div');
+        e.className = 'order-card';
+        e.style.opacity = '0.7';
+        e.textContent = `${CUSTOMER_MAP[o.customerId].name}: ${o.qty}x ${describeRequest(st, o)} · $${o.price}`;
+        device.appendChild(e);
+      }
+    }
+  }
+}

@@ -25,7 +25,7 @@ function addObject(ctx: InteriorContext, kind: WorldObject['kind'], id: string, 
 export function makeLabel(text: string, color = '#ffe9a8'): THREE.Sprite {
   const mat = new THREE.SpriteMaterial({ map: signTexture(text, { color, bg: 'rgba(0,0,0,0.6)', glow: false, font: 'bold 54px Arial' }), depthTest: true, transparent: true });
   const s = new THREE.Sprite(mat);
-  s.scale.set(2.2, 0.55, 1);
+  s.scale.set(1.3, 0.33, 1);
   return s;
 }
 
@@ -322,4 +322,37 @@ export function furnishInterior(spec: BuildingSpec, ctx: InteriorContext, doorDi
   }
   void doorDir;
   void basic;
+}
+
+/** Player-placed equipment inside the warehouse. Returns the anchor object for interaction wiring. */
+export function buildPlacedStation(ctx: InteriorContext, kind: 'prep_table' | 'pack_table' | 'storage', id: string, x: number, z: number, rot: number): WorldObject {
+  if (kind === 'storage') {
+    const s = shelf(ctx, x, z, 3, rot, '#6d4c41');
+    const lbl = makeLabel('STORAGE', '#b3ffb3');
+    lbl.position.set(0, 2.4, 0);
+    s.add(lbl);
+    return addObject(ctx, 'storage', id, s, 'warehouse');
+  }
+  const t = table(ctx, x, z, 2.2, 1, kind === 'prep_table' ? '#8ea9c8' : '#c8b08e');
+  t.rotation.y = rot;
+  if (kind === 'prep_table') {
+    const mixer = new THREE.Mesh(boxGeo(0.6, 0.5, 0.6), lambert('#b0bec5'));
+    mixer.position.set(0.5, 1.2, 0);
+    const bowl = new THREE.Mesh(cylGeo(0.35, 0.25, 0.3, 10), lambert('#ffcc80'));
+    bowl.position.set(-0.5, 1.1, 0);
+    t.add(mixer, bowl);
+    const lbl = makeLabel('PREP TABLE', '#8ee7ff');
+    lbl.position.set(0, 2.1, 0);
+    t.add(lbl);
+  } else {
+    const bags = new THREE.Mesh(boxGeo(0.7, 0.3, 0.5), lambert('#f5f5f5'));
+    bags.position.set(-0.5, 1.1, 0);
+    const sealer = new THREE.Mesh(boxGeo(0.7, 0.2, 0.4), lambert('#e53935'));
+    sealer.position.set(0.5, 1.05, 0);
+    t.add(bags, sealer);
+    const lbl = makeLabel('PACKAGING', '#ffd166');
+    lbl.position.set(0, 2.1, 0);
+    t.add(lbl);
+  }
+  return addObject(ctx, kind, id, t, 'warehouse');
 }

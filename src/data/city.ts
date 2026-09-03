@@ -120,7 +120,7 @@ export const PAYPHONES: { x: number; z: number; rot: number }[] = [
   { x: -157, z: -35, rot: Math.PI },
 ];
 
-export const SPAWN = { x: -12, y: 0, z: 14, yaw: Math.PI / 2 };
+export const SPAWN = { x: -22, y: 0, z: 16, yaw: -0.51 };
 export const SAFEHOUSE_DOOR = { x: -13, z: 14 };
 export const SUPPLIER_SPOT = { x: -158, z: 22, name: 'Rico' };
 export const RUNNER_CONTACT_SPOT = { x: 154, z: -84, name: 'Dizzy' };
