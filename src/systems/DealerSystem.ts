@@ -79,6 +79,8 @@ export interface DealerTickResult {
   sales: { customerId: string; itemKey: string; qty: number; earned: number }[];
   hassled?: { lost: number };
   starved?: boolean;
+  /** A customer got tired of an empty corner and left for a rival crew. */
+  poached?: string;
 }
 
 /**
@@ -95,8 +97,18 @@ export function tickDealer(state: GameState, nowMinutes: number, rng: () => numb
   if (d.customers.length === 0) return out;
   if (dealerStockCount(state) === 0) {
     out.starved = true;
+    d.starvedRounds = (d.starvedRounds ?? 0) + 1;
+    if (d.starvedRounds >= 4 && rng() < 0.5) {
+      const cid = d.customers[Math.floor(rng() * d.customers.length)];
+      d.customers.splice(d.customers.indexOf(cid), 1);
+      const cs = customerState(state, cid);
+      cs.relationship = Math.max(0, cs.relationship - 5);
+      d.starvedRounds = 0;
+      out.poached = cid;
+    }
     return out;
   }
+  d.starvedRounds = 0;
   for (const cid of d.customers) {
     if (rng() > 0.6) continue;
     if (dealerStockCount(state) === 0) break;

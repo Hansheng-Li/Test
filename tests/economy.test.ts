@@ -49,3 +49,20 @@ describe('economy + inventory', () => {
     expect(countItem(s, 'baggies')).toBe(10);
   });
 });
+
+describe('supplier delivery', () => {
+  it('delivers to warehouse storage for a 20% fee, only with a warehouse', async () => {
+    const { buyDelivered } = await import('../src/systems/EconomySystem');
+    const { storageCount } = await import('../src/systems/InventorySystem');
+    const s = createNewState();
+    s.cash = 100;
+    expect(buyDelivered(s, 'supplier', 'pulp_sunset', 5).reason).toBe('no_warehouse');
+    s.properties.push('warehouse');
+    const r = buyDelivered(s, 'supplier', 'pulp_sunset', 5);
+    expect(r.ok).toBe(true);
+    expect(r.spent).toBe(54);
+    expect(s.cash).toBe(46);
+    expect(storageCount(s, 'warehouse', 'pulp_sunset')).toBe(5);
+    expect(countItem(s, 'pulp_sunset')).toBe(0);
+  });
+});

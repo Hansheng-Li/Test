@@ -1,13 +1,15 @@
 import { GameState } from '../game/GameState';
 import { SHOPS, ITEMS } from '../data/items';
-import { addItem, spaceFor } from './InventorySystem';
+import { addItem, spaceFor, storageAdd, storageCapacity, storageUsed } from './InventorySystem';
 import { shopPriceMultiplier } from './EventSystem';
 
 export interface PurchaseResult {
   ok: boolean;
-  reason?: 'no_cash' | 'no_space' | 'unknown' | 'owned' | 'locked';
+  reason?: 'no_cash' | 'no_space' | 'unknown' | 'owned' | 'locked' | 'no_warehouse';
   spent?: number;
 }
+
+export const DELIVERY_FEE = 0.2;
 
 export function canAfford(state: GameState, amount: number): boolean {
   return state.cash >= amount;
@@ -49,5 +51,24 @@ export function buyFromShop(state: GameState, shopId: string, itemId: string, qt
   } else {
     addItem(state, itemId, qty);
   }
+  return { ok: true, spent: total };
+}
+
+/**
+ * Rico drops supplies straight into your warehouse storage for a 20% fee.
+ * One less backpack trip across town — automation for the supply side.
+ */
+export function buyDelivered(state: GameState, shopId: string, itemId: string, qty: number): PurchaseResult {
+  if (!state.properties.includes('warehouse')) return { ok: false, reason: 'no_warehouse' };
+  const shop = SHOPS[shopId];
+  const entry = shop?.entries.find((e) => e.itemId === itemId);
+  if (!entry) return { ok: false, reason: 'unknown' };
+  const def = ITEMS[itemId];
+  if (def.category === 'equipment') return { ok: false, reason: 'unknown' };
+  const total = Math.round(shopPrice(state, shopId, itemId) * qty * (1 + DELIVERY_FEE));
+  if (state.cash < total) return { ok: false, reason: 'no_cash' };
+  if (storageUsed(state, 'warehouse') + qty > storageCapacity(state, 'warehouse')) return { ok: false, reason: 'no_space' };
+  spendCash(state, total);
+  storageAdd(state, 'warehouse', itemId, qty);
   return { ok: true, spent: total };
 }

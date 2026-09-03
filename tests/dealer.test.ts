@@ -57,3 +57,23 @@ describe('dealer network', () => {
     expect(s.heat).toBe(8);
   });
 });
+
+describe('dealer pressure + supplier delivery', () => {
+  it('an empty corner for four rounds can lose a customer to a rival crew', () => {
+    const s = createNewState();
+    s.cash = 2000;
+    hireDealer(s, 1000);
+    assignDealerCustomer(s, 'tasha');
+    s.customers['tasha'].relationship = 10;
+    let t = s.clockMinutes;
+    let poached: string | undefined;
+    for (let i = 0; i < 4; i++) {
+      t += DEALER_INTERVAL;
+      const r = tickDealer(s, t, () => 0.1);
+      if (r.poached) poached = r.poached;
+    }
+    expect(poached).toBe('tasha');
+    expect(s.dealer!.customers).toEqual([]);
+    expect(s.customers['tasha'].relationship).toBe(5);
+  });
+});

@@ -16,7 +16,7 @@ import { GameState, Order, PlacedStation } from './GameState';
 import { createNewState, saveToStorage, loadFromStorage, hasSave, clearSave } from '../systems/SaveSystem';
 import { InteractionSystem, Interactable } from '../systems/InteractionSystem';
 import { addItem, countItem, removeItem, resolveItem, depositToStorage, withdrawFromStorage, packagedInInventory, looseProductsInInventory } from '../systems/InventorySystem';
-import { buyFromShop, spendCash, PurchaseResult } from '../systems/EconomySystem';
+import { buyFromShop, buyDelivered, spendCash, PurchaseResult } from '../systems/EconomySystem';
 import { executePrep, executePackage, nameRecipe, recipeDisplayName, PrepPlan, PrepResult, PackageResult } from '../systems/ProductionSystem';
 import { generateOrder, acceptOrder, declineOrder, activeOrders, pendingOrders, completeSale, expireOrders, findFulfillingItem, describeRequest, counterOffer, rollTrend } from '../systems/OrderSystem';
 import { decayHeat, witnessedDeal, applyArrest, addHeat, heatLevel } from '../systems/HeatSystem';
@@ -514,6 +514,10 @@ export class Game implements GameAPI {
     if (dr.hassled) {
       this.audio.play('siren');
       this.toast(`Cops shook Vince down: ${dr.hassled.lost} units lost, HEAT +8.`, 'warn', 6000);
+    }
+    if (dr.poached) {
+      this.audio.play('error');
+      this.toast(`${CUSTOMER_MAP[dr.poached].name.split(' ')[0]} got tired of Vince's empty corner and now buys from a rival crew. Keep him stocked!`, 'warn', 8000);
     }
     if (dr.starved) {
       this.dealerStarvedTimer -= 1;
@@ -1034,6 +1038,12 @@ export class Game implements GameAPI {
   buy(shopId: string, itemId: string, qty: number): PurchaseResult {
     const r = buyFromShop(this.state, shopId, itemId, qty);
     if (r.ok && ITEMS[itemId].category === 'equipment' && !itemId.endsWith('_kit')) this.toast(`Bought ${ITEMS[itemId].name}: ${ITEMS[itemId].desc}`, 'cash', 5000);
+    return r;
+  }
+
+  buyDelivered(shopId: string, itemId: string, qty: number): PurchaseResult {
+    const r = buyDelivered(this.state, shopId, itemId, qty);
+    if (r.ok) this.toast(`Rico will drop ${qty}x ${ITEMS[itemId].name} at Warehouse 7 storage.`, 'info', 2500);
     return r;
   }
 

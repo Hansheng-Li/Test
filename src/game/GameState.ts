@@ -82,6 +82,8 @@ export interface DealerState {
   lastTickMinute: number;
   sales: number;
   earnedTotal: number;
+  /** Consecutive sales rounds with empty stock. */
+  starvedRounds?: number;
 }
 
 export interface GameState {

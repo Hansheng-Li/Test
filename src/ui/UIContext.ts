@@ -17,6 +17,7 @@ export interface GameAPI {
   declineOrder(id: number): void;
   sendRunner(id: number): void;
   buy(shopId: string, itemId: string, qty: number): PurchaseResult;
+  buyDelivered(shopId: string, itemId: string, qty: number): PurchaseResult;
   prep(plan: PrepPlan): PrepResult;
   packageProduct(key: string, qty: number): PackageResult;
   nameRecipe(key: string, name: string): boolean;
