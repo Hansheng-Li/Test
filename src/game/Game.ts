@@ -1472,7 +1472,8 @@ export class Game implements GameAPI {
 
   private updateHiding(dt: number): void {
     if (!this.hiding) return;
-    this.player.position.set(this.hiding.x, -0.55, this.hiding.z);
+    // physics pushed us back onto the ground this frame; sink back in and re-sync the camera
+    this.player.teleport(this.hiding.x, -0.55, this.hiding.z, this.player.yaw);
     this.hideLineTimer -= dt;
     if (this.hideLineTimer <= 0) {
       this.hideLineTimer = 6 + Math.random() * 6;
