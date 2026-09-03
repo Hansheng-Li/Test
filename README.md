@@ -189,6 +189,27 @@ Design rules that shaped the code:
 4. **Co-op** (one player produces, one sells, one manages, one drives) on top of the serializable state.
 5. More interiors, richer NPC schedules, and more original radio stations.
 
+## Development report (v0.1)
+
+**Implemented** — everything listed under *Implemented systems*, built in nine iterations after the MVP:
+haggling, wandering customers with samples and street deals, dealer network, world events, milestones,
+crew naming, drivable sedan, procedural radio, motel and laundromat properties, VIP orders, boredom,
+stamina, dumpster hiding, warehouse inspections, settings, and five code-review rounds of fixes.
+
+**Tested** — 55 Vitest behavioural tests (economy, production chemistry, orders, haggling, samples,
+street deals, dealer, worker, runner queue, heat/arrest, events, milestones, save repair and migration);
+Playwright smoke + core-loop e2e; scripted browser regressions for warehouse placement, worker, dealer,
+runner queue, motel, car, hiding, arrest; a 6-game-hour automated soak of the late-game economy with
+reload; screenshot passes for every district by day and night.
+
+**Known issues** — see *Known limitations*; additionally pointer-lock recovery after a browser-forced
+exit can need one extra click, and the software-rendered headless browser used for CI-style checks runs
+at ~4 fps, so timing-sensitive checks there rely on frame counting.
+
+**Next 5 priorities** — 1. rival crew that contests dealer customers and corners; 2. handler employee
+and multi-worker warehouses; 3. richer NPC schedules (customers at work/home/club by hour);
+4. co-op on top of the serialisable state; 5. more original radio stations and interiors.
+
 ## Licensing
 
 All code and generated assets in this repository are original. No third-party art, audio or fonts are used
