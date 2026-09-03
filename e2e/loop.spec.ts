@@ -11,7 +11,7 @@ test.setTimeout(240_000);
 type G = {
   startNewGame(): void;
   input: { locked: boolean };
-  state: { cash: number; inventory: ({ id: string; qty: number } | null)[]; orders: { id: number; status: string; customerId: string }[]; customers: Record<string, { relationship: number }>; flags: Record<string, boolean> };
+  state: { cash: number; inventory: ({ id: string; qty: number } | null)[]; orders: { id: number; status: string; customerId: string; price: number }[]; customers: Record<string, { relationship: number }>; flags: Record<string, boolean> };
   city: { objects: { kind: string; position: { x: number; y: number; z: number } }[] };
   player: { teleport(x: number, y: number, z: number, yaw: number): void; pitch: number };
   customers: Map<number, { position: { x: number; z: number } }>;
