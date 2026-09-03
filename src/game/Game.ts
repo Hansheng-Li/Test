@@ -989,6 +989,17 @@ export class Game implements GameAPI {
     }
     const r = streetSale(s, def.id, this.clock.totalMinutes);
     if (!r.ok) {
+      // small talk: sometimes they point you at a friend you have not met yet
+      const locked = CUSTOMERS.filter((c) => c.introducedBy === def.id && !s.customers[c.id]?.unlocked);
+      if (locked.length && Math.random() < 0.5) {
+        const f = locked[Math.floor(Math.random() * locked.length)];
+        const zone = f.homeZone === 'beach' ? 'the beach strip' : f.homeZone === 'docks' ? 'the docks' : 'downtown';
+        const when = f.timePref === 'night' ? ' after dark' : f.timePref === 'day' ? ' during the day' : '';
+        const tip = `You know ${f.name.split(' ')[0]}? ${f.personality}, hangs around ${zone}${when}. Loves ${f.prefBase}. Bring a sample.`;
+        w.say(`Ask ${f.name.split(' ')[0]} about ${f.prefBase}.`, '#ffd166', 3);
+        this.toast(`${first}: "${tip}"`, 'info', 6000);
+        return;
+      }
       const hint = r.reason === 'cooldown' ? `"I'm good for now. Page you later."` : r.reason === 'dealer' ? `"Vince takes care of me now. Nice guy. Weird sunglasses."` : r.reason === 'bored' ? `"Same stuff again? Surprise me next time."` : `"I like ${def.prefBase} with ${def.prefEffects.join(' or ')}. Got anything?"`;
       w.say(hint.replace(/"/g, ''), '#ffd166', 3);
       this.toast(`${first}: ${hint}`, 'info', 4000);
