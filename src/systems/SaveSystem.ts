@@ -75,6 +75,25 @@ export function deserialize(json: string): GameState | null {
     player: r.player && typeof r.player.x === 'number' ? r.player : fresh.player,
   };
   while (state.inventory.length < INVENTORY_SLOTS) state.inventory.push(null);
+  // nested objects: repair anything that would crash a system tick
+  const num = (v: unknown, d: number): number => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+  state.clockMinutes = num(r.clockMinutes, fresh.clockMinutes);
+  const maxOrderId = state.orders.reduce((m, o) => Math.max(m, typeof o.id === 'number' ? o.id : 0), 0);
+  state.nextOrderId = Math.max(num(r.nextOrderId, 1), maxOrderId + 1);
+  state.lastOrderMinute = num(r.lastOrderMinute, 0);
+  state.orders = state.orders.filter((o) => o && typeof o.id === 'number' && typeof o.customerId === 'string' && typeof o.status === 'string');
+  const rr = r.runner;
+  state.runner = rr && typeof rr === 'object' && rr.hired ? { hired: true, name: typeof rr.name === 'string' ? rr.name : 'Dizzy', activeOrderId: typeof rr.activeOrderId === 'number' ? rr.activeOrderId : null, deliveries: num(rr.deliveries, 0), earned: num(rr.earned, 0), queue: Array.isArray(rr.queue) ? rr.queue.filter((x) => typeof x === 'number') : [] } : null;
+  const rw = r.worker;
+  state.worker = rw && typeof rw === 'object' && rw.hired ? { hired: true, name: typeof rw.name === 'string' ? rw.name : 'Marisol', recipeKey: typeof rw.recipeKey === 'string' ? rw.recipeKey : null, property: typeof rw.property === 'string' ? rw.property : 'warehouse', progress: num(rw.progress, 0), produced: num(rw.produced, 0) } : null;
+  const rd = r.dealer;
+  state.dealer = rd && typeof rd === 'object' && rd.hired ? { hired: true, name: typeof rd.name === 'string' ? rd.name : 'Vince', stock: Array.isArray(rd.stock) ? rd.stock.filter((x) => x && typeof x.id === 'string' && typeof x.qty === 'number' && x.qty > 0) : [], cash: num(rd.cash, 0), customers: Array.isArray(rd.customers) ? rd.customers.filter((x) => typeof x === 'string') : [], lastTickMinute: num(rd.lastTickMinute, state.clockMinutes), sales: num(rd.sales, 0), earnedTotal: num(rd.earnedTotal, 0), starvedRounds: num(rd.starvedRounds, 0) } : null;
+  const rv = r.vehicle;
+  state.vehicle = rv && typeof rv === 'object' && rv.owned ? { owned: true, x: num(rv.x, -70), z: num(rv.z, -32), yaw: num(rv.yaw, 0) } : null;
+  state.trend = r.trend && typeof r.trend === 'object' && typeof r.trend.effect === 'string' && typeof r.trend.day === 'number' ? r.trend : null;
+  state.event = r.event && typeof r.event === 'object' && typeof r.event.id === 'string' && typeof r.event.day === 'number' ? r.event : null;
+  for (const key of Object.keys(state.storage)) if (!Array.isArray(state.storage[key])) state.storage[key] = [];
+  for (const prop of state.properties) if (!state.storage[prop]) state.storage[prop] = [];
   state.heat = Math.max(0, Math.min(100, Number(state.heat) || 0));
   state.suspicion = Math.max(0, Math.min(100, Number(state.suspicion) || 0));
   if (!Number.isFinite(state.cash)) state.cash = 0;

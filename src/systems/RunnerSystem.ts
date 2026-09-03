@@ -1,6 +1,6 @@
 import { GameState, Order } from '../game/GameState';
 import { RUNNER_CUT } from '../data/items';
-import { LANDMARKS } from '../data/city';
+import { LANDMARKS, PROPERTY_ANCHORS } from '../data/city';
 import { packagedItemId, parseRecipeKey, computeRecipe } from '../data/products';
 import { storageOf, storageRemove } from './InventorySystem';
 import { orderMatchesItem } from './OrderSystem';
@@ -78,7 +78,7 @@ export function advanceRunnerQueue(state: GameState): Order | null {
 
 /** Trip time in seconds from the property to the landmark and back-ish (one way counts). */
 export function runnerTripSeconds(property: string, locationId: string): number {
-  const from = property === 'warehouse' ? { x: -149, z: -60 } : { x: -13, z: 14 };
+  const from = PROPERTY_ANCHORS[property] ?? PROPERTY_ANCHORS.safehouse;
   const l = LANDMARKS.find((x) => x.id === locationId) ?? LANDMARKS[0];
   const d = Math.hypot(l.x - from.x, l.z - from.z);
   return Math.max(8, d / RUNNER_SPEED + 6);

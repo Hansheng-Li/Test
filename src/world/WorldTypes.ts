@@ -27,6 +27,8 @@ export interface WorldObject {
   /** Which property this object belongs to ('safehouse' | 'warehouse'), if any. */
   property?: string;
   data?: Record<string, unknown>;
+  /** Colliders owned by a dynamically built object (removed when it is torn down). */
+  colliders?: import('../physics/Colliders').AABB[];
 }
 
 export interface NightToggle {

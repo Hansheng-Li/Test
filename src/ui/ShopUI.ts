@@ -16,6 +16,7 @@ export class ShopUI extends Panel {
   /** Select which vendor to show; the game then opens the panel through its panel manager. */
   setShop(id: string): void {
     this.shopId = id;
+    if (id !== 'supplier') this.deliver = false;
     this.el.querySelector('h2')!.childNodes[0].textContent = SHOPS[id].name.toUpperCase();
   }
 

@@ -1,4 +1,4 @@
-import { ROADS_X, ROADS_Z, ROAD_WIDTH, SIDEWALK_WIDTH, MAP_MIN_X, MAP_MIN_Z, OCEAN_X, CANAL_X, CANAL_Z } from '../data/city';
+import { ROADS_X, ROADS_Z, ROAD_WIDTH, SIDEWALK_WIDTH, MAP_MIN_X, MAP_MIN_Z, OCEAN_X, CANAL_X, CANAL_Z, zoneAt } from '../data/city';
 
 export interface Waypoint {
   id: number;
@@ -24,7 +24,7 @@ export class WaypointGraph {
     const key = (i: number, j: number, cx: number, cz: number): string => `${i},${j},${cx},${cz}`;
     const add = (x: number, z: number): number => {
       if (x < CANAL_X + 6 || x > OCEAN_X - 4 || z > CANAL_Z - 6) return -1;
-      const zone = x > 116 ? 'beach' : x < -110 ? 'docks' : 'downtown';
+      const zone = zoneAt(x);
       const id = this.nodes.length;
       this.nodes.push({ id, x, z, links: [], zone });
       return id;

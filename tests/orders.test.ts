@@ -157,3 +157,17 @@ describe('samples + street deals', () => {
     expect(streetSale(s, 'gloria', 1005).reason).toBe('locked');
   });
 });
+
+describe('friend unlock visibility', () => {
+  it('friend-introduced customers are marked introduced so they show up on the street', () => {
+    const s = createNewState();
+    s.customers['tasha'].relationship = 9;
+    const o = generateOrder(s, { now: s.clockMinutes, customerId: 'tasha', simple: true, rng: seq([0.1]) })!;
+    acceptOrder(s, o.id);
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    addItem(s, 'pkg:SUNSET', o.qty);
+    completeSale(s, o.id, s.clockMinutes);
+    expect(s.customers['dexter'].unlocked).toBe(true);
+    expect(s.customers['dexter'].introduced).toBe(true);
+  });
+});

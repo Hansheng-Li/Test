@@ -137,7 +137,7 @@ export function storageRemove(state: GameState, property: string, id: string, qt
 /** Capacity in units for a property's storage (grows with shelves). */
 export function storageCapacity(state: GameState, property: string): number {
   const base = property === 'warehouse' ? 200 : property === 'motel' ? 60 : 40;
-  const shelves = state.placedStations.filter((p) => p.kind === 'storage').length;
+  const shelves = property === 'warehouse' ? state.placedStations.filter((p) => p.kind === 'storage').length : 0;
   return base + shelves * 60;
 }
 

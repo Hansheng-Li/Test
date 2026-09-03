@@ -6,6 +6,9 @@ import { seeded } from '../utils/math';
 
 /** Helper that places a mesh and registers its collider in one call. */
 export class PropBuilder {
+  /** Every collider this builder registered (so dynamic objects can be torn down again). */
+  added: AABB[] = [];
+
   constructor(public group: THREE.Group, public colliders: CollisionWorld) {}
 
   solidBox(cx: number, bottomY: number, cz: number, w: number, h: number, d: number, material: THREE.Material | THREE.Material[], tag?: string, castShadow = false): THREE.Mesh {
@@ -14,7 +17,7 @@ export class PropBuilder {
     m.castShadow = castShadow;
     m.receiveShadow = true;
     this.group.add(m);
-    this.colliders.add(aabbFromBottom(cx, bottomY, cz, w, h, d, tag));
+    this.added.push(this.colliders.add(aabbFromBottom(cx, bottomY, cz, w, h, d, tag)));
     return m;
   }
 
@@ -27,7 +30,7 @@ export class PropBuilder {
   }
 
   collider(box: AABB): void {
-    this.colliders.add(box);
+    this.added.push(this.colliders.add(box));
   }
 }
 

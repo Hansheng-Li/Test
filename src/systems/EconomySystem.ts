@@ -43,7 +43,8 @@ export function buyFromShop(state: GameState, shopId: string, itemId: string, qt
   if (isEquipment && !itemId.endsWith('_kit') && state.upgrades.includes(itemId)) return { ok: false, reason: 'owned' };
   const total = shopPrice(state, shopId, itemId) * (isEquipment ? 1 : qty);
   if (state.cash < total) return { ok: false, reason: 'no_cash' };
-  if (!isEquipment && spaceFor(state, itemId) < qty) return { ok: false, reason: 'no_space' };
+  const needsSlot = !isEquipment || itemId.endsWith('_kit');
+  if (needsSlot && spaceFor(state, itemId) < (isEquipment ? 1 : qty)) return { ok: false, reason: 'no_space' };
   spendCash(state, total);
   if (isEquipment) {
     if (itemId.endsWith('_kit')) addItem(state, itemId, 1);

@@ -41,6 +41,7 @@ export function recordSuccessfulDeal(state: GameState, customerId: string, opts:
     if (s.unlocked) continue;
     if (c.introducedBy === customerId && cs.relationship >= c.unlockAt) {
       s.unlocked = true;
+      s.introduced = true;
       unlocked.push(c.id);
     }
   }

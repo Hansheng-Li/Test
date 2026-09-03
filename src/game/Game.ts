@@ -7,7 +7,7 @@ import { DayNight } from '../world/DayNight';
 import { PropBuilder } from '../world/Props';
 import { buildPlacedStation, InteriorContext } from '../world/Interiors';
 import { WorldObject } from '../world/WorldTypes';
-import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT } from '../data/city';
+import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT, zoneAt } from '../data/city';
 import { makeFigure, makeLabel } from '../world/Interiors';
 import { CUSTOMER_MAP } from '../data/customers';
 import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, VEHICLE_PRICE, MOTEL_PRICE, ITEMS } from '../data/items';
@@ -48,7 +48,6 @@ import { CUSTOMERS } from '../data/customers';
 import { offerSample } from '../systems/CustomerSystem';
 import { streetSale, streetSaleCandidate, streetUnitPrice, STREET_SALE_COOLDOWN } from '../systems/OrderSystem';
 import { lambert, boxGeo } from '../world/Materials';
-import { GameClock as Clock } from '../core/Time';
 
 const CIVILIAN_COLORS = ['#e91e63', '#9c27b0', '#3f51b5', '#03a9f4', '#009688', '#8bc34a', '#ffeb3b', '#ff9800', '#795548', '#ffffff', '#f44336', '#00bcd4'];
 const SKINS = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac'];
@@ -117,6 +116,8 @@ export class Game implements GameAPI {
   private tips: string[] = [];
   private tipTimer = 0;
   private objectiveText = '';
+  private orderText: string | null = null;
+  private hudTextTimer = 0;
   /** Two-press confirmation (no browser dialogs: they would drop pointer lock). */
   private pendingConfirm: { key: string; until: number } | null = null;
   /** Real elapsed time (lightly capped) for UI timers, independent of the physics step cap. */
@@ -261,10 +262,13 @@ export class Game implements GameAPI {
     this.driving = false;
     this.syncVehicle();
     // placed stations
+    const stale: import('../physics/Colliders').AABB[] = [];
     for (const o of this.placedObjects) {
       this.interaction.remove(o.id);
       this.dynamicGroup.remove(o.mesh);
+      if (o.colliders) stale.push(...o.colliders);
     }
+    if (stale.length) this.city.colliders.removeMany(stale);
     this.placedObjects = [];
     for (const p of s.placedStations) this.instantiateStation(p);
     this.updateWarehouseSign();
@@ -419,6 +423,7 @@ export class Game implements GameAPI {
     const pb = new PropBuilder(this.dynamicGroup, this.city.colliders);
     const ctx: InteriorContext = { pb, objects: [], night: this.city.night, floorY: 0.15 };
     const obj = buildPlacedStation(ctx, p.kind, p.id, p.x, p.z, p.rot);
+    obj.colliders = pb.added;
     this.placedObjects.push(obj);
     this.wireObject(obj);
   }
@@ -643,8 +648,13 @@ export class Game implements GameAPI {
     }
 
     this.hud.speedText = this.driving && this.vehicle ? `${Math.round(this.vehicle.mph)} MPH` : null;
-    this.objectiveText = this.computeObjective();
-    this.hud.update(s, this.clock.formatClock(), this.clock.day, this.objectiveText, this.currentOrderText(), dt);
+    this.hudTextTimer -= dt;
+    if (this.hudTextTimer <= 0) {
+      this.hudTextTimer = 0.2;
+      this.objectiveText = this.computeObjective();
+      this.orderText = this.currentOrderText();
+    }
+    this.hud.update(s, this.clock.formatClock(), this.clock.day, this.objectiveText, this.orderText, dt);
   }
 
   // ------------------------------------------------------------------ NPC updates
@@ -667,7 +677,7 @@ export class Game implements GameAPI {
     }
     const holding = this.state.inventory.some((st) => st && (st.id.startsWith('pkg:') || st.id.startsWith('prod:')));
     for (const p of this.police) {
-      const crack = heatMultiplier(this.state, this.zoneAt(p.position.x)) > 1;
+      const crack = heatMultiplier(this.state, zoneAt(p.position.x)) > 1;
       const result = p.update(dt, { playerX: px, playerZ: pz, playerY: py, heat: this.state.heat + (crack ? 15 : 0), playerSafe: safe, playerHolding: holding, los });
       p.syncVisual(dt);
       if (result === 'arrest' && !this.arrested) this.beginArrest();
@@ -817,7 +827,7 @@ export class Game implements GameAPI {
     const awake = (pref: 'day' | 'night' | 'any'): boolean => (pref === 'any' ? true : pref === 'day' ? h >= 7 && h < 22 : h >= 17 || h < 5);
     for (const def of CUSTOMERS) {
       const cs = s.customers[def.id];
-      const shouldExist = !busy.has(def.id) && awake(def.timePref) && !(cs && cs.introduced === false && cs.unlocked);
+      const shouldExist = !busy.has(def.id) && awake(def.timePref);
       const existing = this.wanderers.get(def.id);
       if (shouldExist && !existing) {
         const zoneNodes = this.city.waypoints.nodes.filter((n) => n.zone === def.homeZone);
@@ -914,7 +924,7 @@ export class Game implements GameAPI {
         break;
       }
     }
-    const zoneMult = heatMultiplier(s, this.zoneAt(w.position.x));
+    const zoneMult = heatMultiplier(s, zoneAt(w.position.x));
     if (witnessed) {
       witnessedDeal(s, r.earned! * zoneMult);
       if (zoneMult > 1) addHeat(s, 10);
@@ -977,7 +987,7 @@ export class Game implements GameAPI {
         break;
       }
     }
-    const zoneMult = heatMultiplier(s, this.zoneAt(npc.position.x));
+    const zoneMult = heatMultiplier(s, zoneAt(npc.position.x));
     if (witnessed) {
       witnessedDeal(s, r.earned! * zoneMult);
       if (zoneMult > 1) addHeat(s, 10);
@@ -1002,7 +1012,7 @@ export class Game implements GameAPI {
       if (d > 40 && d < 80) {
         this.cancelChecked.add(o.id);
         const def = npc.def;
-        if (Math.random() > def.reliability && !s.flags.firstOrderSent === false && s.stats.sales > 0) {
+        if (Math.random() > def.reliability && s.flags.firstOrderSent && s.stats.sales > 0) {
           o.status = 'failed';
           this.audio.play('pager');
           this.hud.pagerNotify(`${def.name.split(' ')[0].toUpperCase()}: CANT MAKE IT\nSORRY. NEXT TIME.`);
@@ -1291,7 +1301,10 @@ export class Game implements GameAPI {
     s.suspicion = Math.max(0, s.suspicion - 5);
     this.audio.play('unlock');
     this.toast('You slept until morning. Heat is gone.', 'info');
-    expireOrders(s, this.clock.totalMinutes);
+    for (const o of expireOrders(s, this.clock.totalMinutes)) {
+      this.despawnCustomer(o.id);
+      if (s.customers[o.customerId]) s.customers[o.customerId].relationship = Math.max(0, s.customers[o.customerId].relationship - 2);
+    }
     this.orderTimer = 10;
     this.save();
   }
@@ -1579,7 +1592,7 @@ export class Game implements GameAPI {
     this.clock.totalMinutes = this.state.clockMinutes;
     const items = r.confiscated.map((c) => `${c.qty}x ${resolveItem(this.state, c.id).name}`).join(', ');
     this.toast(`BUSTED. ${items ? 'Confiscated: ' + items + '. ' : ''}Fine: $${r.fine}. You lost 6 hours in a holding cell.`, 'warn', 9000);
-    for (const o of this.state.orders) if (o.status === 'accepted') this.despawnCustomer(o.id);
+    for (const o of this.state.orders) if (o.status === 'accepted' || o.status === 'failed' || o.status === 'expired') this.despawnCustomer(o.id);
     if (this.openPanelId) this.closePanel();
     this.cancelPlacement();
   }
@@ -1596,10 +1609,6 @@ export class Game implements GameAPI {
       this.orderTimer = 15;
       this.save();
     }
-  }
-
-  private zoneAt(x: number): string {
-    return x > 116 ? 'beach' : x < -110 ? 'docks' : 'downtown';
   }
 
   private playerInsideBuilding(id: string): boolean {
@@ -1667,7 +1676,7 @@ export class Game implements GameAPI {
         const c = CUSTOMER_MAP[o.customerId];
         const have = findFulfillingItem(s, o);
         const tag = o.status === 'runner' ? `<span class="runner">RUNNER ${Math.round((o.runnerProgress ?? 0) * 100)}%</span>` : have ? '<span style="color:#7dff9a">READY</span>' : '<span style="color:#ffb3c1">NEED PRODUCT</span>';
-        return `${c.name.split(' ')[0]} · ${o.qty}x ${describeRequest(s, o)} · $${o.price}<br/>${landmarkName(o.locationId)} · by ${Clock.formatMinutes(o.windowEnd)} · ${tag}`;
+        return `${c.name.split(' ')[0]} · ${o.qty}x ${describeRequest(s, o)} · $${o.price}<br/>${landmarkName(o.locationId)} · by ${GameClock.formatMinutes(o.windowEnd)} · ${tag}`;
       })
       .join('<hr style="border:0;border-top:1px solid #444;margin:4px 0"/>');
   }

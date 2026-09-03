@@ -148,3 +148,15 @@ describe('runner queue', () => {
     expect(s.runner!.deliveries).toBe(2);
   });
 });
+
+describe('save repair', () => {
+  it('repairs broken nested objects instead of crashing later', () => {
+    const broken = deserialize(JSON.stringify({ cash: 10, inventory: [], dealer: { hired: true }, runner: { hired: true, queue: 'x' }, vehicle: { owned: true }, clockMinutes: 'abc', orders: [{ id: 7, customerId: 'moe', status: 'accepted' }], nextOrderId: 1 }))!;
+    expect(broken.dealer!.stock).toEqual([]);
+    expect(broken.dealer!.customers).toEqual([]);
+    expect(broken.runner!.queue).toEqual([]);
+    expect(Number.isFinite(broken.clockMinutes)).toBe(true);
+    expect(broken.nextOrderId).toBe(8);
+    expect(typeof broken.vehicle!.x).toBe('number');
+  });
+});

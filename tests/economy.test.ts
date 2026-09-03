@@ -66,3 +66,24 @@ describe('supplier delivery', () => {
     expect(countItem(s, 'pulp_sunset')).toBe(0);
   });
 });
+
+describe('review fixes', () => {
+  it('a station kit is not sold into a full backpack', async () => {
+    const { buyFromShop } = await import('../src/systems/EconomySystem');
+    const s = createNewState();
+    s.cash = 1000;
+    s.properties.push('warehouse');
+    for (let i = 0; i < 8; i++) addItem(s, 'junk' + i, 1);
+    const r = buyFromShop(s, 'pawn', 'prep_station_kit');
+    expect(r.reason).toBe('no_space');
+    expect(s.cash).toBe(1000);
+  });
+
+  it('placed shelves only grow the warehouse capacity', async () => {
+    const { storageCapacity } = await import('../src/systems/InventorySystem');
+    const s = createNewState();
+    s.placedStations.push({ id: 'a', kind: 'storage', x: 0, z: 0, rot: 0 });
+    expect(storageCapacity(s, 'warehouse')).toBe(260);
+    expect(storageCapacity(s, 'safehouse')).toBe(40);
+  });
+});

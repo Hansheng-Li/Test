@@ -48,6 +48,12 @@ export class CollisionWorld {
     this.rebuild();
   }
 
+  removeMany(boxes: AABB[]): void {
+    const set = new Set(boxes);
+    this.boxes = this.boxes.filter((b) => !set.has(b));
+    this.rebuild();
+  }
+
   rebuild(): void {
     this.grid.clear();
     for (const b of this.boxes) this.index(b);

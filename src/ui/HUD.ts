@@ -20,6 +20,9 @@ export class HUD {
   private pagerScreen: HTMLElement;
   private vignette: HTMLElement;
   private lastCash = NaN;
+  private lastObjective = '';
+  private lastOrder: string | null = '';
+  private lastClock = '';
   private pagerTimer = 0;
   selectedSlot = 0;
 
@@ -71,15 +74,25 @@ export class HUD {
       this.cashEl.textContent = '$' + Math.floor(state.cash).toLocaleString();
       this.lastCash = state.cash;
     }
-    this.clockEl.textContent = `DAY ${day} · ${clockText}` + (this.speedText ? ` · ${this.speedText}` : '');
+    const clockStr = `DAY ${day} · ${clockText}` + (this.speedText ? ` · ${this.speedText}` : '');
+    if (clockStr !== this.lastClock) {
+      this.clockEl.textContent = clockStr;
+      this.lastClock = clockStr;
+    }
     this.heatBar.style.width = state.heat.toFixed(0) + '%';
     this.heatLabel.textContent = heatLevel(state.heat).toUpperCase() + (state.suspicion > 30 ? ' · KNOWN' : '');
     this.vignette.className = state.heat >= 60 ? 'hot' : '';
-    this.objectiveEl.textContent = objective;
-    if (orderText) {
-      this.orderEl.style.display = 'block';
-      this.orderBody.innerHTML = orderText;
-    } else this.orderEl.style.display = 'none';
+    if (objective !== this.lastObjective) {
+      this.objectiveEl.textContent = objective;
+      this.lastObjective = objective;
+    }
+    if (orderText !== this.lastOrder) {
+      this.lastOrder = orderText;
+      if (orderText) {
+        this.orderEl.style.display = 'block';
+        this.orderBody.innerHTML = orderText;
+      } else this.orderEl.style.display = 'none';
+    }
     // hotbar
     const slots = this.slotsEl.children;
     for (let i = 0; i < 8; i++) {
