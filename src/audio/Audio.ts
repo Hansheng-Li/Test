@@ -1,3 +1,5 @@
+import { Radio } from './Radio';
+
 export type SfxName = 'pager' | 'cash' | 'click' | 'error' | 'siren' | 'seal' | 'mix' | 'arrest' | 'unlock' | 'step';
 
 /**
@@ -14,6 +16,7 @@ export class AudioSystem {
   private gullTimer = 3;
   enabled = true;
   private lastSfx = new Map<string, number>();
+  radio = new Radio();
 
   init(): void {
     if (this.ctx) return;
@@ -23,6 +26,7 @@ export class AudioSystem {
       this.master.gain.value = 0.5;
       this.master.connect(this.ctx.destination);
       this.startAmbient();
+      this.radio.attach(this.ctx, this.master);
     } catch {
       this.ctx = null;
     }

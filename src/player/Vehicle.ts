@@ -147,7 +147,7 @@ export class Vehicle {
     return this.yaw + Math.PI;
   }
 
-  get kmh(): number {
-    return Math.abs(this.speed) * 3.6 * 1.6; // exaggerated dash number for fun
+  get mph(): number {
+    return Math.abs(this.speed) * 2.237;
   }
 }

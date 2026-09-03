@@ -39,6 +39,8 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | `M` | Paper map of Sol Palma |
 | `1`–`8` | Select hotbar slot |
 | `B` | Place equipment (inside your warehouse, with a station kit in your backpack) |
+| `N` | Walkman on/off (original procedural synth radio, also plays in the car) |
+| `W S A D` / `Shift` / `Space` | In the car: drive / brake / horn |
 | `R` | Rotate equipment in placement mode |
 | `Esc` | Close panel / pause menu (save, quit to title) |
 | `F3` | Performance overlay (fps, draw calls, triangles) |
@@ -68,18 +70,30 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
   Wall Street…) pay a bonus. Every product can be given a custom street name.
 * **Customers**: 12 persistent named NPCs with personality, preferred product/effects, price generosity,
   reliability and risk. Deals raise relationship → bigger orders, better prices, friends-of-friends unlock.
-* **Orders** arrive on the pager (accept / decline), have a meeting spot and a time window. Payphones let
-  you "call around" for work; the Brick Phone raises order frequency.
+* **Orders** arrive on the pager (accept / decline / haggle for +10–35 %), have a meeting spot and a
+  time window. Payphones let you "call around" for work; the Brick Phone raises order frequency.
+* **Customers walk the city.** Locked customers can be won over with a free sample of a packaged product
+  (their taste decides); unlocked customers buy straight out of your backpack in street deals.
+* **Street talk & news**: every day one effect is "hot" (+25 % on sales), and from day 2 a world event
+  may hit — police crackdown in a zone, a supply shortage that doubles Rico's price, or a beach club
+  night that pays +30 % after dark.
 * **Police & Heat**: witnessed deals and loud customer reactions raise Heat (0–100). Officers escalate
-  through PATROL → NOTICE → INVESTIGATE → APPROACH → SEARCH → CHASE. Break line of sight or get home.
-  Arrest = contraband confiscated + fine + suspicion + 6 lost hours. Never a game over.
+  through PATROL → NOTICE → INVESTIGATE → APPROACH → SEARCH → CHASE. At medium heat they stop and
+  search you: carrying contraband means arrest, being clean means they lose interest. Break line of
+  sight or get home. Arrest = contraband confiscated + fine + suspicion + 6 lost hours. Never a game over.
 * **Property**: buy **Warehouse 7** ($1,800) at the docks, then place shelves, prep stations and
   packaging tables inside it (grid-snapped placement mode).
 * **Automation**: hire **Dizzy** ($600) near the Ocean View Motel. Stock packaged product in storage,
   then use *SEND RUNNER* on any accepted order. Dizzy walks there, closes the deal and keeps 20 %.
   Once you own the warehouse, hire **Marisol** ($900) at the Port Authority: assign her a recipe at a prep
-  table and she turns stored supplies + baggies into packaged product around the clock. Supplies in,
-  runner out — the loop you used to do by hand now runs itself.
+  table and she turns stored supplies + baggies into packaged product around the clock. Hire **Vince**
+  ($1,000) near Neptune Arcade as a dealer: hand him stock, assign up to five customers, and they stop
+  paging you — he sells on his corner and holds the cash until you collect it (and sometimes gets shaken
+  down by the cops). Supplies in, dealer out — the loop you used to do by hand now runs itself.
+* **Wheels**: the '88 sedan at Rojas Auto Repair ($900) crosses town in seconds, honks pedestrians out
+  of the way, and stays wherever you park it.
+* **Goals**: the fax/CRT ledger in your back room lists 14 milestones with cash rewards, crew status and
+  today's street talk; each morning you get yesterday's numbers.
 * **Day / night**: 1 real second = 1 game minute. Night brings neon, club crowds and lamp-lit streets.
 * **Save / load**: autosave every minute and after every sale; NEW GAME / CONTINUE / RESET SAVE on the
   title screen; save from the pause menu. Stored in `localStorage`.
@@ -127,21 +141,26 @@ Design rules that shaped the code:
 - 8-slot inventory with stacks, categories, storage transfer, Courier Backpack upgrade.
 - Three vendors, equipment upgrades, warehouse purchase, station kits and placement mode.
 - Pager order system with time windows, accept/decline, expiry, cancellations, payphone "call around".
-- 12 customers with relationships, tiers, friend-unlock chains, preferences, custom-name reactions.
+- 12 customers with relationships, tiers, friend-unlock chains, sample unlocks, street deals, haggling,
+  preferences, custom-name reactions; they wander their home zones when not waiting for you.
 - Prep table stir minigame, packaging table sealing, deterministic modifier chemistry, combo names,
   player-named products shown everywhere.
-- Heat + suspicion, 4 patrol officers with a 7-state FSM, chase, arrest with soft penalties.
+- Heat + suspicion, 4 patrol officers with a 7-state FSM, stop-and-search, chase, arrest with soft penalties.
 - 26 ambient pedestrians with wander/wait/react/flee, 7 club dancers at night.
 - Runner employee (Dizzy) with visible deliveries and a 20 % cut; production worker (Marisol) who
-  converts warehouse storage into packaged product.
+  converts warehouse storage into packaged product; dealer (Vince) with stock, assigned customers,
+  automatic corner sales and shakedown events.
+- Daily trend bonus, daily world events (crackdown / shortage / club night), pedestrian gossip about
+  your named products, 14 milestone goals with rewards, morning summaries.
+- Drivable arcade sedan with horn, headlights and persisted parking spot; procedural synth radio.
 - Accelerated day/night with neon, lit windows, lamp pool, fog and sunset tint; procedural audio.
 - localStorage save/load with validation and repair of partial saves.
-- 26 Vitest tests covering behavioural contracts + Playwright smoke test.
+- 39 Vitest tests covering behavioural contracts + Playwright smoke test.
 
 ## Known limitations
 
 * Art is entirely procedural box geometry; characters are stylised block figures.
-* No vehicles yet (walking/sprinting only — the district is sized for it).
+* The car uses a square collision footprint and bounces off walls; there is no damage model.
 * Police navigate by steering toward the player through the collision world; they can get stuck on
   dense props for a moment (they recover via SEARCH/RETURN_TO_PATROL).
 * Balance is tuned for a 30–45 minute demonstration, not long-term play.
@@ -149,13 +168,11 @@ Design rules that shaped the code:
 
 ## Roadmap
 
-1. **Handler employee** moving goods between stations, plus multiple workers per property.
-2. **Dynamic pressure events**: police crackdowns, supplier shortages, product trends, warehouse
-   inspections, VIP orders — automation should create new management problems, not remove play.
-3. **Arcade car** for faster deliveries and drive-by handoffs.
-4. **Rival organisation** contesting neighbourhoods; dealer network with territory.
-5. **Co-op** (one player produces, one sells, one manages, one drives) on top of the serializable state.
-6. More interiors, richer NPC schedules, and a proper soundtrack made of original tracks.
+1. **Rival organisation** contesting neighbourhoods and poaching dealer customers.
+2. **More pressure events**: warehouse inspections, VIP orders, dealer loyalty problems.
+3. **Handler employee** moving goods between stations, plus multiple workers and dealers.
+4. **Co-op** (one player produces, one sells, one manages, one drives) on top of the serializable state.
+5. More interiors, richer NPC schedules, and more original radio stations.
 
 ## Licensing
 

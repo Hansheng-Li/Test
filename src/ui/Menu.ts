@@ -34,7 +34,7 @@ export class Menu {
       <h1>SUNSET SYNDICATE</h1>
       <div class="sub">SOL PALMA, FLORIDA · 1996</div>
       <div class="buttons"></div>
-      <div class="controls">WASD move · MOUSE look · SHIFT sprint · SPACE jump<br/>E interact · TAB inventory · P pager · M map · 1-8 select item · ESC pause<br/><br/><span style="color:#ff9a3c">All products in this game are fictional. Click to capture the mouse.</span></div>
+      <div class="controls">WASD move · MOUSE look · SHIFT sprint · SPACE jump<br/>E interact · TAB inventory · P pager · M map · N walkman · 1-8 select item · ESC pause<br/><br/><span style="color:#ff9a3c">All products in this game are fictional. Click to capture the mouse.</span></div>
       <div class="stripe bottom"></div>`;
     const btns = this.el.querySelector('.buttons') as HTMLElement;
     btns.style.display = 'flex';

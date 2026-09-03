@@ -90,6 +90,7 @@ export class Game implements GameAPI {
   runnerNPC: RunnerNPC | null = null;
   workerFigure: THREE.Group | null = null;
   vehicle: Vehicle | null = null;
+  boomboxOn = false;
   driving = false;
   private carHitTimer = 0;
   private carEye = new THREE.Vector3();
@@ -551,6 +552,11 @@ export class Game implements GameAPI {
     const dClub = Math.hypot(this.player.position.x - club.x, this.player.position.z - club.z);
     this.audio.update(dt, { club: Math.max(0, 1 - dClub / 45), beach: Math.max(0, Math.min(1, (this.player.position.x - 140) / 40)), night: this.clock.isNight });
 
+    // radio: car stereo while driving, walkman when toggled
+    const wantRadio = this.driving || this.boomboxOn;
+    if (wantRadio && !this.audio.radio.playing) this.audio.radio.start();
+    if (!wantRadio && this.audio.radio.playing) this.audio.radio.stop();
+    if (this.audio.radio.playing) this.audio.radio.setLevel(this.driving ? 1 : 0.7);
     // dancers only at night
     const night = this.clock.isNight;
     for (const d of this.dancers) {
@@ -603,7 +609,7 @@ export class Game implements GameAPI {
       this.save();
     }
 
-    this.hud.speedText = this.driving && this.vehicle ? `${Math.round(this.vehicle.kmh)} MPH` : null;
+    this.hud.speedText = this.driving && this.vehicle ? `${Math.round(this.vehicle.mph)} MPH` : null;
     this.objectiveText = this.computeObjective();
     this.hud.update(s, this.clock.formatClock(), this.clock.day, this.objectiveText, this.currentOrderText(), dt);
   }
@@ -1654,6 +1660,11 @@ export class Game implements GameAPI {
         break;
       case 'KeyB':
         this.tryStartPlacementFromInventory();
+        break;
+      case 'KeyN':
+        this.boomboxOn = !this.boomboxOn;
+        this.audio.init();
+        this.toast(this.boomboxOn ? 'Walkman ON · SOL PALMA FM (press N to stop)' : 'Walkman OFF');
         break;
       case 'Escape':
         if (this.placement) this.cancelPlacement();
