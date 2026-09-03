@@ -45,7 +45,9 @@ export class NPC {
     legR.position.set(0.13, 0.4, 0);
     this.mesh.add(legL, legR);
     this.parts = { legL, legR, armL: kids[3], armR: kids[4] };
-    for (const c of this.mesh.children) c.castShadow = true;
+    // only the torso casts a shadow: one shadow draw per character instead of six
+    for (const c of this.mesh.children) c.castShadow = false;
+    kids[1].castShadow = true;
   }
 
   say(text: string, color = '#ffffff', seconds = 3): void {

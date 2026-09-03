@@ -14,6 +14,7 @@ import { furnishInterior, InteriorContext, makeLabel, makeFigure } from './Inter
 import { WorldObject, NightToggle } from './WorldTypes';
 import { WaypointGraph } from './Waypoints';
 import { seeded } from '../utils/math';
+import { mergeStaticMeshes } from './StaticMerge';
 
 const SLAB = 0.15;
 
@@ -337,6 +338,16 @@ export function buildCity(): CityResult {
   group.add(carAnchor);
   objects.push({ kind: 'car_sale', id: 'car_sale', position: carAnchor.position.clone(), mesh: carSign });
 
+  // laundromat business for sale (legit front)
+  const laundro = BUILDINGS.find((b) => b.id === 'laundromat')!;
+  const frontSign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1), new THREE.MeshBasicMaterial({ map: signTexture('BUSINESS FOR SALE', { color: '#ffffff', bg: '#6a1b9a', glow: false, sub: 'LUCKY LAUNDROMAT · TURNKEY' }), side: THREE.DoubleSide }));
+  frontSign.position.set(laundro.x - 8, SLAB + 1.6, laundro.z - laundro.d / 2 - 1.2);
+  group.add(frontSign);
+  const frontPost = new THREE.Mesh(boxGeo(0.1, 2.1, 0.1), lambert(PALETTE.darkMetal));
+  frontPost.position.set(laundro.x - 8, SLAB + 1.05, laundro.z - laundro.d / 2 - 1.2);
+  group.add(frontPost);
+  objects.push({ kind: 'front_sign', id: 'front_sign', position: frontSign.position.clone(), mesh: frontSign, property: 'laundromat' });
+
   // motel room 6 for rent (beach-side stash + safe spot)
   const motelSpec = BUILDINGS.find((b) => b.id === 'motel')!;
   const roomSign = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.9), new THREE.MeshBasicMaterial({ map: signTexture('ROOM 6', { color: '#ffffff', bg: '#00838f', glow: false, sub: 'WEEKLY RATES · ASK INSIDE' }), side: THREE.DoubleSide }));
@@ -355,6 +366,11 @@ export function buildCity(): CityResult {
   group.add(post);
   objects.push({ kind: 'warehouse_sign', id: 'warehouse_sign', position: signMesh.position.clone(), mesh: signMesh, property: 'warehouse' });
 
+  // gameplay-referenced meshes must stay individually addressable
+  for (const o of objects) o.mesh.userData.dynamic = true;
+  for (const w of water) w.userData.dynamic = true;
+  const stats = mergeStaticMeshes(group);
+  if (typeof console !== 'undefined') console.info(`[city] static merge: ${stats.before} meshes -> ${stats.after}`);
   const waypoints = new WaypointGraph();
   return { group, colliders, objects, night, waypoints, water, buildings, lampPositions };
 }

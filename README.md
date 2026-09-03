@@ -93,6 +93,8 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
   paging you — he sells on his corner and holds the cash until you collect it (and sometimes gets shaken
   down by the cops; leave him without stock for too long and a rival crew poaches his customers). Dizzy
   takes a queue of deliveries; once you own the warehouse Rico delivers supplies there for a 20 % fee. Supplies in, dealer out — the loop you used to do by hand now runs itself.
+* **Legit front**: buy the Lucky Laundromat ($3,000) — clean income every morning and your long-term
+  suspicion cools down 12 points a day.
 * **Second stash**: rent Room 6 at the Ocean View Motel ($1,200) for beach-side storage and a bed.
 * **Wheels**: the '88 sedan at Rojas Auto Repair ($900) crosses town in seconds, honks pedestrians out
   of the way, and stays wherever you park it.
@@ -131,7 +133,8 @@ Design rules that shaped the code:
 * Gameplay logic never touches Three.js objects; `Game.ts` is the only place that maps state to meshes.
   The state is a plain JSON object, which keeps save/load trivial and leaves the door open for co-op later.
 * Rendering is cheap on purpose: shared Lambert materials, cached CanvasTextures, InstancedMesh for palms,
-  lamps and road dashes, one shadow-casting directional light, a pool of six point lights that follow the
+  lamps and road dashes, a static-merge pass that folds ~1,900 prop meshes into ~460 draw buckets,
+  one shadow-casting directional light, a pool of six point lights that follow the
   player between street lamps, and distance-based LOD for pedestrian updates.
 * Interaction uses a distance + view-cone test against registered anchors rather than mesh raycasting.
 

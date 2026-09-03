@@ -10,7 +10,7 @@ import { WorldObject } from '../world/WorldTypes';
 import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT, zoneAt } from '../data/city';
 import { makeFigure, makeLabel } from '../world/Interiors';
 import { CUSTOMER_MAP } from '../data/customers';
-import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, VEHICLE_PRICE, MOTEL_PRICE, ITEMS } from '../data/items';
+import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, VEHICLE_PRICE, MOTEL_PRICE, FRONT_PRICE, FRONT_DAILY_INCOME, FRONT_DAILY_SUSPICION, ITEMS } from '../data/items';
 import { computeRecipe, parseRecipeKey, Effect } from '../data/products';
 import { GameState, Order, PlacedStation } from './GameState';
 import { createNewState, saveToStorage, loadFromStorage, hasSave, clearSave } from '../systems/SaveSystem';
@@ -275,6 +275,8 @@ export class Game implements GameAPI {
     this.updateRunnerContact();
     const motelSign = this.city.objects.find((o) => o.kind === 'motel_sign');
     if (motelSign) motelSign.mesh.visible = !s.properties.includes('motel');
+    const frontSign = this.city.objects.find((o) => o.kind === 'front_sign');
+    if (frontSign) frontSign.mesh.visible = !s.properties.includes('laundromat');
     this.cancelChecked.clear();
     this.hud.selectedSlot = 0;
   }
@@ -319,6 +321,9 @@ export class Game implements GameAPI {
         break;
       case 'dealer_contact':
         add({ prompt: () => (this.state.dealer?.hired ? `[E] TALK · VINCE (DEALER · $${Math.round(this.state.dealer.cash)} waiting)` : `[E] TALK · VINCE (HIRE DEALER $${DEALER_HIRE_PRICE})`), onInteract: () => this.talkToVince(), radius: 3.5 });
+        break;
+      case 'front_sign':
+        add({ prompt: () => (this.state.properties.includes('laundromat') ? null : `[E] BUY LUCKY LAUNDROMAT ($${FRONT_PRICE}) · legit front`), onInteract: () => this.buyFront(), radius: 3.5 });
         break;
       case 'motel_sign':
         add({ prompt: () => (this.state.properties.includes('motel') ? null : `[E] RENT ROOM 6 ($${MOTEL_PRICE}) · beach stash + safe spot`), onInteract: () => this.rentMotel(), radius: 3.5 });
@@ -638,6 +643,11 @@ export class Game implements GameAPI {
         s.stats.earnedAtDayStart = s.stats.earned;
         s.stats.salesAtDayStart = s.stats.sales;
         if (sales > 0 || earned > 0) this.toast(`NEW DAY ${day}: yesterday you made $${earned} from ${sales} sales.`, 'pager', 7000);
+        if (s.properties.includes('laundromat')) {
+          s.cash += FRONT_DAILY_INCOME;
+          s.suspicion = Math.max(0, s.suspicion - FRONT_DAILY_SUSPICION);
+          this.toast(`Lucky Laundromat: +$${FRONT_DAILY_INCOME} clean money, suspicion -${FRONT_DAILY_SUSPICION}.`, 'cash', 5000);
+        }
       }
     }
     // autosave
@@ -1389,6 +1399,24 @@ export class Game implements GameAPI {
     });
   }
 
+  private buyFront(): void {
+    const s = this.state;
+    if (s.properties.includes('laundromat')) return;
+    if (s.cash < FRONT_PRICE) {
+      this.audio.play('error');
+      this.toast(`The laundromat is $${FRONT_PRICE}. A legit business washes more than socks.`, 'info', 5000);
+      return;
+    }
+    if (!this.confirmTwice('front', `Buy Lucky Laundromat for $${FRONT_PRICE}? +$${FRONT_DAILY_INCOME}/day clean income and suspicion drops ${FRONT_DAILY_SUSPICION}/day`)) return;
+    spendCash(s, FRONT_PRICE);
+    s.properties.push('laundromat');
+    this.audio.play('unlock');
+    this.toast('You are now a legitimate businessman. Allegedly. The laundromat pays out every morning and cools your reputation.', 'cash', 8000);
+    const sign = this.city.objects.find((o) => o.kind === 'front_sign');
+    if (sign) sign.mesh.visible = false;
+    this.save();
+  }
+
   private rentMotel(): void {
     const s = this.state;
     if (s.properties.includes('motel')) return;
@@ -1660,6 +1688,7 @@ export class Game implements GameAPI {
     if (s.dealer?.hired && s.dealer.cash >= 200) return `Vince is holding $${Math.round(s.dealer.cash)} for you. Swing by Neptune Arcade.`;
     if (s.worker?.hired && !s.worker.recipeKey) return 'Assign Marisol a recipe at a PREP TABLE and stock the warehouse storage.';
     if (s.cash >= 220 && !s.upgrades.includes('eq_mixer')) return 'Buy a Turbo Mixer at Sol Palma Pawn ($220) to prep faster.';
+    if (!s.properties.includes('laundromat') && s.cash >= FRONT_PRICE + 300 && s.suspicion >= 20) return `Buy the Lucky Laundromat ($${FRONT_PRICE}) as a legit front to cool your reputation.`;
     if (!s.properties.includes('motel') && s.cash >= MOTEL_PRICE + 200 && s.properties.includes('warehouse')) return `Rent Room 6 at the Ocean View Motel ($${MOTEL_PRICE}) for a beach-side stash.`;
     if (!s.vehicle?.owned && s.cash >= VEHICLE_PRICE + 100 && s.stats.sales >= 6) return `Buy the '88 sedan at Rojas Auto Repair ($${VEHICLE_PRICE}) to cross town fast.`;
     if (packagedInInventory(s).length && s.runner?.hired) return 'Store packaged product in STORAGE so Dizzy can deliver it.';

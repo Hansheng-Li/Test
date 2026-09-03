@@ -27,7 +27,7 @@ export class LedgerUI extends Panel {
           ${stat('Customers', `${unlocked} / ${CUSTOMERS.length}`)}
           ${stat('Arrests', st.stats.arrests)}
           ${stat('Suspicion', Math.floor(st.suspicion))}
-          ${stat('Property', st.properties.includes('warehouse') ? 'Back Room + Warehouse 7' : `Back Room (Warehouse 7: $${WAREHOUSE_PRICE})`)}
+          ${stat('Property', st.properties.length > 1 ? st.properties.map((p) => ({ safehouse: 'Back Room', warehouse: 'Warehouse 7', motel: 'Room 6', laundromat: 'Laundromat' })[p] ?? p).join(' + ') : `Back Room (Warehouse 7: $${WAREHOUSE_PRICE})`)}
           <h3>CREW</h3>
           ${stat('Dizzy (runner)', st.runner?.hired ? `${st.runner.deliveries} deliveries · kept $${Math.round(st.runner.earned)}` : 'not hired')}
           ${stat('Marisol (worker)', st.worker?.hired ? `${st.worker.produced} units made` : 'not hired')}
