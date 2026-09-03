@@ -77,6 +77,9 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
   packaging tables inside it (grid-snapped placement mode).
 * **Automation**: hire **Dizzy** ($600) near the Ocean View Motel. Stock packaged product in storage,
   then use *SEND RUNNER* on any accepted order. Dizzy walks there, closes the deal and keeps 20 %.
+  Once you own the warehouse, hire **Marisol** ($900) at the Port Authority: assign her a recipe at a prep
+  table and she turns stored supplies + baggies into packaged product around the clock. Supplies in,
+  runner out — the loop you used to do by hand now runs itself.
 * **Day / night**: 1 real second = 1 game minute. Night brings neon, club crowds and lamp-lit streets.
 * **Save / load**: autosave every minute and after every sale; NEW GAME / CONTINUE / RESET SAVE on the
   title screen; save from the pause menu. Stored in `localStorage`.
@@ -129,10 +132,11 @@ Design rules that shaped the code:
   player-named products shown everywhere.
 - Heat + suspicion, 4 patrol officers with a 7-state FSM, chase, arrest with soft penalties.
 - 26 ambient pedestrians with wander/wait/react/flee, 7 club dancers at night.
-- Runner employee (Dizzy) with visible deliveries and a 20 % cut.
+- Runner employee (Dizzy) with visible deliveries and a 20 % cut; production worker (Marisol) who
+  converts warehouse storage into packaged product.
 - Accelerated day/night with neon, lit windows, lamp pool, fog and sunset tint; procedural audio.
 - localStorage save/load with validation and repair of partial saves.
-- 24 Vitest tests covering behavioural contracts + Playwright smoke test.
+- 26 Vitest tests covering behavioural contracts + Playwright smoke test.
 
 ## Known limitations
 
@@ -140,13 +144,12 @@ Design rules that shaped the code:
 * No vehicles yet (walking/sprinting only — the district is sized for it).
 * Police navigate by steering toward the player through the collision world; they can get stuck on
   dense props for a moment (they recover via SEARCH/RETURN_TO_PATROL).
-* The production worker employee is not in this build (runner is the automation proof of concept).
 * Balance is tuned for a 30–45 minute demonstration, not long-term play.
 * Headless/software-rendered browsers run far below 60 fps; a normal desktop GPU is expected.
 
 ## Roadmap
 
-1. **Production worker**: assign a recipe and a station; watch the warehouse make product without you.
+1. **Handler employee** moving goods between stations, plus multiple workers per property.
 2. **Dynamic pressure events**: police crackdowns, supplier shortages, product trends, warehouse
    inspections, VIP orders — automation should create new management problems, not remove play.
 3. **Arcade car** for faster deliveries and drive-by handoffs.

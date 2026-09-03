@@ -38,6 +38,12 @@ export class PagerUI extends Panel {
       e.textContent = t;
       device.appendChild(e);
     };
+    if (st.upgrades.includes('eq_brickphone')) {
+      const row = document.createElement('div');
+      row.className = 'pager-btns';
+      row.appendChild(this.button('BRICK PHONE · CALL AROUND FOR WORK', () => { this.api.callAround(); this.render(); }, 'cyan'));
+      device.appendChild(row);
+    }
     h(`NEW MESSAGES (${pending.length})`);
     if (pending.length === 0) {
       const e = document.createElement('div');

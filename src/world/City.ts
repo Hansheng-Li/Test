@@ -95,7 +95,7 @@ export function buildCity(): CityResult {
       const z0 = zsEdges[j] + (j === 0 ? 0 : half);
       const z1 = zsEdges[j + 1] - (j + 1 === zsEdges.length - 1 ? 0 : half);
       if (x1 <= x0 || z1 <= z0) continue;
-      if (x0 >= 169) continue; // beach handled separately
+      if (x0 >= 160) continue; // beach handled separately
       const w = x1 - x0;
       const d = z1 - z0;
       const geo = new THREE.BoxGeometry(w, SLAB, d);
@@ -264,6 +264,12 @@ export function buildCity(): CityResult {
   buildLifeguardTower(pb, 185, -60);
   buildLifeguardTower(pb, 185, 70);
 
+  // sidewalk strip between the boulevard and the sand
+  const strip = new THREE.Mesh(boxGeo(4, SLAB, CANAL_Z - MAP_MIN_Z), slabMat);
+  strip.position.set(168, SLAB / 2, (MAP_MIN_Z + CANAL_Z) / 2);
+  strip.receiveShadow = true;
+  group.add(strip);
+  colliders.add(aabbFromBottom(168, 0, (MAP_MIN_Z + CANAL_Z) / 2, 4, SLAB, CANAL_Z - MAP_MIN_Z, 'slab'));
   // beach boulevard sidewalk along the sand (walkable strip)
   const bw = new THREE.Mesh(boxGeo(OCEAN_X - 166, 0.05, 20), lambert('#d9cbb0'));
   bw.position.set((166 + OCEAN_X) / 2, SLAB, 5);

@@ -150,7 +150,10 @@ export function orderMatchesItem(order: Order, packagedItemKey: string): boolean
 /** Human-readable product request, using the player's custom name when the customer asked for it. */
 export function describeRequest(state: GameState, order: Order): string {
   if (order.recipeKey) return recipeDisplayName(state, order.recipeKey);
-  if (order.effects.length === 0) return order.base;
+  if (order.effects.length === 0) {
+    const plain = state.recipes[order.base];
+    return plain?.customName ? `${order.base} (your ${plain.customName})` : order.base;
+  }
   return `${order.base} (${order.effects.join('+')})`;
 }
 

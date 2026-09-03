@@ -925,9 +925,18 @@ export class Game implements GameAPI {
     this.save();
   }
 
-  private usePayphone(): void {
+  callAround(): void {
+    if (!this.state.upgrades.includes('eq_brickphone')) return;
+    if (this.payphoneCooldown > 0) {
+      this.toast(`Battery is recharging… try again in ${Math.ceil(this.payphoneCooldown)}s.`, 'warn');
+      return;
+    }
+    this.usePayphone(true);
+  }
+
+  private usePayphone(fromPhone = false): void {
     const s = this.state;
-    if (s.cash < 1) {
+    if (!fromPhone && s.cash < 1) {
       this.toast('You need a dollar for the payphone.', 'warn');
       return;
     }
@@ -935,8 +944,8 @@ export class Game implements GameAPI {
       this.toast('Your pager is already full of messages. Deal with those first.', 'warn');
       return;
     }
-    spendCash(s, 1);
-    this.payphoneCooldown = 45;
+    if (!fromPhone) spendCash(s, 1);
+    this.payphoneCooldown = fromPhone ? 30 : 45;
     this.audio.play('click');
     const o = generateOrder(s, { now: this.clock.totalMinutes, simple: s.stats.sales < 2 });
     if (o) {
