@@ -100,6 +100,7 @@ export class Game implements GameAPI {
   private workerToastTimer = 0;
   private workerBlockedTimer = 0;
   dancers: Civilian[] = [];
+  nightCrowd: Civilian[] = [];
   private last = performance.now();
   private debugEl: HTMLElement;
   private frames = 0;
@@ -389,6 +390,14 @@ export class Game implements GameAPI {
       this.civilians.push(c);
       this.dynamicGroup.add(c.mesh);
     }
+    // beach night crowd: extra pedestrians who only show up after dark near Club Mirage
+    const beachNodes = this.city.waypoints.nodes.filter((n) => n.zone === 'beach');
+    for (let i = 0; i < 8; i++) {
+      const n = beachNodes[Math.floor(Math.random() * beachNodes.length)] ?? g.random();
+      const c = new Civilian('night' + i, n.x, n.z, ['#ff4fd8', '#4ff2e8', '#ffe066', '#b388ff'][i % 4], SKINS[(i * 2) % SKINS.length], ['#ffffff', '#1a1a2e'][i % 2], this.city.colliders, g);
+      c.mesh.visible = false;
+      this.nightCrowd.push(c);
+    }
     // club dancers (visible at night only)
     const club = BUILDINGS.find((b) => b.id === 'club')!;
     for (let i = 0; i < 7; i++) {
@@ -632,8 +641,13 @@ export class Game implements GameAPI {
     if (wantRadio && !this.audio.radio.playing) this.audio.radio.start();
     if (!wantRadio && this.audio.radio.playing) this.audio.radio.stop();
     if (this.audio.radio.playing) this.audio.radio.setLevel(this.driving ? 1 : 0.7);
-    // dancers only at night
+    // dancers + beach night crowd only at night
     const night = this.clock.isNight;
+    for (const c of this.nightCrowd) {
+      if (night && !c.mesh.parent) this.dynamicGroup.add(c.mesh);
+      if (!night && c.mesh.parent) this.dynamicGroup.remove(c.mesh);
+      c.mesh.visible = night;
+    }
     for (const d of this.dancers) {
       d.mesh.visible = night;
       if (night) {
@@ -707,7 +721,8 @@ export class Game implements GameAPI {
     const pz = this.player.position.z;
     const py = this.player.position.y;
     const los = (ax: number, ay: number, az: number, bx: number, by: number, bz: number): boolean => this.city.colliders.lineOfSight(ax, ay, az, bx, by, bz, 10);
-    for (const c of this.civilians) {
+    const crowd = this.clock.isNight ? this.civilians.concat(this.nightCrowd) : this.civilians;
+    for (const c of crowd) {
       const d2 = (c.position.x - px) ** 2 + (c.position.z - pz) ** 2;
       // LOD: far pedestrians update at a lower rate
       c.lodAccum += dt;

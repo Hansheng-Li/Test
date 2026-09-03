@@ -145,7 +145,7 @@ export function furnishInterior(spec: BuildingSpec, ctx: InteriorContext, doorDi
       ctx.night.lights.push(light);
       const b = bed(ctx, x - w / 2 + 1.4, z - d / 2 + 1.2, 0, '#6a1b9a');
       addObject(ctx, 'bed', 'safehouse_bed', b, 'safehouse');
-      const prep = table(ctx, x - 4, z + d / 2 - 1.2, 2.2, 1, '#8ea9c8');
+      const prep = table(ctx, x - 3, z + d / 2 - 1.2, 2.2, 1, '#8ea9c8');
       const mixer = new THREE.Mesh(boxGeo(0.6, 0.5, 0.6), lambert('#b0bec5'));
       mixer.position.set(0.5, 1.2, 0);
       const bowl = new THREE.Mesh(cylGeo(0.35, 0.25, 0.3, 10), lambert('#ffcc80'));
@@ -155,7 +155,7 @@ export function furnishInterior(spec: BuildingSpec, ctx: InteriorContext, doorDi
       prepLabel.position.set(0, 2.1, 0);
       prep.add(prepLabel);
       addObject(ctx, 'prep_table', 'safehouse_prep', prep, 'safehouse');
-      const pack = table(ctx, x + 1, z + d / 2 - 1.2, 2.2, 1, '#c8b08e');
+      const pack = table(ctx, x + 0.5, z + d / 2 - 1.2, 2.2, 1, '#c8b08e');
       const bags = new THREE.Mesh(boxGeo(0.7, 0.3, 0.5), lambert('#f5f5f5'));
       bags.position.set(-0.5, 1.1, 0);
       const sealer = new THREE.Mesh(boxGeo(0.7, 0.2, 0.4), lambert('#e53935'));
@@ -172,7 +172,7 @@ export function furnishInterior(spec: BuildingSpec, ctx: InteriorContext, doorDi
       addObject(ctx, 'storage', 'safehouse_storage', stor, 'safehouse');
       // starter supply box near the door
       const box = new THREE.Mesh(boxGeo(0.9, 0.6, 0.7), lambert('#c9a066'));
-      box.position.set(x + w / 2 - 3, y + 0.3, z - d / 2 + 1.2);
+      box.position.set(x + w / 2 - 1.4, y + 0.3, z - d / 2 + 1.2);
       const boxLabel = makeLabel('STARTER BOX', '#ffe9a8');
       boxLabel.position.set(0, 0.9, 0);
       box.add(boxLabel);
@@ -180,7 +180,7 @@ export function furnishInterior(spec: BuildingSpec, ctx: InteriorContext, doorDi
       ctx.pb.collider(aabbFromBottom(box.position.x, y, box.position.z, 0.9, 0.6, 0.7, 'box'));
       addObject(ctx, 'starter_box', 'starter_box', box, 'safehouse');
       // desk with fax machine & pager charger
-      const desk = table(ctx, x + 4, z - d / 2 + 1.0, 2, 0.9, '#5d4037');
+      const desk = table(ctx, x + 2.2, z - d / 2 + 1.0, 2, 0.9, '#5d4037');
       const fax = new THREE.Mesh(boxGeo(0.7, 0.25, 0.5), lambert('#e0e0e0'));
       fax.position.set(0.3, 1.06, 0);
       const crt = new THREE.Mesh(boxGeo(0.5, 0.45, 0.45), lambert('#cfd8dc'));
@@ -189,10 +189,53 @@ export function furnishInterior(spec: BuildingSpec, ctx: InteriorContext, doorDi
       screen.position.set(-0.5, 1.17, 0.23);
       desk.add(fax, crt, screen);
       addObject(ctx, 'fax', 'safehouse_fax', desk, 'safehouse');
-      // poster
+      // posters, rug, boombox, pager on the desk, a window with blinds
       const poster = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.9), new THREE.MeshBasicMaterial({ map: signTexture('SOL PALMA', { color: '#ff9a3c', bg: '#2a1a3a', sub: 'SUNSET CAPITAL OF FLORIDA' }) }));
-      poster.position.set(x, y + 2, z - d / 2 + 0.25);
+      poster.position.set(x, y + 2, z - d / 2 + 0.4);
       ctx.pb.group.add(poster);
+      const poster2 = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.75), new THREE.MeshBasicMaterial({ map: signTexture('NEON TIDE II', { color: '#4ff2e8', bg: '#101a3a', sub: 'NOW ON VHS' }) }));
+      poster2.position.set(x - 4.5, y + 2.1, z - d / 2 + 0.4);
+      ctx.pb.group.add(poster2);
+      const rug = new THREE.Mesh(new THREE.PlaneGeometry(5, 3.2), lambert('#7b3f61'));
+      rug.rotation.x = -Math.PI / 2;
+      rug.position.set(x + 0.5, y + 0.03, z + 0.5);
+      ctx.pb.group.add(rug);
+      const rugBorder = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 2.6), lambert('#c68bb0'));
+      rugBorder.rotation.x = -Math.PI / 2;
+      rugBorder.position.set(x + 0.5, y + 0.035, z + 0.5);
+      ctx.pb.group.add(rugBorder);
+      const boombox = new THREE.Mesh(boxGeo(0.7, 0.32, 0.25), lambert('#37474f'));
+      boombox.position.set(x - w / 2 + 0.6, y + 0.16, z + 3.6);
+      ctx.pb.group.add(boombox);
+      for (const sx of [-0.2, 0.2]) {
+        const spk = new THREE.Mesh(cylGeo(0.09, 0.09, 0.03, 10), lambert('#90a4ae'));
+        spk.rotation.x = Math.PI / 2;
+        spk.position.set(x - w / 2 + 0.6 + sx, y + 0.16, z + 3.74);
+        ctx.pb.group.add(spk);
+      }
+      const pager = new THREE.Mesh(boxGeo(0.14, 0.05, 0.09), lambert('#212121'));
+      pager.position.set(x + 2.9, y + 0.97, z - d / 2 + 1.3);
+      ctx.pb.group.add(pager);
+      const pagerScreen = new THREE.Mesh(boxGeo(0.08, 0.01, 0.04), lambert('#9fbf7a', { emissive: '#9fbf7a', emissiveIntensity: 0.6 }));
+      pagerScreen.position.set(x + 2.9, y + 1.0, z - d / 2 + 1.3);
+      ctx.pb.group.add(pagerScreen);
+      const blinds = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.3), lambert('#e8e2d0'));
+      blinds.position.set(x + 4.2, y + 2.0, z + d / 2 - 0.4);
+      blinds.rotation.y = Math.PI;
+      ctx.pb.group.add(blinds);
+      for (let i = 0; i < 6; i++) {
+        const slat = new THREE.Mesh(boxGeo(2.2, 0.04, 0.02), lambert('#b8b09a'));
+        slat.position.set(x + 4.2, y + 1.45 + i * 0.2, z + d / 2 - 0.42);
+        ctx.pb.group.add(slat);
+      }
+      const cassetteShelf = new THREE.Mesh(boxGeo(1.2, 0.05, 0.2), lambert('#5d4037'));
+      cassetteShelf.position.set(x - 2, y + 1.7, z - d / 2 + 0.5);
+      ctx.pb.group.add(cassetteShelf);
+      for (let i = 0; i < 8; i++) {
+        const tape = new THREE.Mesh(boxGeo(0.1, 0.16, 0.11), lambert(['#ff4fd8', '#4ff2e8', '#ffe066', '#b388ff'][i % 4]));
+        tape.position.set(x - 2.5 + i * 0.14, y + 1.8, z - d / 2 + 0.5);
+        ctx.pb.group.add(tape);
+      }
       break;
     }
     case 'store': {
