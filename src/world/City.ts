@@ -356,6 +356,18 @@ export function buildCity(): CityResult {
   group.add(roomSign);
   objects.push({ kind: 'motel_sign', id: 'motel_sign', position: new THREE.Vector3(motelSpec.x + motelSpec.w / 2 + 1, SLAB, motelSpec.z - 2), mesh: roomSign, property: 'motel' });
 
+  // crew neon sign above the warehouse door (blank until the player names their operation)
+  const crewMat = new THREE.MeshLambertMaterial({ map: signTexture(' ', { color: '#ff4fd8' }), emissive: '#ffffff', emissiveMap: signTexture(' ', { color: '#ff4fd8' }), emissiveIntensity: 0.6, transparent: true });
+  const crewSign = new THREE.Mesh(new THREE.PlaneGeometry(10, 2.5), crewMat);
+  const whSpec = BUILDINGS.find((b) => b.id === 'warehouse')!;
+  crewSign.position.set(whSpec.x + whSpec.w / 2 + 0.12, SLAB + 4.6, whSpec.z + 16);
+  crewSign.rotation.y = Math.PI / 2;
+  crewSign.visible = false;
+  crewSign.userData.dynamic = true;
+  group.add(crewSign);
+  night.emissive.push(crewMat);
+  objects.push({ kind: 'crew_sign', id: 'crew_sign', position: crewSign.position.clone(), mesh: crewSign, property: 'warehouse' });
+
   // warehouse for-sale sign
   const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(3, 1.2), new THREE.MeshBasicMaterial({ map: signTexture('FOR SALE', { color: '#ffffff', bg: '#c62828', glow: false, sub: 'WAREHOUSE 7 · SEE INSIDE' }), side: THREE.DoubleSide }));
   signMesh.position.set(WAREHOUSE_SIGN.x, SLAB + 1.8, WAREHOUSE_SIGN.z);

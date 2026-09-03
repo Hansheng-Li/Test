@@ -38,4 +38,5 @@ export interface GameAPI {
   customerXZ(): { id: string; x: number; z: number; orderId: number }[];
   runnerXZ(): { x: number; z: number } | null;
   hasScanner(): boolean;
+  setCrewName(name: string): void;
 }

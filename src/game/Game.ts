@@ -49,6 +49,7 @@ import { CUSTOMERS } from '../data/customers';
 import { offerSample } from '../systems/CustomerSystem';
 import { streetSale, streetSaleCandidate, streetUnitPrice, STREET_SALE_COOLDOWN } from '../systems/OrderSystem';
 import { lambert, boxGeo } from '../world/Materials';
+import { signTexture } from '../world/Textures';
 
 const CIVILIAN_COLORS = ['#e91e63', '#9c27b0', '#3f51b5', '#03a9f4', '#009688', '#8bc34a', '#ffeb3b', '#ff9800', '#795548', '#ffffff', '#f44336', '#00bcd4'];
 const SKINS = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac'];
@@ -293,6 +294,7 @@ export class Game implements GameAPI {
     if (motelSign) motelSign.mesh.visible = !s.properties.includes('motel');
     const frontSign = this.city.objects.find((o) => o.kind === 'front_sign');
     if (frontSign) frontSign.mesh.visible = !s.properties.includes('laundromat');
+    this.refreshCrewSign();
     this.cancelChecked.clear();
     this.hud.selectedSlot = 0;
   }
@@ -1308,7 +1310,9 @@ export class Game implements GameAPI {
     s.storage.warehouse = s.storage.warehouse ?? [];
     this.audio.play('unlock');
     this.toast('YOU OWN WAREHOUSE 7. Buy station kits at the pawn shop and place them inside (walk in with a kit, press B).', 'cash', 8000);
+    if (!s.crewName) this.toast('Name your operation at the fax/ledger in your back room — it goes up in neon on the warehouse.', 'info', 7000);
     this.updateWarehouseSign();
+    this.refreshCrewSign();
     if (this.runnerNPC) {
       const home = this.runnerHome();
       this.runnerNPC.setHome(home.x, home.z);
@@ -1722,7 +1726,9 @@ export class Game implements GameAPI {
         const c = CUSTOMER_MAP[o.customerId];
         const have = findFulfillingItem(s, o);
         const tag = o.status === 'runner' ? `<span class="runner">RUNNER ${Math.round((o.runnerProgress ?? 0) * 100)}%</span>` : have ? '<span style="color:#7dff9a">READY</span>' : '<span style="color:#ffb3c1">NEED PRODUCT</span>';
-        return `${c.name.split(' ')[0]} · ${o.qty}x ${describeRequest(s, o)} · $${o.price}<br/>${landmarkName(o.locationId)} · by ${GameClock.formatMinutes(o.windowEnd)} · ${tag}`;
+        const left = Math.round(o.windowEnd - this.clock.totalMinutes);
+        const timeTag = o.status === 'runner' ? '' : left < 0 ? ' · <span style="color:#ffb3c1">LATE</span>' : ` · ${left} min left`;
+        return `${c.name.split(' ')[0]} · ${o.qty}x ${describeRequest(s, o)} · $${o.price}${o.vip ? ' · <span style="color:#ffd166">VIP</span>' : ''}<br/>${landmarkName(o.locationId)} · by ${GameClock.formatMinutes(o.windowEnd)}${timeTag} · ${tag}`;
       })
       .join('<hr style="border:0;border-top:1px solid #444;margin:4px 0"/>');
   }
@@ -1741,6 +1747,30 @@ export class Game implements GameAPI {
   }
   hasScanner(): boolean {
     return this.state.upgrades.includes('eq_scanner');
+  }
+
+  setCrewName(name: string): void {
+    const clean = name.trim().slice(0, 24).toUpperCase();
+    if (!clean) return;
+    this.state.crewName = clean;
+    this.audio.play('unlock');
+    this.toast(`Your operation is now known as ${clean}.${this.state.properties.includes('warehouse') ? ' The sign on Warehouse 7 is lit.' : ''}`, 'cash', 5000);
+    this.refreshCrewSign();
+    this.save();
+  }
+
+  private refreshCrewSign(): void {
+    const o = this.city.objects.find((x) => x.kind === 'crew_sign');
+    if (!o) return;
+    const mesh = o.mesh as THREE.Mesh;
+    const show = !!this.state.crewName && this.state.properties.includes('warehouse');
+    mesh.visible = show;
+    if (!show) return;
+    const mat = mesh.material as THREE.MeshLambertMaterial;
+    const tex = signTexture(this.state.crewName, { color: '#ff4fd8', sub: 'IMPORT · EXPORT · LOGISTICS' });
+    mat.map = tex;
+    mat.emissiveMap = tex;
+    mat.needsUpdate = true;
   }
 
   save(): void {

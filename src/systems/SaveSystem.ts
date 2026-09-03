@@ -31,6 +31,7 @@ export function createNewState(): GameState {
     lastOrderMinute: 0,
     trend: null,
     event: null,
+    crewName: '',
   };
   initCustomers(state);
   return state;
@@ -90,6 +91,7 @@ export function deserialize(json: string): GameState | null {
   state.dealer = rd && typeof rd === 'object' && rd.hired ? { hired: true, name: typeof rd.name === 'string' ? rd.name : 'Vince', stock: Array.isArray(rd.stock) ? rd.stock.filter((x) => x && typeof x.id === 'string' && typeof x.qty === 'number' && x.qty > 0) : [], cash: num(rd.cash, 0), customers: Array.isArray(rd.customers) ? rd.customers.filter((x) => typeof x === 'string') : [], lastTickMinute: num(rd.lastTickMinute, state.clockMinutes), sales: num(rd.sales, 0), earnedTotal: num(rd.earnedTotal, 0), starvedRounds: num(rd.starvedRounds, 0) } : null;
   const rv = r.vehicle;
   state.vehicle = rv && typeof rv === 'object' && rv.owned ? { owned: true, x: num(rv.x, -70), z: num(rv.z, -32), yaw: num(rv.yaw, 0) } : null;
+  state.crewName = typeof r.crewName === 'string' ? r.crewName.slice(0, 24) : '';
   state.trend = r.trend && typeof r.trend === 'object' && typeof r.trend.effect === 'string' && typeof r.trend.day === 'number' ? r.trend : null;
   state.event = r.event && typeof r.event === 'object' && typeof r.event.id === 'string' && typeof r.event.day === 'number' ? r.event : null;
   for (const key of Object.keys(state.storage)) if (!Array.isArray(state.storage[key])) state.storage[key] = [];

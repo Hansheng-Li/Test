@@ -100,6 +100,7 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
 * **Wheels**: the '88 sedan at Rojas Auto Repair ($900) crosses town in seconds, honks pedestrians out
   of the way, and stays wherever you park it.
 * **VIP rush orders**: regulars sometimes page a double-size order at +60 % pay with a 50-minute window.
+* **Name your crew** at the ledger: it goes up in neon on Warehouse 7.
 * **Goals**: the fax/CRT ledger in your back room lists 14 milestones with cash rewards, crew status and
   today's street talk; each morning you get yesterday's numbers.
 * **Day / night**: 1 real second = 1 game minute. Night brings neon, club crowds and lamp-lit streets.

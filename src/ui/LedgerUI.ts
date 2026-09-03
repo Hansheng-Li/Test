@@ -17,6 +17,7 @@ export class LedgerUI extends Panel {
     const done = MILESTONES.filter((m) => milestoneDone(st, m.id)).length;
     const stat = (k: string, v: string | number): string => `<div class="row"><span class="name">${k}</span><span class="price">${v}</span></div>`;
     body.innerHTML = `
+      <div class="row"><span class="name"><b>CREW:</b> <span style="color:#ff8fd8">${st.crewName || '(unnamed — pick a name, it goes on your warehouse sign)'}</span></span><span class="crew-edit"></span></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div>
           <h3>BUSINESS</h3>
@@ -42,5 +43,15 @@ export class LedgerUI extends Panel {
           }).join('')}
         </div>
       </div>`;
+    const slot = body.querySelector('.crew-edit') as HTMLElement;
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.maxLength = 24;
+    inp.placeholder = 'e.g. PALM PANIC CREW';
+    inp.value = st.crewName;
+    inp.style.width = '200px';
+    const save = this.button('SET NAME', () => { if (inp.value.trim()) this.api.setCrewName(inp.value); this.render(); }, 'primary');
+    inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') save.click(); });
+    slot.append(inp, save);
   }
 }

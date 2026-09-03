@@ -19,6 +19,7 @@ export interface WorldObject {
     | 'car_sale'
     | 'motel_sign'
     | 'front_sign'
+    | 'crew_sign'
     | 'club_bar'
     | 'placement_area'
     | 'fax';
