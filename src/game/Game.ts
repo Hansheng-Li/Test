@@ -1461,8 +1461,8 @@ export class Game implements GameAPI {
     const pz = this.player.position.z;
     this.hiding = { x: o.position.x, z: o.position.z, exitX: px, exitZ: pz };
     this.player.velocity.set(0, 0, 0);
-    this.player.position.set(o.position.x, 0.2, o.position.z);
-    this.player.pitch = 0.35;
+    this.player.position.set(o.position.x, -0.55, o.position.z);
+    this.player.pitch = 0.5;
     this.hud.hiddenMode = true;
     this.hideLineTimer = 1.5;
     this.audio.play('bump');
@@ -1472,7 +1472,7 @@ export class Game implements GameAPI {
 
   private updateHiding(dt: number): void {
     if (!this.hiding) return;
-    this.player.position.set(this.hiding.x, 0.2, this.hiding.z);
+    this.player.position.set(this.hiding.x, -0.55, this.hiding.z);
     this.hideLineTimer -= dt;
     if (this.hideLineTimer <= 0) {
       this.hideLineTimer = 6 + Math.random() * 6;
