@@ -37,6 +37,11 @@ export class Police extends NPC {
   hatMesh: THREE.Mesh;
   lightMesh: THREE.Mesh;
   private noticeCooldown = 0;
+  /** Stuck detection: when direct steering makes no progress, fall back to the sidewalk graph for a while. */
+  private stuckTimer = 0;
+  private lastStuckX = 0;
+  private lastStuckZ = 0;
+  private detourTimer = 0;
 
   constructor(id: string, x: number, z: number, world: CollisionWorld, graph: WaypointGraph) {
     super(id, x, z, '#1e3a8a', '#e0ac69', '#0f1e4a', world, graph);
@@ -54,6 +59,30 @@ export class Police extends NPC {
     this.lightMesh = light;
     this.currentNode = graph.nearest(x, z).id;
     this.pickRandomNextNode();
+  }
+
+  /**
+   * Move toward a point; if the officer has been stuck for ~1.5s, follow the waypoint
+   * graph toward the target for a few seconds instead of pushing into the obstacle.
+   */
+  private pursue(tx: number, tz: number, dt: number, speed: number): boolean {
+    this.stuckTimer += dt;
+    if (this.stuckTimer >= 1.5) {
+      const moved = Math.hypot(this.position.x - this.lastStuckX, this.position.z - this.lastStuckZ);
+      if (moved < 0.6 && this.distanceTo(tx, tz) > 3 && this.detourTimer <= 0) {
+        this.routeTo(tx, tz);
+        this.detourTimer = 4;
+      }
+      this.stuckTimer = 0;
+      this.lastStuckX = this.position.x;
+      this.lastStuckZ = this.position.z;
+    }
+    if (this.detourTimer > 0) {
+      this.detourTimer -= dt;
+      if (this.path.length === 0 || this.followPath(dt, speed)) this.detourTimer = 0;
+      return false;
+    }
+    return this.moveToward(tx, tz, dt, speed);
   }
 
   /** Returns 'arrest' when the officer catches the player, 'searched' after a clean stop-and-search. */
@@ -97,14 +126,14 @@ export class Police extends NPC {
         }
         break;
       case 'INVESTIGATE':
-        if (this.moveToward(this.lastSeen.x, this.lastSeen.z, dt, 1.6) || this.stateTime > 12) {
+        if (this.pursue(this.lastSeen.x, this.lastSeen.z, dt, 1.6) || this.stateTime > 12) {
           this.enter('SEARCH');
         }
         if (sees && ctx.heat >= 40) this.enter('APPROACH', APPROACH_LINES);
         if (sees && ctx.heat >= 60) this.enter('CHASE', CHASE_LINES);
         break;
       case 'APPROACH':
-        this.moveToward(ctx.playerX, ctx.playerZ, dt, 2.4);
+        this.pursue(ctx.playerX, ctx.playerZ, dt, 2.4);
         if (ctx.heat >= 60 && sees) this.enter('CHASE', CHASE_LINES);
         else if (!sees) {
           this.lostTimer += dt;
@@ -128,7 +157,7 @@ export class Police extends NPC {
         break;
       case 'CHASE': {
         const target = sees ? { x: ctx.playerX, z: ctx.playerZ } : { x: this.lastSeen.x, z: this.lastSeen.z };
-        this.moveToward(target.x, target.z, dt, 5.8);
+        this.pursue(target.x, target.z, dt, 5.8);
         if (this.lineTimer <= 0) {
           this.say(CHASE_LINES[Math.floor(Math.random() * CHASE_LINES.length)], '#ff5c5c', 2);
           this.lineTimer = 4;
@@ -178,6 +207,8 @@ export class Police extends NPC {
       this.noticeCooldown = 6;
       this.path = [];
     }
+    this.detourTimer = 0;
+    this.stuckTimer = 0;
     if (lines && lines.length) this.say(lines[Math.floor(Math.random() * lines.length)], s === 'CHASE' ? '#ff5c5c' : '#9ecbff', 2.5);
   }
 
