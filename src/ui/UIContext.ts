@@ -13,6 +13,7 @@ export interface GameAPI {
   sfx(name: SfxName): void;
   closePanel(): void;
   acceptOrder(id: number): void;
+  haggle(id: number, markup: number): void;
   declineOrder(id: number): void;
   sendRunner(id: number): void;
   buy(shopId: string, itemId: string, qty: number): PurchaseResult;

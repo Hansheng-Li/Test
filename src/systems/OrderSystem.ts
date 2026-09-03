@@ -1,8 +1,9 @@
 import { GameState, Order } from '../game/GameState';
 import { CustomerDef } from '../data/customers';
 import { BASES, computeRecipe, Effect, packagedItemId, parseRecipeKey } from '../data/products';
+import { hashString } from '../utils/math';
 import { LANDMARKS } from '../data/city';
-import { customerState, relationshipTier, unlockedCustomers, recordSuccessfulDeal } from './CustomerSystem';
+import { customerState, relationshipTier, unlockedCustomers, recordSuccessfulDeal, customerDef } from './CustomerSystem';
 import { countItem, removeItem, packagedInInventory } from './InventorySystem';
 import { addCash } from './EconomySystem';
 import { recipeDisplayName } from './ProductionSystem';
@@ -157,6 +158,54 @@ export function describeRequest(state: GameState, order: Order): string {
   return `${order.base} (${order.effects.join('+')})`;
 }
 
+export const TREND_BONUS = 0.25;
+const TREND_EFFECTS: Effect[] = ['ENERGY', 'CHILL', 'SOCIAL', 'FOCUS', 'DREAMY', 'CONFIDENT', 'CHAOTIC', 'GLOW'];
+
+/** Deterministic daily trend so save/load and tests agree. Returns true when the trend changed. */
+export function rollTrend(state: GameState, day: number): boolean {
+  if (state.trend && state.trend.day === day) return false;
+  const idx = hashString('trend' + day) % TREND_EFFECTS.length;
+  state.trend = { effect: TREND_EFFECTS[idx], day };
+  return true;
+}
+
+export interface HaggleResult {
+  outcome: 'accepted' | 'countered' | 'refused';
+  price: number;
+  line: string;
+}
+
+/**
+ * Counter-offer on a pending order. Generous customers and good friends tolerate
+ * bigger markups; pushing too hard risks losing the order (and a little goodwill).
+ * One attempt per order.
+ */
+export function counterOffer(state: GameState, orderId: number, markup: number, rng: () => number = Math.random): HaggleResult | null {
+  const o = state.orders.find((x) => x.id === orderId);
+  if (!o || o.status !== 'pending' || o.haggled) return null;
+  const c = customerDef(o.customerId);
+  const rel = customerState(state, o.customerId).relationship;
+  const tierBonus = { stranger: 0, acquaintance: 0.04, regular: 0.08, friend: 0.12, family: 0.18 }[relationshipTier(rel)];
+  const tolerance = 0.06 + c.generosity * 0.3 + tierBonus;
+  o.haggled = true;
+  const asked = Math.round(o.price * (1 + markup));
+  if (markup <= tolerance) {
+    o.price = asked;
+    return { outcome: 'accepted', price: o.price, line: pick(rng, ['Fine, fine. You drive a hard bargain.', 'Ugh. Okay. But you owe me.', 'Deal. Do not tell anyone I paid that.']) };
+  }
+  if (markup <= tolerance * 1.8 && rng() < 0.6) {
+    o.price = Math.round(o.price * (1 + tolerance));
+    return { outcome: 'countered', price: o.price, line: pick(rng, [`Best I can do is $${o.price}. Take it or leave it.`, `$${o.price}. Final. My rent is due.`]) };
+  }
+  o.status = 'declined';
+  customerState(state, o.customerId).relationship = Math.max(0, rel - 1);
+  return { outcome: 'refused', price: o.price, line: c.lines.complaint };
+}
+
+function pick(rng: () => number, arr: string[]): string {
+  return arr[Math.floor(rng() * arr.length)];
+}
+
 export function acceptOrder(state: GameState, orderId: number): boolean {
   const o = state.orders.find((x) => x.id === orderId);
   if (!o || o.status !== 'pending') return false;
@@ -196,6 +245,7 @@ export interface SaleResult {
   onTime?: boolean;
   unlocked?: string[];
   matchedPreference?: boolean;
+  trendHit?: boolean;
 }
 
 /** Complete a sale in person: remove product, add cash, bump relationship. */
@@ -207,7 +257,10 @@ export function completeSale(state: GameState, orderId: number, now: number): Sa
   if (!item) return { ok: false, reason: 'no_item' };
   removeItem(state, item.id, o.qty);
   const onTime = now <= o.windowEnd;
-  const earned = onTime ? o.price : Math.round(o.price * 0.7);
+  const parsedForTrend = parseRecipeKey(item.key)!;
+  const trendHit = !!state.trend && computeRecipe(parsedForTrend.base, parsedForTrend.mods).effects.includes(state.trend.effect);
+  let earned = onTime ? o.price : Math.round(o.price * 0.7);
+  if (trendHit) earned = Math.round(earned * (1 + TREND_BONUS));
   addCash(state, earned);
   o.status = 'completed';
   state.stats.sales += 1;
@@ -217,7 +270,7 @@ export function completeSale(state: GameState, orderId: number, now: number): Sa
   const cdef = unlockedCustomers(state).find((c) => c.id === o.customerId);
   const matchedPreference = !!cdef && cdef.prefEffects.some((e) => r.effects.includes(e));
   const unlocked = recordSuccessfulDeal(state, o.customerId, { onTime, matchedPreference });
-  return { ok: true, earned, itemKey: item.key, onTime, unlocked, matchedPreference };
+  return { ok: true, earned, itemKey: item.key, onTime, unlocked, matchedPreference, trendHit };
 }
 
 /** Expire stale orders; returns the ones that just expired. */

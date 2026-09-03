@@ -12,6 +12,8 @@ export interface PoliceContext {
   heat: number;
   /** Player is inside their own property (police do not enter). */
   playerSafe: boolean;
+  /** Player is carrying contraband right now. */
+  playerHolding: boolean;
   los: (ax: number, ay: number, az: number, bx: number, by: number, bz: number) => boolean;
 }
 
@@ -54,8 +56,8 @@ export class Police extends NPC {
     this.pickRandomNextNode();
   }
 
-  /** Returns 'arrest' when the officer catches the player. */
-  update(dt: number, ctx: PoliceContext): 'arrest' | null {
+  /** Returns 'arrest' when the officer catches the player, 'searched' after a clean stop-and-search. */
+  update(dt: number, ctx: PoliceContext): 'arrest' | 'searched' | null {
     this.stateTime += dt;
     this.lineTimer -= dt;
     this.noticeCooldown -= dt;
@@ -109,9 +111,18 @@ export class Police extends NPC {
           if (this.lostTimer > 4) this.enter('SEARCH');
         } else this.lostTimer = 0;
         if (d < 2.2 && sees) {
-          // stop and warn: a warning bumps nothing but ends the approach
-          if (this.stateTime > 3) this.enter('RETURN_TO_PATROL', ['Keep it moving.', 'I am watching you.']);
+          // stop-and-search: caught holding = arrest, clean = let go
           this.velocity.set(0, 0, 0);
+          this.arrestTimer += dt;
+          if (this.arrestTimer > 1.2) {
+            this.arrestTimer = 0;
+            if (ctx.playerHolding) {
+              this.enter('RETURN_TO_PATROL');
+              return 'arrest';
+            }
+            this.enter('RETURN_TO_PATROL', ['Clean. Move along.', 'Alright, you are fine. Beat it.']);
+            return 'searched';
+          }
         }
         if (this.stateTime > 25) this.enter('RETURN_TO_PATROL');
         break;

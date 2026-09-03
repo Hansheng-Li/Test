@@ -18,7 +18,7 @@ import { InteractionSystem, Interactable } from '../systems/InteractionSystem';
 import { addItem, countItem, removeItem, resolveItem, depositToStorage, withdrawFromStorage, packagedInInventory, looseProductsInInventory } from '../systems/InventorySystem';
 import { buyFromShop, spendCash, PurchaseResult } from '../systems/EconomySystem';
 import { executePrep, executePackage, nameRecipe, recipeDisplayName, PrepPlan, PrepResult, PackageResult } from '../systems/ProductionSystem';
-import { generateOrder, acceptOrder, declineOrder, activeOrders, pendingOrders, completeSale, expireOrders, findFulfillingItem, describeRequest } from '../systems/OrderSystem';
+import { generateOrder, acceptOrder, declineOrder, activeOrders, pendingOrders, completeSale, expireOrders, findFulfillingItem, describeRequest, counterOffer, rollTrend } from '../systems/OrderSystem';
 import { decayHeat, witnessedDeal, applyArrest, addHeat, heatLevel } from '../systems/HeatSystem';
 import { hireRunner, assignRunner, tickRunner } from '../systems/RunnerSystem';
 import { hireWorker, assignWorkerRecipe, tickWorker } from '../systems/WorkerSystem';
@@ -417,6 +417,10 @@ export class Game implements GameAPI {
     // panels
     if (this.openPanelId) this.panels[this.openPanelId].update(this.uiDt);
 
+    // daily trend
+    if (rollTrend(s, this.clock.day)) {
+      this.toast(`STREET TALK: ${s.trend!.effect} is the hot effect today — products with it sell for +25%.`, 'pager', 7000);
+    }
     // orders
     this.orderTimer -= dt;
     if (this.orderTimer <= 0) this.tryGenerateOrder();
@@ -542,10 +546,15 @@ export class Game implements GameAPI {
       c.update(ldt, { playerX: px, playerZ: pz, night: this.clock.isNight });
       if (d2 < 200 * 200) c.syncVisual(ldt);
     }
+    const holding = this.state.inventory.some((st) => st && (st.id.startsWith('pkg:') || st.id.startsWith('prod:')));
     for (const p of this.police) {
-      const result = p.update(dt, { playerX: px, playerZ: pz, playerY: py, heat: this.state.heat, playerSafe: safe, los });
+      const result = p.update(dt, { playerX: px, playerZ: pz, playerY: py, heat: this.state.heat, playerSafe: safe, playerHolding: holding, los });
       p.syncVisual(dt);
       if (result === 'arrest' && !this.arrested) this.beginArrest();
+      if (result === 'searched') {
+        this.state.heat = Math.max(0, this.state.heat - 15);
+        this.toast('Stop-and-search: you were clean. The officer lost interest (Heat -15).', 'info', 4000);
+      }
       if (p.pstate === 'CHASE') {
         for (const c of this.civilians) if (c.state !== 'FLEE' && c.distanceTo(p.position.x, p.position.z) < 7) c.reactTo(p.position.x, p.position.z, true);
       }
@@ -603,6 +612,23 @@ export class Game implements GameAPI {
     if (declineOrder(this.state, id)) this.audio.play('click');
   }
 
+  haggle(id: number, markup: number): void {
+    const r = counterOffer(this.state, id, markup);
+    if (!r) return;
+    const o = this.state.orders.find((x) => x.id === id)!;
+    const who = CUSTOMER_MAP[o.customerId].name.split(' ')[0];
+    if (r.outcome === 'accepted') {
+      this.audio.play('cash');
+      this.toast(`${who}: "${r.line}" — new price $${r.price}.`, 'cash');
+    } else if (r.outcome === 'countered') {
+      this.audio.play('pager');
+      this.toast(`${who}: "${r.line}"`, 'pager', 5000);
+    } else {
+      this.audio.play('error');
+      this.toast(`${who}: "${r.line}" — order lost.`, 'warn', 5000);
+    }
+  }
+
   private spawnCustomerFor(o: Order): void {
     if (this.customers.has(o.id)) return;
     const l = LANDMARKS.find((x) => x.id === o.locationId) ?? LANDMARKS[0];
@@ -646,7 +672,7 @@ export class Game implements GameAPI {
     if (!r.ok) return;
     this.audio.play('cash');
     const name = recipeDisplayName(s, r.itemKey!);
-    this.toast(`+$${r.earned} · Sold ${order.qty}x ${name} to ${def.name}${r.onTime ? '' : ' (late, 30% off)'}`, 'cash');
+    this.toast(`+$${r.earned} · Sold ${order.qty}x ${name} to ${def.name}${r.onTime ? '' : ' (late, 30% off)'}${r.trendHit ? ' · TREND BONUS +25%' : ''}`, 'cash');
     const rel = s.customers[def.id];
     this.toast(`${def.name.split(' ')[0]} relationship ${rel.relationship} (${relationshipTier(rel.relationship)})`, 'info', 2500);
     for (const id of r.unlocked ?? []) this.announceUnlock(id);
@@ -971,6 +997,7 @@ export class Game implements GameAPI {
       `Cash $${Math.floor(s.cash)} · Sales ${s.stats.sales} · Earned $${Math.floor(s.stats.earned)} · Units made ${s.stats.produced}`,
       `Arrests ${s.stats.arrests} · Suspicion ${Math.floor(s.suspicion)} · Runner deliveries ${s.runner?.deliveries ?? 0}`,
       s.properties.includes('warehouse') ? 'Property: Back Room + Warehouse 7' : `Next goal: Warehouse 7 ($${WAREHOUSE_PRICE})`,
+      s.trend ? `Street talk: ${s.trend.effect} is hot today (+25%)` : '',
     ];
     this.toast(lines.join('  |  '), 'info', 8000);
   }

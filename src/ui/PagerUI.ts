@@ -44,6 +44,13 @@ export class PagerUI extends Panel {
       row.appendChild(this.button('BRICK PHONE · CALL AROUND FOR WORK', () => { this.api.callAround(); this.render(); }, 'cyan'));
       device.appendChild(row);
     }
+    if (st.trend) {
+      const t = document.createElement('div');
+      t.className = 'pager-screen';
+      t.style.background = '#f4c542';
+      t.textContent = `STREET TALK: ${st.trend.effect} IS HOT TODAY (+25% ON SALES)`;
+      device.appendChild(t);
+    }
     h(`NEW MESSAGES (${pending.length})`);
     if (pending.length === 0) {
       const e = document.createElement('div');
@@ -67,6 +74,9 @@ export class PagerUI extends Panel {
       const actions = document.createElement('div');
       actions.className = 'actions';
       actions.appendChild(this.button('ACCEPT', () => { this.api.acceptOrder(o.id); this.render(); }, 'primary'));
+      if (!o.haggled) {
+        for (const m of [0.1, 0.2, 0.35]) actions.appendChild(this.button(`ASK +${Math.round(m * 100)}% ($${Math.round(o.price * (1 + m))})`, () => { this.api.haggle(o.id, m); this.render(); }, 'cyan'));
+      }
       actions.appendChild(this.button('DECLINE', () => { this.api.declineOrder(o.id); this.render(); }));
       card.appendChild(actions);
       device.appendChild(card);

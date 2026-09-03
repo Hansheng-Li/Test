@@ -38,6 +38,8 @@ export interface Order {
   /** Runner progress 0..1 when status === 'runner'. */
   runnerProgress?: number;
   runnerItemKey?: string;
+  /** Player already made a counter-offer on this order. */
+  haggled?: boolean;
 }
 
 export interface PlacedStation {
@@ -89,6 +91,8 @@ export interface GameState {
   flags: Record<string, boolean>;
   nextOrderId: number;
   lastOrderMinute: number;
+  /** Daily trend: products with this effect sell for a bonus. */
+  trend: { effect: import('../data/products').Effect; day: number } | null;
 }
 
 export const INVENTORY_SLOTS = 8;

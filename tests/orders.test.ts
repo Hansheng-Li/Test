@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createNewState } from '../src/systems/SaveSystem';
 import { addItem, countItem } from '../src/systems/InventorySystem';
-import { generateOrder, acceptOrder, completeSale, expireOrders, orderMatchesItem } from '../src/systems/OrderSystem';
+import { generateOrder, acceptOrder, completeSale, expireOrders, orderMatchesItem, counterOffer, rollTrend } from '../src/systems/OrderSystem';
 import { computeRecipe } from '../src/data/products';
 
 const seq = (vals: number[]) => {
@@ -74,5 +74,45 @@ describe('orders + customers', () => {
     expect(expireOrders(s, o.windowEnd - 1)).toHaveLength(0);
     expect(expireOrders(s, o.windowEnd + 1)).toHaveLength(1);
     expect(o.status).toBe('expired');
+  });
+});
+
+describe('haggling + trend', () => {
+  it('small markups are accepted, only one attempt per order', () => {
+    const s = createNewState();
+    const o = generateOrder(s, { now: s.clockMinutes, customerId: 'sunny', simple: true, rng: seq([0.1]) })!; // generous tourist
+    const before = o.price;
+    const r = counterOffer(s, o.id, 0.1, () => 0.9)!;
+    expect(r.outcome).toBe('accepted');
+    expect(o.price).toBe(Math.round(before * 1.1));
+    expect(counterOffer(s, o.id, 0.1)).toBeNull();
+  });
+
+  it('greedy markups on a stingy stranger lose the order', () => {
+    const s = createNewState();
+    const o = generateOrder(s, { now: s.clockMinutes, customerId: 'kenji', simple: true, rng: seq([0.1]) })!; // low generosity
+    const r = counterOffer(s, o.id, 0.35, () => 0.9)!;
+    expect(r.outcome).toBe('refused');
+    expect(o.status).toBe('declined');
+  });
+
+  it('trend is deterministic per day and pays a bonus', () => {
+    const s = createNewState();
+    expect(rollTrend(s, 3)).toBe(true);
+    const e = s.trend!.effect;
+    expect(rollTrend(s, 3)).toBe(false);
+    const s2 = createNewState();
+    rollTrend(s2, 3);
+    expect(s2.trend!.effect).toBe(e);
+    // force a trend that a plain SUNSET has
+    s.trend = { effect: 'ENERGY', day: 3 };
+    const o = generateOrder(s, { now: s.clockMinutes, customerId: 'moe', simple: true, rng: seq([0.1]) })!;
+    acceptOrder(s, o.id);
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    addItem(s, 'pkg:SUNSET', o.qty);
+    const cash = s.cash;
+    const r = completeSale(s, o.id, s.clockMinutes);
+    expect(r.trendHit).toBe(true);
+    expect(s.cash).toBe(cash + Math.round(o.price * 1.25));
   });
 });

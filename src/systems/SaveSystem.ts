@@ -27,6 +27,7 @@ export function createNewState(): GameState {
     flags: {},
     nextOrderId: 1,
     lastOrderMinute: 0,
+    trend: null,
   };
   initCustomers(state);
   return state;
