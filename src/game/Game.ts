@@ -27,7 +27,7 @@ import { hireDealer, giveDealerStock, takeDealerStock, assignDealerCustomer, una
 import { DealerUI } from '../ui/DealerUI';
 import { LedgerUI } from '../ui/LedgerUI';
 import { checkMilestones } from '../systems/MilestoneSystem';
-import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent } from '../systems/EventSystem';
+import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent, applyInspection } from '../systems/EventSystem';
 import { relationshipTier } from '../systems/CustomerSystem';
 import { AudioSystem, SfxName } from '../audio/Audio';
 import { HUD } from '../ui/HUD';
@@ -301,6 +301,7 @@ export class Game implements GameAPI {
     const frontSign = this.city.objects.find((o) => o.kind === 'front_sign');
     if (frontSign) frontSign.mesh.visible = !s.properties.includes('laundromat');
     this.refreshCrewSign();
+    this.syncStarterBox();
     this.cancelChecked.clear();
     this.hud.selectedSlot = 0;
   }
@@ -526,6 +527,11 @@ export class Game implements GameAPI {
       this.audio.play('pager');
       this.hud.pagerNotify('NEWS FLASH\n' + describeEvent(ev)!.toUpperCase().slice(0, 60));
       this.toast('NEWS: ' + describeEvent(ev), 'warn', 9000);
+      if (ev.id === 'inspection') {
+        const r = applyInspection(s);
+        this.audio.play('siren');
+        this.toast(r.seized > 0 ? `Inspectors seized ${r.seized} units from Warehouse 7. Keep less product on the shelves when your name is hot.` : 'Inspectors found nothing on your shelves. Lucky.', r.seized > 0 ? 'warn' : 'info', 8000);
+      }
     }
     // orders
     this.orderTimer -= dt;
@@ -1388,12 +1394,18 @@ export class Game implements GameAPI {
     this.toast('You nurse a $5 drink and blend in. Heat -5.');
   }
 
+  private syncStarterBox(): void {
+    const box = this.city.objects.find((o) => o.kind === 'starter_box');
+    if (box) box.mesh.visible = !this.state.flags.starterTaken;
+  }
+
   private takeStarterBox(): void {
     const s = this.state;
     if (s.flags.starterTaken) return;
     s.flags.starterTaken = true;
     addItem(s, 'pulp_sunset', 3);
     addItem(s, 'baggies', 6);
+    this.syncStarterBox();
     this.audio.play('unlock');
     this.toast('Starter box: 3x Sunset Pulp, 6x Zip Baggies. Prep the pulp at the PREP TABLE, then bag it at PACKAGING.', 'cash', 7000);
   }

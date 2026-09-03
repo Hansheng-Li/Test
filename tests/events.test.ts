@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createNewState } from '../src/systems/SaveSystem';
-import { rollWorldEvent, shopPriceMultiplier, orderPriceMultiplier, heatMultiplier } from '../src/systems/EventSystem';
+import { rollWorldEvent, shopPriceMultiplier, orderPriceMultiplier, heatMultiplier, applyInspection } from '../src/systems/EventSystem';
 import { buyFromShop, shopPrice } from '../src/systems/EconomySystem';
 
 describe('world events', () => {
@@ -35,5 +35,25 @@ describe('world events', () => {
     s.event = { id: 'crackdown', day: 3, param: 'docks' };
     expect(heatMultiplier(s, 'docks')).toBe(1.6);
     expect(heatMultiplier(s, 'beach')).toBe(1);
+  });
+});
+
+describe('warehouse inspection', () => {
+  it('seizes a quarter of stored contraband and leaves supplies alone', () => {
+    const s = createNewState();
+    s.properties.push('warehouse');
+    s.storage.warehouse = [{ id: 'pkg:SUNSET', qty: 8 }, { id: 'prod:VELVET', qty: 1 }, { id: 'baggies', qty: 20 }];
+    const r = applyInspection(s);
+    expect(r.seized).toBe(3);
+    expect(s.storage.warehouse).toEqual([{ id: 'pkg:SUNSET', qty: 6 }, { id: 'baggies', qty: 20 }]);
+    expect(s.suspicion).toBe(10);
+  });
+
+  it('only rolls for warehouse owners with a reputation', () => {
+    for (let d = 2; d < 40; d++) {
+      const s = createNewState();
+      rollWorldEvent(s, d);
+      expect(s.event!.id).not.toBe('inspection');
+    }
   });
 });

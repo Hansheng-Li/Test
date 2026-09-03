@@ -79,8 +79,9 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
   customers can be won over with a free sample of a packaged product (their taste decides); unlocked
   customers buy straight out of your backpack in street deals.
 * **Street talk & news**: every day one effect is "hot" (+25 % on sales), and from day 2 a world event
-  may hit — police crackdown in a zone, a supply shortage that doubles Rico's price, or a beach club
-  night that pays +30 % after dark.
+  may hit — police crackdown in a zone, a supply shortage that doubles Rico's price, a beach club
+  night that pays +30 % after dark, or (once you own the warehouse and have a reputation) a port
+  authority inspection that seizes a quarter of the product on your shelves.
 * **Police & Heat**: witnessed deals and loud customer reactions raise Heat (0–100). Officers escalate
   through PATROL → NOTICE → INVESTIGATE → APPROACH → SEARCH → CHASE. At medium heat they stop and
   search you: carrying contraband means arrest, being clean means they lose interest. Break line of

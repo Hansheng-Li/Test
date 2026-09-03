@@ -2,7 +2,7 @@ import { GameState } from '../game/GameState';
 import { hashString } from '../utils/math';
 import { BASE_SUPPLY_IDS } from '../data/items';
 
-export type WorldEventId = 'none' | 'crackdown' | 'shortage' | 'club_night';
+export type WorldEventId = 'none' | 'crackdown' | 'shortage' | 'club_night' | 'inspection';
 
 export interface WorldEvent {
   id: WorldEventId;
@@ -28,8 +28,9 @@ export function rollWorldEvent(state: GameState, day: number): WorldEvent | null
   const roll = hashString('event' + day) % 10;
   let ev: WorldEvent;
   if (roll < 3) ev = { id: 'crackdown', day, param: ZONES[hashString('zone' + day) % ZONES.length] };
-  else if (roll < 6) ev = { id: 'shortage', day, param: BASE_SUPPLY_IDS[hashString('supply' + day) % BASE_SUPPLY_IDS.length] };
-  else if (roll < 8) ev = { id: 'club_night', day };
+  else if (roll < 5) ev = { id: 'shortage', day, param: BASE_SUPPLY_IDS[hashString('supply' + day) % BASE_SUPPLY_IDS.length] };
+  else if (roll < 7) ev = { id: 'club_night', day };
+  else if (roll < 8 && state.properties.includes('warehouse') && state.suspicion >= 20) ev = { id: 'inspection', day };
   else ev = { id: 'none', day };
   state.event = ev;
   return ev.id === 'none' ? null : ev;
@@ -60,6 +61,28 @@ export function orderPriceMultiplier(state: GameState, homeZone: string, isNight
   return 1;
 }
 
+export interface InspectionResult {
+  seized: number;
+}
+
+/**
+ * Warehouse inspection: the port authority walks through Warehouse 7 and seizes a
+ * quarter of any contraband on the shelves. Runs once, when the event rolls.
+ */
+export function applyInspection(state: GameState): InspectionResult {
+  const st = state.storage.warehouse ?? [];
+  let seized = 0;
+  for (const s of st) {
+    if (!s.id.startsWith('pkg:') && !s.id.startsWith('prod:')) continue;
+    const take = Math.ceil(s.qty * 0.25);
+    s.qty -= take;
+    seized += take;
+  }
+  state.storage.warehouse = st.filter((s) => s.qty > 0);
+  if (seized > 0) state.suspicion = Math.min(100, state.suspicion + 10);
+  return { seized };
+}
+
 export function describeEvent(ev: WorldEvent | null): string | null {
   if (!ev) return null;
   switch (ev.id) {
@@ -69,6 +92,8 @@ export function describeEvent(ev: WorldEvent | null): string | null {
       return `SUPPLY SHORTAGE: Rico doubled the price of ${ev.param === 'pulp_sunset' ? 'Sunset Pulp' : ev.param === 'wax_velvet' ? 'Velvet Wax' : 'Neon Gel'} today.`;
     case 'club_night':
       return 'CLUB NIGHT at the beach: beach customers pay +30% after dark.';
+    case 'inspection':
+      return 'PORT AUTHORITY INSPECTION at Warehouse 7 this morning: a quarter of any product on the shelves was seized.';
     default:
       return null;
   }
