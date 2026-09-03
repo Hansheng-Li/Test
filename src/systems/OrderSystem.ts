@@ -73,7 +73,7 @@ export function generateOrder(state: GameState, opts: OrderGenOptions): Order | 
   if (bored) {
     const last = parseRecipeKey(cs.lastRecipe!);
     const lastEffects = last ? computeRecipe(last.base, last.mods).effects : [];
-    const wanted = c.prefEffects.find((e) => !lastEffects.includes(e)) ?? ALL_EFFECTS.find((e) => !lastEffects.includes(e))!;
+    const wanted = c.prefEffects.find((e) => !lastEffects.includes(e)) ?? BORED_FALLBACK.find((e) => !lastEffects.includes(e))!;
     effects = [wanted];
   } else if (!opts.simple && tier !== 'stranger') {
     const roll = rng();
@@ -182,6 +182,8 @@ export function noteRecipeBought(state: GameState, customerId: string, key: stri
 }
 
 export const BORED_AFTER = 3;
+/** Modded effects first so a bored customer is steered toward something you have to craft; plain-base effects last. */
+const BORED_FALLBACK: Effect[] = ['SOCIAL', 'FOCUS', 'DREAMY', 'CONFIDENT', 'CHAOTIC', 'GLOW', 'ENERGY', 'CHILL'];
 
 /** True when a customer has bought the same thing BORED_AFTER times in a row. */
 export function isBored(state: GameState, customerId: string): boolean {

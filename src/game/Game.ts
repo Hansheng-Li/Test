@@ -246,7 +246,10 @@ export class Game implements GameAPI {
     if (key === 'radioVolume') this.audio.radio.setVolume(value);
     if (!persist) return;
     if (this.settingsSaveTimer !== null) clearTimeout(this.settingsSaveTimer);
-    this.settingsSaveTimer = window.setTimeout(() => saveSettings(this.settings), 300);
+    this.settingsSaveTimer = window.setTimeout(() => {
+      this.settingsSaveTimer = null;
+      saveSettings(this.settings);
+    }, 300);
   }
 
   pause(): void {
@@ -364,7 +367,7 @@ export class Game implements GameAPI {
         add({ prompt: () => (o.data?.rest || owned() ? '[E] REST UNTIL MORNING' : null), onInteract: () => this.rest(), radius: 3 });
         break;
       case 'payphone':
-        add({ prompt: () => (this.payphoneCooldown > 0 ? null : '[E] USE PAYPHONE · CALL AROUND ($1)'), onInteract: () => this.usePayphone(), radius: 2.8 });
+        add({ prompt: () => (this.payphoneCooldown > 0 ? null : `[E] USE PAYPHONE · CALL AROUND (${this.state.cash < 1 ? 'FREE, you look broke' : '$1'})`), onInteract: () => this.usePayphone(), radius: 2.8 });
         break;
       case 'club_bar':
         add({ prompt: () => '[E] ORDER A DRINK ($5)', onInteract: () => this.buyDrink(), radius: 3.5 });
@@ -716,13 +719,17 @@ export class Game implements GameAPI {
 
   // ------------------------------------------------------------------ NPC updates
 
+  /** Everyone who reacts to deals, horns, cars and chases: regular civilians plus the night crowd after dark. */
+  private pedestrians(): Civilian[] {
+    return this.clock.isNight ? this.civilians.concat(this.nightCrowd) : this.civilians;
+  }
+
   private updateNPCs(dt: number, safe: boolean): void {
     const px = this.player.position.x;
     const pz = this.player.position.z;
     const py = this.player.position.y;
     const los = (ax: number, ay: number, az: number, bx: number, by: number, bz: number): boolean => this.city.colliders.lineOfSight(ax, ay, az, bx, by, bz, 10);
-    const crowd = this.clock.isNight ? this.civilians.concat(this.nightCrowd) : this.civilians;
-    for (const c of crowd) {
+    for (const c of this.pedestrians()) {
       const d2 = (c.position.x - px) ** 2 + (c.position.z - pz) ** 2;
       // LOD: far pedestrians update at a lower rate
       c.lodAccum += dt;
@@ -745,7 +752,7 @@ export class Game implements GameAPI {
         this.toast('Stop-and-search: you were clean. The officer lost interest (Heat -15).', 'info', 4000);
       }
       if (p.pstate === 'CHASE') {
-        for (const c of this.civilians) if (c.state !== 'FLEE' && c.distanceTo(p.position.x, p.position.z) < 7) c.reactTo(p.position.x, p.position.z, true);
+        for (const c of this.pedestrians()) if (c.state !== 'FLEE' && c.distanceTo(p.position.x, p.position.z) < 7) c.reactTo(p.position.x, p.position.z, true);
       }
     }
     this.wandererTimer -= dt;
@@ -1035,7 +1042,7 @@ export class Game implements GameAPI {
     // loud reactions draw attention
     const loud = tooStrong || reaction === 'SOCIAL' || reaction === 'CHAOTIC' || reaction === 'CONFIDENT' || reaction === 'ENERGY';
     if (loud) {
-      for (const c of this.civilians) if (c.distanceTo(npc.position.x, npc.position.z) < (tooStrong ? 22 : 14)) c.reactTo(npc.position.x, npc.position.z, (tooStrong || reaction === 'CHAOTIC') && Math.random() < 0.6);
+      for (const c of this.pedestrians()) if (c.distanceTo(npc.position.x, npc.position.z) < (tooStrong ? 22 : 14)) c.reactTo(npc.position.x, npc.position.z, (tooStrong || reaction === 'CHAOTIC') && Math.random() < 0.6);
     }
     // police witness check
     let witnessed = false;
@@ -1382,7 +1389,7 @@ export class Game implements GameAPI {
   private usePayphone(fromPhone = false): void {
     const s = this.state;
     // broke players still get to call around: the operator takes pity
-    const broke = s.cash < 5;
+    const broke = s.cash < 1;
     if (pendingOrders(s).length >= 2) {
       this.toast('Your pager is already full of messages. Deal with those first.', 'warn');
       return;
@@ -1409,7 +1416,14 @@ export class Game implements GameAPI {
 
   private syncStarterBox(): void {
     const box = this.city.objects.find((o) => o.kind === 'starter_box');
-    if (box) box.mesh.visible = !this.state.flags.starterTaken;
+    if (!box) return;
+    const taken = !!this.state.flags.starterTaken;
+    box.mesh.visible = !taken;
+    if (box.colliders && box.colliders.length) {
+      const present = this.city.colliders.boxes.includes(box.colliders[0]);
+      if (taken && present) this.city.colliders.removeMany(box.colliders);
+      if (!taken && !present) for (const c of box.colliders) this.city.colliders.add(c);
+    }
   }
 
   private takeStarterBox(): void {
@@ -1557,12 +1571,12 @@ export class Game implements GameAPI {
     }
     if (r === 'horn') {
       this.audio.play('horn');
-      for (const c of this.civilians) if (c.distanceTo(v.position.x, v.position.z) < 12) c.reactTo(v.position.x, v.position.z, false);
+      for (const c of this.pedestrians()) if (c.distanceTo(v.position.x, v.position.z) < 12) c.reactTo(v.position.x, v.position.z, false);
       for (const w of this.wanderers.values()) if (w.distanceTo(v.position.x, v.position.z) < 12) w.say('HEY! I am walking here!', '#ffd166', 2);
     }
     // pedestrians scatter from a moving car
     if (Math.abs(v.speed) > 3) {
-      for (const c of this.civilians) {
+      for (const c of this.pedestrians()) {
         if (c.state !== 'FLEE' && c.distanceTo(v.position.x, v.position.z) < 3.5) {
           c.reactTo(v.position.x, v.position.z, true);
           addHeat(this.state, 4);

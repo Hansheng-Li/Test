@@ -123,7 +123,8 @@ test('a new player can complete the first sale', async ({ page }) => {
   await frames(page, 4);
   const after = await page.evaluate(() => { const g = (window as unknown as { game: G }).game; return { cash: g.state.cash, rel: g.state.customers.tasha.relationship, status: g.state.orders[0].status }; });
   expect(after.status).toBe('completed');
-  expect(after.cash).toBe(cashBefore + order.price);
+  // milestones and trend bonuses can add cash on top of the sale itself
+  expect(after.cash).toBeGreaterThanOrEqual(cashBefore + order.price);
   expect(after.rel).toBeGreaterThan(0);
   expect(errors).toEqual([]);
 });

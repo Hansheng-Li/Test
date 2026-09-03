@@ -129,4 +129,4 @@ export interface GameState {
 }
 
 export const INVENTORY_SLOTS = 8;
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;

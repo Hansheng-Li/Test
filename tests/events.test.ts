@@ -49,6 +49,18 @@ describe('warehouse inspection', () => {
     expect(s.suspicion).toBe(10);
   });
 
+  it('rolls for warehouse owners with a reputation on an inspection day', () => {
+    let found = false;
+    for (let d = 2; d < 200 && !found; d++) {
+      const s = createNewState();
+      s.properties.push('warehouse');
+      s.suspicion = 40;
+      rollWorldEvent(s, d);
+      if (s.event!.id === 'inspection') found = true;
+    }
+    expect(found).toBe(true);
+  });
+
   it('only rolls for warehouse owners with a reputation', () => {
     for (let d = 2; d < 40; d++) {
       const s = createNewState();

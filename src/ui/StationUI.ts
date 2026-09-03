@@ -185,7 +185,7 @@ export class PrepUI extends Panel {
       this.api.sfx('click');
       const z = this.el.querySelector('.zone') as HTMLElement | null;
       if (z) z.style.left = this.zoneStart * 100 + '%';
-      if (this.statusEl) this.statusEl.textContent = `Nice stir! (${this.hits}) · 3 hits = +1 unit, 5 hits = +2`;
+      if (this.statusEl) this.statusEl.textContent = this.input?.startsWith('prod:') ? `Nice stir! (${this.hits}) · refining: faster, no bonus units` : `Nice stir! (${this.hits}) · 3 hits = +1 unit, 5 hits = +2 (max one per two units)`;
     } else {
       this.api.sfx('error');
       if (this.statusEl) this.statusEl.textContent = 'Missed the zone.';
@@ -214,7 +214,8 @@ export class PrepUI extends Panel {
       const r = this.api.prep({ inputItem: this.input!, mods: this.mods, units: this.units, bonusUnits: bonus });
       if (r.ok && r.recipe) {
         this.api.sfx('unlock');
-        this.api.toast(`Prepped ${r.units}x ${recipeDisplayName(this.api.state, r.recipe.key)}${bonus ? ` · smooth batch: +${bonus} bonus unit${bonus > 1 ? 's' : ''}!` : this.hits >= 1 ? ' · decent stir.' : ''}`);
+        const got = r.bonus ?? 0;
+        this.api.toast(`Prepped ${r.units}x ${recipeDisplayName(this.api.state, r.recipe.key)}${got ? ` · smooth batch: +${got} bonus unit${got > 1 ? 's' : ''}!` : this.hits >= 1 ? ' · decent stir.' : ''}`);
         const isNew = !this.api.state.recipes[r.recipe.key]?.customName;
         if (isNew) this.pendingName = r.recipe.key;
         if (countItem(this.api.state, this.input!) === 0) { this.input = null; this.mods = []; }

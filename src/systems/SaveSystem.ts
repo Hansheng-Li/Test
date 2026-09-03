@@ -73,7 +73,8 @@ export function deserialize(json: string): GameState | null {
     placedStations: Array.isArray(r.placedStations) ? r.placedStations : [],
     stats: { ...fresh.stats, ...(r.stats ?? {}) },
     flags: r.flags && typeof r.flags === 'object' ? r.flags : {},
-    player: r.player && typeof r.player.x === 'number' ? r.player : fresh.player,
+    // saves from before the back room was resized may hold a position inside a wall: respawn them at home
+    player: r.player && typeof r.player.x === 'number' && typeof r.version === 'number' && r.version >= 2 ? r.player : fresh.player,
   };
   while (state.inventory.length < INVENTORY_SLOTS) state.inventory.push(null);
   // nested objects: repair anything that would crash a system tick

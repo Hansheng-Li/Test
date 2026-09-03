@@ -185,3 +185,13 @@ describe('second review fixes', () => {
     expect(s.customers['moe'].sameStreak).toBe(1);
   });
 });
+
+describe('save version migration', () => {
+  it('drops player positions from saves older than the back-room resize', () => {
+    const old = deserialize(JSON.stringify({ version: 1, cash: 10, inventory: [], player: { x: -39, y: 0, z: 15, yaw: 0 } }))!;
+    expect(old.player.x).not.toBe(-39);
+    const current = createNewState();
+    current.player = { x: -20, y: 0, z: 12, yaw: 1 };
+    expect(deserialize(serialize(current))!.player.x).toBe(-20);
+  });
+});

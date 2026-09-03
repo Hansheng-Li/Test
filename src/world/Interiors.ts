@@ -177,8 +177,9 @@ export function furnishInterior(spec: BuildingSpec, ctx: InteriorContext, doorDi
       boxLabel.position.set(0, 0.9, 0);
       box.add(boxLabel);
       ctx.pb.group.add(box);
-      ctx.pb.collider(aabbFromBottom(box.position.x, y, box.position.z, 0.9, 0.6, 0.7, 'box'));
-      addObject(ctx, 'starter_box', 'starter_box', box, 'safehouse');
+      const boxCol = aabbFromBottom(box.position.x, y, box.position.z, 0.9, 0.6, 0.7, 'box');
+      ctx.pb.collider(boxCol);
+      addObject(ctx, 'starter_box', 'starter_box', box, 'safehouse').colliders = [boxCol];
       // desk with fax machine & pager charger
       const desk = table(ctx, x + 2.2, z - d / 2 + 1.0, 2, 0.9, '#5d4037');
       const fax = new THREE.Mesh(boxGeo(0.7, 0.25, 0.5), lambert('#e0e0e0'));

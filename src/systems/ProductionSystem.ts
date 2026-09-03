@@ -17,6 +17,8 @@ export interface PrepResult {
   recipe?: Recipe;
   outputItem?: string;
   units?: number;
+  /** Skill bonus units actually awarded. */
+  bonus?: number;
 }
 
 /** Seconds a prep batch takes (upgrades speed it up). */
@@ -78,7 +80,7 @@ export function executePrep(state: GameState, plan: PrepPlan): PrepResult {
   if (!state.recipes[preview.recipe.key]) state.recipes[preview.recipe.key] = { ...preview.recipe };
   addItem(state, outId, outUnits);
   state.stats.produced += outUnits;
-  return { ok: true, recipe: preview.recipe, outputItem: outId, units: outUnits };
+  return { ok: true, recipe: preview.recipe, outputItem: outId, units: outUnits, bonus: skill };
 }
 
 export interface PackageResult {
