@@ -379,6 +379,22 @@ export class Game implements GameAPI {
     });
   }
 
+  /** Long-term suspicion puts more officers on the street (4 base, up to 6). */
+  private syncPoliceCount(): void {
+    const want = 4 + (this.state.suspicion >= 30 ? 1 : 0) + (this.state.suspicion >= 60 ? 1 : 0);
+    while (this.police.length < want) {
+      const n = this.city.waypoints.random();
+      const p = new Police('cop' + this.police.length, n.x, n.z, this.city.colliders, this.city.waypoints);
+      this.police.push(p);
+      this.dynamicGroup.add(p.mesh);
+      this.toast('District 3 added a patrol. Your name is getting around.', 'warn', 5000);
+    }
+    while (this.police.length > want) {
+      const p = this.police.pop()!;
+      this.dynamicGroup.remove(p.mesh);
+    }
+  }
+
   private createRunnerNPC(): void {
     const home = this.runnerHome();
     this.runnerNPC = new RunnerNPC(home.x, home.z, this.city.colliders, this.city.waypoints);
@@ -669,6 +685,7 @@ export class Game implements GameAPI {
       this.wandererTimer = 2;
       this.syncWanderers();
       this.gossip = this.buildGossip();
+      this.syncPoliceCount();
     }
     for (const w of this.wanderers.values()) {
       const d2 = (w.position.x - px) ** 2 + (w.position.z - pz) ** 2;
@@ -796,9 +813,11 @@ export class Game implements GameAPI {
   private syncWanderers(): void {
     const s = this.state;
     const busy = new Set(s.orders.filter((o) => o.status === 'pending' || o.status === 'accepted' || o.status === 'runner').map((o) => o.customerId));
+    const h = this.clock.hour;
+    const awake = (pref: 'day' | 'night' | 'any'): boolean => (pref === 'any' ? true : pref === 'day' ? h >= 7 && h < 22 : h >= 17 || h < 5);
     for (const def of CUSTOMERS) {
       const cs = s.customers[def.id];
-      const shouldExist = !busy.has(def.id) && !(cs && cs.introduced === false && cs.unlocked);
+      const shouldExist = !busy.has(def.id) && awake(def.timePref) && !(cs && cs.introduced === false && cs.unlocked);
       const existing = this.wanderers.get(def.id);
       if (shouldExist && !existing) {
         const zoneNodes = this.city.waypoints.nodes.filter((n) => n.zone === def.homeZone);

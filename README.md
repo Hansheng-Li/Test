@@ -72,8 +72,9 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
   reliability and risk. Deals raise relationship → bigger orders, better prices, friends-of-friends unlock.
 * **Orders** arrive on the pager (accept / decline / haggle for +10–35 %), have a meeting spot and a
   time window. Payphones let you "call around" for work; the Brick Phone raises order frequency.
-* **Customers walk the city.** Locked customers can be won over with a free sample of a packaged product
-  (their taste decides); unlocked customers buy straight out of your backpack in street deals.
+* **Customers walk the city** on their own schedule (night owls after dark, day people by day). Locked
+  customers can be won over with a free sample of a packaged product (their taste decides); unlocked
+  customers buy straight out of your backpack in street deals.
 * **Street talk & news**: every day one effect is "hot" (+25 % on sales), and from day 2 a world event
   may hit — police crackdown in a zone, a supply shortage that doubles Rico's price, or a beach club
   night that pays +30 % after dark.
@@ -81,6 +82,7 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
   through PATROL → NOTICE → INVESTIGATE → APPROACH → SEARCH → CHASE. At medium heat they stop and
   search you: carrying contraband means arrest, being clean means they lose interest. Break line of
   sight or get home. Arrest = contraband confiscated + fine + suspicion + 6 lost hours. Never a game over.
+  Long-term suspicion puts extra patrols on the street (4 → 6 officers).
 * **Property**: buy **Warehouse 7** ($1,800) at the docks, then place shelves, prep stations and
   packaging tables inside it (grid-snapped placement mode).
 * **Automation**: hire **Dizzy** ($600) near the Ocean View Motel. Stock packaged product in storage,
@@ -89,7 +91,9 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
   table and she turns stored supplies + baggies into packaged product around the clock. Hire **Vince**
   ($1,000) near Neptune Arcade as a dealer: hand him stock, assign up to five customers, and they stop
   paging you — he sells on his corner and holds the cash until you collect it (and sometimes gets shaken
-  down by the cops). Supplies in, dealer out — the loop you used to do by hand now runs itself.
+  down by the cops; leave him without stock for too long and a rival crew poaches his customers). Dizzy
+  takes a queue of deliveries; once you own the warehouse Rico delivers supplies there for a 20 % fee. Supplies in, dealer out — the loop you used to do by hand now runs itself.
+* **Second stash**: rent Room 6 at the Ocean View Motel ($1,200) for beach-side storage and a bed.
 * **Wheels**: the '88 sedan at Rojas Auto Repair ($900) crosses town in seconds, honks pedestrians out
   of the way, and stays wherever you park it.
 * **Goals**: the fax/CRT ledger in your back room lists 14 milestones with cash rewards, crew status and
