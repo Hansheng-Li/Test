@@ -102,7 +102,7 @@ export interface GameState {
   worker: WorkerState | null;
   dealer: DealerState | null;
   player: { x: number; y: number; z: number; yaw: number };
-  stats: { sales: number; earned: number; arrests: number; declined: number; produced: number; playSeconds: number };
+  stats: { sales: number; earned: number; arrests: number; declined: number; produced: number; playSeconds: number; earnedAtDayStart: number; salesAtDayStart: number; lastDay: number };
   flags: Record<string, boolean>;
   nextOrderId: number;
   lastOrderMinute: number;

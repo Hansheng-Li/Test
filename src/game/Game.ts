@@ -24,6 +24,8 @@ import { hireRunner, assignRunner, tickRunner } from '../systems/RunnerSystem';
 import { hireWorker, assignWorkerRecipe, tickWorker } from '../systems/WorkerSystem';
 import { hireDealer, giveDealerStock, takeDealerStock, assignDealerCustomer, unassignDealerCustomer, collectDealerCash, tickDealer, dealerStockCount } from '../systems/DealerSystem';
 import { DealerUI } from '../ui/DealerUI';
+import { LedgerUI } from '../ui/LedgerUI';
+import { checkMilestones } from '../systems/MilestoneSystem';
 import { relationshipTier } from '../systems/CustomerSystem';
 import { AudioSystem, SfxName } from '../audio/Audio';
 import { HUD } from '../ui/HUD';
@@ -72,6 +74,8 @@ export class Game implements GameAPI {
   packUI: PackUI;
   mapUI: MapUI;
   dealerUI: DealerUI;
+  ledgerUI: LedgerUI;
+  private milestoneTimer = 0;
   private dealerStarvedTimer = 0;
   openPanelId: string | null = null;
   running = false;
@@ -137,7 +141,8 @@ export class Game implements GameAPI {
     this.packUI = new PackUI(root, this);
     this.mapUI = new MapUI(root, this);
     this.dealerUI = new DealerUI(root, this);
-    for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI, this.dealerUI]) this.panels[p.id] = p;
+    this.ledgerUI = new LedgerUI(root, this);
+    for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI, this.dealerUI, this.ledgerUI]) this.panels[p.id] = p;
     this.menu = new Menu(root, {
       newGame: () => this.startNewGame(),
       continueGame: () => this.continueGame(),
@@ -311,7 +316,7 @@ export class Game implements GameAPI {
         add({ prompt: () => '[E] ORDER A DRINK ($5)', onInteract: () => this.buyDrink(), radius: 3.5 });
         break;
       case 'fax':
-        add({ prompt: () => '[E] CHECK FAX / LEDGER', onInteract: () => this.readFax(), radius: 2.5 });
+        add({ prompt: () => '[E] CHECK FAX / LEDGER', onInteract: () => this.openPanel('ledger-panel'), radius: 2.5 });
         break;
       case 'placement_area':
         break;
@@ -551,6 +556,24 @@ export class Game implements GameAPI {
     // placement ghost
     if (this.placement) this.updatePlacement();
 
+    // milestones + daily summary
+    this.milestoneTimer -= dt;
+    if (this.milestoneTimer <= 0) {
+      this.milestoneTimer = 2;
+      for (const m of checkMilestones(s)) {
+        this.audio.play('unlock');
+        this.toast(`GOAL: ${m.title} — +$${m.reward}. (${m.hint})`, 'cash', 6000);
+      }
+      const day = this.clock.day;
+      if (day !== s.stats.lastDay) {
+        const earned = Math.round(s.stats.earned - s.stats.earnedAtDayStart);
+        const sales = s.stats.sales - s.stats.salesAtDayStart;
+        s.stats.lastDay = day;
+        s.stats.earnedAtDayStart = s.stats.earned;
+        s.stats.salesAtDayStart = s.stats.sales;
+        if (sales > 0 || earned > 0) this.toast(`NEW DAY ${day}: yesterday you made $${earned} from ${sales} sales.`, 'pager', 7000);
+      }
+    }
     // autosave
     this.autosaveTimer -= dt;
     if (this.autosaveTimer <= 0) {
@@ -586,6 +609,7 @@ export class Game implements GameAPI {
       p.syncVisual(dt);
       if (result === 'arrest' && !this.arrested) this.beginArrest();
       if (result === 'searched') {
+        this.state.flags.cleanSearch = true;
         this.state.heat = Math.max(0, this.state.heat - 15);
         this.toast('Stop-and-search: you were clean. The officer lost interest (Heat -15).', 'info', 4000);
       }
@@ -1201,18 +1225,6 @@ export class Game implements GameAPI {
     this.audio.play('cash');
     this.state.heat = Math.max(0, this.state.heat - 5);
     this.toast('You nurse a $5 drink and blend in. Heat -5.');
-  }
-
-  private readFax(): void {
-    const s = this.state;
-    const lines = [
-      `LEDGER · DAY ${this.clock.day}`,
-      `Cash $${Math.floor(s.cash)} · Sales ${s.stats.sales} · Earned $${Math.floor(s.stats.earned)} · Units made ${s.stats.produced}`,
-      `Arrests ${s.stats.arrests} · Suspicion ${Math.floor(s.suspicion)} · Runner deliveries ${s.runner?.deliveries ?? 0}`,
-      s.properties.includes('warehouse') ? 'Property: Back Room + Warehouse 7' : `Next goal: Warehouse 7 ($${WAREHOUSE_PRICE})`,
-      s.trend ? `Street talk: ${s.trend.effect} is hot today (+25%)` : '',
-    ];
-    this.toast(lines.join('  |  '), 'info', 8000);
   }
 
   private takeStarterBox(): void {

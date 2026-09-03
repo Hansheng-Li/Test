@@ -37,8 +37,8 @@ canvas { display: block; }
 #crosshair { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255,255,255,0.8); box-shadow: 0 0 4px #000; }
 #prompt { position: absolute; left: 50%; top: 56%; transform: translateX(-50%); font-size: 18px; font-weight: bold; background: var(--panel); padding: 6px 14px; border-radius: 4px; border: 1px solid var(--cream); display: none; letter-spacing: 1px; }
 #prompt b { color: var(--cyan); }
-#toasts { position: absolute; left: 50%; top: 14%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.toast { background: var(--panel); border-left: 4px solid var(--cyan); padding: 8px 16px; font-size: 16px; border-radius: 4px; animation: toast-in 0.25s ease-out; max-width: 640px; text-align: center; }
+#toasts { position: absolute; left: 16px; top: 190px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; max-width: 380px; }
+.toast { background: var(--panel); border-left: 4px solid var(--cyan); padding: 7px 12px; font-size: 14px; border-radius: 4px; animation: toast-in 0.25s ease-out; max-width: 380px; text-align: left; }
 .toast.cash { border-left-color: #7dff9a; color: #7dff9a; font-weight: bold; }
 .toast.warn { border-left-color: #ff1f5a; color: #ffb3c1; }
 .toast.pager { border-left-color: var(--pink); }

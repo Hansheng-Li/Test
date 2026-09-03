@@ -78,11 +78,11 @@ export const SHOPS: Record<string, { name: string; entries: ShopEntry[] }> = {
   },
 };
 
-export const WAREHOUSE_PRICE = 2500;
+export const WAREHOUSE_PRICE = 1800;
 export const RUNNER_HIRE_PRICE = 600;
 export const RUNNER_CUT = 0.2;
 export const WORKER_HIRE_PRICE = 900;
-export const DEALER_HIRE_PRICE = 1200;
+export const DEALER_HIRE_PRICE = 1000;
 export const DEALER_MAX_CUSTOMERS = 5;
 export const DEALER_MAX_STOCK = 60;
 export const DEALER_PRICE_FACTOR = 0.65;

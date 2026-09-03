@@ -73,7 +73,7 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
 * **Police & Heat**: witnessed deals and loud customer reactions raise Heat (0–100). Officers escalate
   through PATROL → NOTICE → INVESTIGATE → APPROACH → SEARCH → CHASE. Break line of sight or get home.
   Arrest = contraband confiscated + fine + suspicion + 6 lost hours. Never a game over.
-* **Property**: buy **Warehouse 7** ($2,500) at the docks, then place shelves, prep stations and
+* **Property**: buy **Warehouse 7** ($1,800) at the docks, then place shelves, prep stations and
   packaging tables inside it (grid-snapped placement mode).
 * **Automation**: hire **Dizzy** ($600) near the Ocean View Motel. Stock packaged product in storage,
   then use *SEND RUNNER* on any accepted order. Dizzy walks there, closes the deal and keeps 20 %.
