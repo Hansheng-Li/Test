@@ -126,4 +126,6 @@ export const SUPPLIER_SPOT = { x: -158, z: 22, name: 'Rico' };
 export const RUNNER_CONTACT_SPOT = { x: 154, z: -84, name: 'Dizzy' };
 export const WORKER_CONTACT_SPOT = { x: -152, z: 86, name: 'Marisol' };
 export const DEALER_CONTACT_SPOT = { x: 154, z: 100, name: 'Vince' };
+export const CAR_SALE_SPOT = { x: -74, z: -36.5, yaw: 0 };
+export const CAR_HOME_SPOT = { x: -8, z: 26, yaw: Math.PI / 2 };
 export const WAREHOUSE_SIGN = { x: -149, z: -66 };

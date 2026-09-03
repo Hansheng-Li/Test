@@ -7,10 +7,10 @@ import { DayNight } from '../world/DayNight';
 import { PropBuilder } from '../world/Props';
 import { buildPlacedStation, InteriorContext } from '../world/Interiors';
 import { WorldObject } from '../world/WorldTypes';
-import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN } from '../data/city';
+import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT } from '../data/city';
 import { makeFigure, makeLabel } from '../world/Interiors';
 import { CUSTOMER_MAP } from '../data/customers';
-import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, ITEMS } from '../data/items';
+import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, VEHICLE_PRICE, ITEMS } from '../data/items';
 import { computeRecipe, parseRecipeKey, Effect } from '../data/products';
 import { GameState, Order, PlacedStation } from './GameState';
 import { createNewState, saveToStorage, loadFromStorage, hasSave, clearSave } from '../systems/SaveSystem';
@@ -43,6 +43,7 @@ import { Police } from '../entities/Police';
 import { CustomerNPC, REACTION_LINES } from '../entities/CustomerNPC';
 import { RunnerNPC } from '../entities/RunnerNPC';
 import { WanderingCustomer } from '../entities/WanderingCustomer';
+import { Vehicle } from '../player/Vehicle';
 import { CUSTOMERS } from '../data/customers';
 import { offerSample } from '../systems/CustomerSystem';
 import { streetSale, streetSaleCandidate, streetUnitPrice, STREET_SALE_COOLDOWN } from '../systems/OrderSystem';
@@ -88,6 +89,10 @@ export class Game implements GameAPI {
   private gossip: string[] = [];
   runnerNPC: RunnerNPC | null = null;
   workerFigure: THREE.Group | null = null;
+  vehicle: Vehicle | null = null;
+  driving = false;
+  private carHitTimer = 0;
+  private carEye = new THREE.Vector3();
   private workerToastTimer = 0;
   private workerBlockedTimer = 0;
   dancers: Civilian[] = [];
@@ -251,6 +256,8 @@ export class Game implements GameAPI {
     }
     if (s.runner?.hired) this.createRunnerNPC();
     this.updateWorkerFigure();
+    this.driving = false;
+    this.syncVehicle();
     // placed stations
     for (const o of this.placedObjects) {
       this.interaction.remove(o.id);
@@ -304,6 +311,9 @@ export class Game implements GameAPI {
         break;
       case 'dealer_contact':
         add({ prompt: () => (this.state.dealer?.hired ? `[E] TALK · VINCE (DEALER · $${Math.round(this.state.dealer.cash)} waiting)` : `[E] TALK · VINCE (HIRE DEALER $${DEALER_HIRE_PRICE})`), onInteract: () => this.talkToVince(), radius: 3.5 });
+        break;
+      case 'car_sale':
+        add({ prompt: () => (this.state.vehicle?.owned ? null : `[E] BUY '88 SEDAN ($${VEHICLE_PRICE})`), onInteract: () => this.buyCar(), radius: 4 });
         break;
       case 'warehouse_sign':
         add({ prompt: () => (this.state.properties.includes('warehouse') ? null : `[E] BUY WAREHOUSE 7 ($${WAREHOUSE_PRICE})`), onInteract: () => { this.buyWarehouse(); }, radius: 3.5 });
@@ -424,21 +434,25 @@ export class Game implements GameAPI {
     const s = this.state;
     const uiOpen = !!this.openPanelId;
     this.input.uiCaptured = uiOpen;
-    this.player.frozen = uiOpen || this.arrested;
+    this.player.frozen = uiOpen || this.arrested || this.driving;
     this.clock.tick(dt);
     s.clockMinutes = this.clock.totalMinutes;
     s.stats.playSeconds += dt;
-    this.player.update(dt);
+    if (this.driving && this.vehicle) this.updateDriving(dt, uiOpen);
+    else this.player.update(dt);
     s.player = { x: this.player.position.x, y: this.player.position.y, z: this.player.position.z, yaw: this.player.yaw };
 
     if (this.arrested) this.updateArrest(dt);
 
     // interaction
-    const target = this.interaction.update(this.camera, this.camera.position);
-    this.hud.setPrompt(uiOpen || this.arrested ? null : target ? target.prompt() : this.placement ? '[CLICK] PLACE · [R] ROTATE · [ESC] CANCEL' : null);
-    if (!uiOpen && !this.arrested && this.input.wasPressed('KeyE') && target && this.input.locked) {
-      this.audio.play('click');
-      target.onInteract();
+    const target = this.driving ? null : this.interaction.update(this.camera, this.camera.position);
+    this.hud.setPrompt(uiOpen || this.arrested ? null : this.driving ? (Math.abs(this.vehicle!.speed) < 1 ? '[E] GET OUT · SPACE HORN · SHIFT BRAKE' : null) : target ? target.prompt() : this.placement ? '[CLICK] PLACE · [R] ROTATE · [ESC] CANCEL' : null);
+    if (!uiOpen && !this.arrested && this.input.wasPressed('KeyE') && this.input.locked) {
+      if (this.driving) this.exitCar();
+      else if (target) {
+        this.audio.play('click');
+        target.onInteract();
+      }
     }
 
     // panels
@@ -589,6 +603,7 @@ export class Game implements GameAPI {
       this.save();
     }
 
+    this.hud.speedText = this.driving && this.vehicle ? `${Math.round(this.vehicle.kmh)} MPH` : null;
     this.objectiveText = this.computeObjective();
     this.hud.update(s, this.clock.formatClock(), this.clock.day, this.objectiveText, this.currentOrderText(), dt);
   }
@@ -1277,6 +1292,110 @@ export class Game implements GameAPI {
     return true;
   }
 
+  // ------------------------------------------------------------------ vehicle
+
+  private syncVehicle(): void {
+    const v = this.state.vehicle;
+    if (this.vehicle) {
+      this.dynamicGroup.remove(this.vehicle.mesh);
+      this.interaction.remove('car');
+      this.vehicle = null;
+    }
+    const sign = this.city.objects.find((o) => o.kind === 'car_sale');
+    if (sign) sign.mesh.visible = !v?.owned;
+    if (!v?.owned) return;
+    this.vehicle = new Vehicle(v.x, v.z, v.yaw, this.city.colliders);
+    this.dynamicGroup.add(this.vehicle.mesh);
+    this.interaction.add({
+      id: 'car',
+      position: this.vehicle.position,
+      radius: 4,
+      aimY: 0.8,
+      prompt: () => (this.driving ? null : '[E] ENTER CAR'),
+      onInteract: () => this.enterCar(),
+    });
+  }
+
+  private buyCar(): void {
+    const s = this.state;
+    if (s.vehicle?.owned) return;
+    if (s.cash < VEHICLE_PRICE) {
+      this.audio.play('error');
+      this.toast(`Rojas: "$${VEHICLE_PRICE}, runs great, A/C is a rumor." You have $${Math.floor(s.cash)}.`, 'info', 5000);
+      return;
+    }
+    if (!this.confirmTwice('car', `Buy the '88 sedan for $${VEHICLE_PRICE}? Cross town in seconds, drive-by deliveries`)) return;
+    spendCash(s, VEHICLE_PRICE);
+    s.vehicle = { owned: true, x: CAR_SALE_SPOT.x, z: CAR_SALE_SPOT.z + 4, yaw: CAR_SALE_SPOT.yaw };
+    this.audio.play('unlock');
+    this.toast("You own a car. W/S drive · A/D steer · SHIFT brake · SPACE horn · E get out. It saves where you leave it.", 'cash', 8000);
+    this.syncVehicle();
+    this.save();
+  }
+
+  private enterCar(): void {
+    if (!this.vehicle || this.driving) return;
+    this.driving = true;
+    this.player.pitch = 0;
+    this.player.yaw = this.vehicle.yaw;
+    this.audio.play('click');
+    this.cancelPlacement();
+  }
+
+  private exitCar(): void {
+    if (!this.vehicle || !this.driving) return;
+    if (Math.abs(this.vehicle.speed) > 1) return;
+    this.driving = false;
+    const spot = this.vehicle.exitSpot();
+    this.player.teleport(spot.x, this.vehicle.position.y + 0.3, spot.z, this.vehicle.yaw);
+    this.state.vehicle = { owned: true, x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw };
+    this.save();
+  }
+
+  private updateDriving(dt: number, uiOpen: boolean): void {
+    const v = this.vehicle!;
+    const r = uiOpen ? null : v.update(dt, this.input);
+    v.setNight(this.clock.isNight);
+    // player rides along so every other system (police, customers, map) sees the car position
+    this.player.position.copy(v.position);
+    this.player.velocity.set(0, 0, 0);
+    // mouse look relative to the car heading
+    const { dx, dy } = this.input.consumeMouse();
+    if (this.input.locked && !uiOpen) {
+      this.player.yaw -= dx * this.player.sensitivity;
+      this.player.pitch = Math.max(-0.6, Math.min(0.5, this.player.pitch - dy * this.player.sensitivity));
+      // ease the view back toward the heading when not looking around
+      const rel = ((this.player.yaw - v.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      this.player.yaw = v.yaw + rel * Math.max(0, 1 - dt * 1.5);
+    }
+    v.eye(this.carEye);
+    this.camera.position.copy(this.carEye);
+    this.camera.rotation.order = 'YXZ';
+    this.camera.rotation.set(this.player.pitch, this.player.yaw, 0);
+    if (r === 'hit') {
+      this.audio.play('error');
+      this.carHitTimer -= dt;
+      if (this.carHitTimer <= 0) {
+        this.carHitTimer = 2;
+        addHeat(this.state, 3);
+      }
+    }
+    if (r === 'horn') {
+      this.audio.play('siren');
+      for (const c of this.civilians) if (c.distanceTo(v.position.x, v.position.z) < 12) c.reactTo(v.position.x, v.position.z, false);
+      for (const w of this.wanderers.values()) if (w.distanceTo(v.position.x, v.position.z) < 12) w.say('HEY! I am walking here!', '#ffd166', 2);
+    }
+    // pedestrians scatter from a moving car
+    if (Math.abs(v.speed) > 3) {
+      for (const c of this.civilians) {
+        if (c.state !== 'FLEE' && c.distanceTo(v.position.x, v.position.z) < 3.5) {
+          c.reactTo(v.position.x, v.position.z, true);
+          addHeat(this.state, 4);
+        }
+      }
+    }
+  }
+
   // ------------------------------------------------------------------ placement mode (warehouse)
 
   private beginPlacement(kind: PlacedStation['kind'], item: string): void {
@@ -1367,6 +1486,12 @@ export class Game implements GameAPI {
   // ------------------------------------------------------------------ police / arrest
 
   private beginArrest(): void {
+    if (this.driving && this.vehicle) {
+      this.vehicle.speed = 0;
+      this.driving = false;
+      const spot = this.vehicle.exitSpot();
+      this.player.teleport(spot.x, 0.3, spot.z, this.vehicle.yaw);
+    }
     this.arrested = true;
     this.arrestTimer = 3.2;
     this.audio.play('arrest');
@@ -1447,6 +1572,7 @@ export class Game implements GameAPI {
     if (s.dealer?.hired && s.dealer.cash >= 200) return `Vince is holding $${Math.round(s.dealer.cash)} for you. Swing by Neptune Arcade.`;
     if (s.worker?.hired && !s.worker.recipeKey) return 'Assign Marisol a recipe at a PREP TABLE and stock the warehouse storage.';
     if (s.cash >= 220 && !s.upgrades.includes('eq_mixer')) return 'Buy a Turbo Mixer at Sol Palma Pawn ($220) to prep faster.';
+    if (!s.vehicle?.owned && s.cash >= VEHICLE_PRICE + 100 && s.stats.sales >= 6) return `Buy the '88 sedan at Rojas Auto Repair ($${VEHICLE_PRICE}) to cross town fast.`;
     if (packagedInInventory(s).length && s.runner?.hired) return 'Store packaged product in STORAGE so Dizzy can deliver it.';
     return 'Waiting for a page… restock, or use a payphone to call around for work.';
   }
@@ -1485,6 +1611,12 @@ export class Game implements GameAPI {
   save(): void {
     if (!this.running || this.arrested) return;
     this.state.clockMinutes = this.clock.totalMinutes;
+    if (this.vehicle && this.state.vehicle) this.state.vehicle = { owned: true, x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw };
+    if (this.driving) {
+      // never save the player "inside" the car: put them next to it
+      const spot = this.vehicle!.exitSpot();
+      this.state.player = { x: spot.x, y: this.vehicle!.position.y, z: spot.z, yaw: this.vehicle!.yaw };
+    }
     saveToStorage(this.state, localStorage);
   }
 

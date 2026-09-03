@@ -64,12 +64,14 @@ export class HUD {
     this.root.style.display = v ? 'block' : 'none';
   }
 
+  speedText: string | null = null;
+
   update(state: GameState, clockText: string, day: number, objective: string, orderText: string | null, dt: number): void {
     if (state.cash !== this.lastCash) {
       this.cashEl.textContent = '$' + Math.floor(state.cash).toLocaleString();
       this.lastCash = state.cash;
     }
-    this.clockEl.textContent = `DAY ${day} · ${clockText}`;
+    this.clockEl.textContent = `DAY ${day} · ${clockText}` + (this.speedText ? ` · ${this.speedText}` : '');
     this.heatBar.style.width = state.heat.toFixed(0) + '%';
     this.heatLabel.textContent = heatLevel(state.heat).toUpperCase() + (state.suspicion > 30 ? ' · KNOWN' : '');
     this.vignette.className = state.heat >= 60 ? 'hot' : '';

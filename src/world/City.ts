@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
   BUILDINGS, BuildingSpec, ROADS_X, ROADS_Z, ROAD_WIDTH, SIDEWALK_WIDTH, MAP_MIN_X, MAP_MAX_X, MAP_MIN_Z, MAP_MAX_Z,
-  OCEAN_X, CANAL_X, CANAL_Z, PAYPHONES, SUPPLIER_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT, DEALER_CONTACT_SPOT, WAREHOUSE_SIGN, Facing,
+  OCEAN_X, CANAL_X, CANAL_Z, PAYPHONES, SUPPLIER_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT, DEALER_CONTACT_SPOT, CAR_SALE_SPOT, WAREHOUSE_SIGN, Facing,
 } from '../data/city';
 import { CollisionWorld, aabbFromBottom } from '../physics/Colliders';
 import { lambert, basic, boxGeo, cylGeo, PALETTE } from './Materials';
@@ -327,6 +327,15 @@ export function buildCity(): CityResult {
   group.add(vince);
   colliders.add(aabbFromBottom(DEALER_CONTACT_SPOT.x, SLAB, DEALER_CONTACT_SPOT.z, 0.7, 1.9, 0.7, 'npc'));
   objects.push({ kind: 'dealer_contact', id: 'dealer_contact', position: vince.position.clone(), mesh: vince });
+
+  // car for sale in front of Rojas Auto Repair
+  const carSign = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.9), new THREE.MeshBasicMaterial({ map: signTexture('FOR SALE', { color: '#ffffff', bg: '#c62828', glow: false, sub: "'88 SEDAN · RUNS GREAT" }), side: THREE.DoubleSide }));
+  carSign.position.set(CAR_SALE_SPOT.x, SLAB + 1.9, CAR_SALE_SPOT.z - 1.6);
+  group.add(carSign);
+  const carAnchor = new THREE.Object3D();
+  carAnchor.position.set(CAR_SALE_SPOT.x, SLAB, CAR_SALE_SPOT.z);
+  group.add(carAnchor);
+  objects.push({ kind: 'car_sale', id: 'car_sale', position: carAnchor.position.clone(), mesh: carSign });
 
   // warehouse for-sale sign
   const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(3, 1.2), new THREE.MeshBasicMaterial({ map: signTexture('FOR SALE', { color: '#ffffff', bg: '#c62828', glow: false, sub: 'WAREHOUSE 7 · SEE INSIDE' }), side: THREE.DoubleSide }));
