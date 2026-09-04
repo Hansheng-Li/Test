@@ -182,6 +182,10 @@ Design rules that shaped the code:
   milestone.
 - Sol Palma Transit: a bus stop per district (marked B on the map) rides you across town for $5 and
   twelve minutes behind a fade, unless a cop is on your heels.
+- A District 3 patrol cruiser (Kenney police model, box fallback) drives a loop around the downtown
+  blocks: it brakes for whoever is in its lane, counts as a witness to deals it can see, lights up when
+  the city is hot or under curfew and radios the nearest idle officer to your position once it spots
+  you. Shows on the scanner map.
 - Curfew nights (from the fourth night, one night in five): District 3 puts two extra officers on the
   street until 06:00, every deal draws 50% more heat and cops notice sooner, but customers pay +20%
   after dark. Announced on the pager, the radio and the ledger; idle officers clock off at dawn, one

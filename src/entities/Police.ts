@@ -61,6 +61,14 @@ export class Police extends NPC {
     this.pickRandomNextNode();
   }
 
+  /** Radio call from the cruiser: an idle officer goes to look where the player was last seen. */
+  dispatchTo(x: number, y: number, z: number): boolean {
+    if (this.pstate !== 'PATROL' && this.pstate !== 'RETURN_TO_PATROL') return false;
+    this.lastSeen.set(x, y, z);
+    this.enter('INVESTIGATE', ['Copy. En route.', 'Dispatch, I am on it.']);
+    return true;
+  }
+
   /**
    * Move toward a point; if the officer has been stuck for ~1.5s, follow the waypoint
    * graph toward the target for a few seconds instead of pushing into the obstacle.

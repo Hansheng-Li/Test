@@ -9,7 +9,7 @@ import { dressInteriors } from '../world/Dressing';
 import { BusUI } from '../ui/BusUI';
 import { DiceUI } from '../ui/DiceUI';
 import { rollDice, DicePick, DiceResult } from '../systems/DiceSystem';
-import { BUS_STOPS, BUS_FARE, BUS_MINUTES } from '../data/city';
+import { BUS_STOPS, BUS_FARE, BUS_MINUTES, CRUISER_ROUTE } from '../data/city';
 import { hashString } from '../utils/math';
 import { GameClock } from '../core/Time';
 import { PlayerController } from '../player/PlayerController';
@@ -52,6 +52,7 @@ import { MapUI } from '../ui/MapUI';
 import { GameAPI, ToastKind } from '../ui/UIContext';
 import { Civilian } from '../entities/NPC';
 import { Police } from '../entities/Police';
+import { Cruiser } from '../entities/Cruiser';
 import { CustomerNPC, REACTION_LINES } from '../entities/CustomerNPC';
 import { RunnerNPC } from '../entities/RunnerNPC';
 import { WanderingCustomer } from '../entities/WanderingCustomer';
@@ -102,6 +103,9 @@ export class Game implements GameAPI {
   running = false;
   civilians: Civilian[] = [];
   police: Police[] = [];
+  /** District 3's patrol cruiser, driving its loop on rails. */
+  cruiser: Cruiser | null = null;
+  private radioCooldown = 0;
   private policeSpawned = 0;
   customers = new Map<number, CustomerNPC>();
   wanderers = new Map<string, WanderingCustomer>();
@@ -229,6 +233,7 @@ export class Game implements GameAPI {
     this.wireWorldObjects();
     this.spawnPedestrians();
     this.spawnPolice();
+    this.spawnCruiser();
     window.addEventListener('resize', () => this.onResize());
     this.renderer.domElement.addEventListener('click', () => {
       if (this.running && !this.openPanelId && !this.menu.visible) {
@@ -612,6 +617,49 @@ export class Game implements GameAPI {
     }
   }
 
+  private spawnCruiser(): void {
+    const c = new Cruiser(CRUISER_ROUTE);
+    this.cruiser = c;
+    this.dynamicGroup.add(c.mesh);
+    void loadModel('police').then((m) => {
+      if (m && this.cruiser === c) c.applyModel(instanceModel(m, { scale: CAR_SCALE }));
+    });
+  }
+
+  /** The cruiser is a moving witness: close, and with a clear line to the spot. */
+  private cruiserSees(x: number, z: number): boolean {
+    const c = this.cruiser;
+    return !!c && c.distanceTo(x, z) < 24 && this.city.colliders.lineOfSight(c.position.x, 1.4, c.position.z, x, 1.2, z, 10);
+  }
+
+  /**
+   * Drive the cruiser, brake for whoever is in its lane, and when the city is hot let it
+   * radio the nearest idle officer to the player's position (once every 45 s at most).
+   */
+  private updateCruiser(dt: number, safe: boolean): void {
+    const c = this.cruiser;
+    if (!c) return;
+    const px = this.player.position.x;
+    const pz = this.player.position.z;
+    const f = c.forward();
+    const ax = px - c.position.x;
+    const az = pz - c.position.z;
+    const along = ax * f.x + az * f.z;
+    const side = Math.abs(ax * f.z - az * f.x);
+    const blockAhead = !this.hiding && !safe && along > 0 && along < 8 && side < 3.5;
+    const alert = this.state.heat >= 60 || curfewExtraPolice(this.state) > 0;
+    c.update(dt, { blockAhead, alert, night: this.clock.isNight });
+    this.radioCooldown -= dt;
+    if (this.state.heat < 60 || safe || this.hiding || this.arrested || this.radioCooldown > 0) return;
+    if (!this.cruiserSees(px, pz)) return;
+    this.radioCooldown = 45;
+    c.holdTimer = 4;
+    const idle = this.police.filter((p) => p.pstate === 'PATROL' || p.pstate === 'RETURN_TO_PATROL').sort((a, b) => a.distanceTo(px, pz) - b.distanceTo(px, pz))[0];
+    if (idle) idle.dispatchTo(px, this.player.position.y, pz);
+    this.audio.play('siren');
+    this.toast(idle ? 'The cruiser radioed your position. A foot patrol is on the way — break line of sight.' : 'The cruiser radioed your position. Every unit is already busy — keep moving.', 'warn', 5000);
+  }
+
   private createRunnerNPC(): void {
     const home = this.runnerHome();
     this.runnerNPC = new RunnerNPC(home.x, home.z, this.city.colliders, this.city.waypoints);
@@ -983,6 +1031,7 @@ export class Game implements GameAPI {
         for (const c of peds) if (c.state !== 'FLEE' && c.distanceTo(p.position.x, p.position.z) < 7) c.reactTo(p.position.x, p.position.z, true);
       }
     }
+    this.updateCruiser(dt, safe);
     this.wandererTimer -= dt;
     if (this.wandererTimer <= 0) {
       this.wandererTimer = 2;
@@ -1236,12 +1285,14 @@ export class Game implements GameAPI {
         break;
       }
     }
+    const byCruiser = !witnessed && this.cruiserSees(w.position.x, w.position.z);
+    if (byCruiser) witnessed = true;
     const zoneMult = heatMultiplier(s, zoneAt(w.position.x));
     if (witnessed) {
       witnessedDeal(s, r.earned! * zoneMult);
       if (zoneMult > 1) addHeat(s, 10);
       this.audio.play('siren');
-      this.toast(zoneMult > 1 ? 'Crackdown day and a cop saw that street deal. HEAT spikes!' : 'A cop saw that street deal. HEAT is rising.', 'warn');
+      this.toast(byCruiser ? 'The patrol cruiser rolled past mid-deal. HEAT is rising — move.' : zoneMult > 1 ? 'Crackdown day and a cop saw that street deal. HEAT spikes!' : 'A cop saw that street deal. HEAT is rising.', 'warn');
     } else if (Math.random() < def.risk * 0.4 * zoneMult) addHeat(s, 5);
     this.save();
   }
@@ -1302,12 +1353,14 @@ export class Game implements GameAPI {
         break;
       }
     }
+    const byCruiser = !witnessed && this.cruiserSees(npc.position.x, npc.position.z);
+    if (byCruiser) witnessed = true;
     const zoneMult = heatMultiplier(s, zoneAt(npc.position.x));
     if (witnessed) {
       witnessedDeal(s, r.earned! * zoneMult);
       if (zoneMult > 1) addHeat(s, 10);
       this.audio.play('siren');
-      this.toast(zoneMult > 1 ? 'A cop saw that — and it is crackdown day here. HEAT spikes!' : 'A cop saw that. HEAT is rising — get out of sight.', 'warn');
+      this.toast(byCruiser ? 'The patrol cruiser rolled past mid-deal. HEAT is rising — get out of sight.' : zoneMult > 1 ? 'A cop saw that — and it is crackdown day here. HEAT spikes!' : 'A cop saw that. HEAT is rising — get out of sight.', 'warn');
     } else if (loud && def.risk > 0.3) {
       addHeat(s, 6);
     } else if (Math.random() < def.risk * 0.3) {
@@ -2200,7 +2253,9 @@ export class Game implements GameAPI {
     return { x: this.player.position.x, z: this.player.position.z };
   }
   policeXZ(): { x: number; z: number }[] {
-    return this.police.map((p) => ({ x: p.position.x, z: p.position.z }));
+    const out = this.police.map((p) => ({ x: p.position.x, z: p.position.z }));
+    if (this.cruiser) out.push({ x: this.cruiser.position.x, z: this.cruiser.position.z });
+    return out;
   }
   customerXZ(): { id: string; x: number; z: number; orderId: number }[] {
     return Array.from(this.customers.values()).map((c) => ({ id: c.def.id, x: c.position.x, z: c.position.z, orderId: c.orderId }));
