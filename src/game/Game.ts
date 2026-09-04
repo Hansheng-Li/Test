@@ -30,7 +30,7 @@ import { hireDealer, giveDealerStock, takeDealerStock, assignDealerCustomer, una
 import { DealerUI } from '../ui/DealerUI';
 import { LedgerUI } from '../ui/LedgerUI';
 import { checkMilestones } from '../systems/MilestoneSystem';
-import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent, applyInspection } from '../systems/EventSystem';
+import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent, applyInspection, eventSlot } from '../systems/EventSystem';
 import { relationshipTier } from '../systems/CustomerSystem';
 import { AudioSystem, SfxName } from '../audio/Audio';
 import { HUD } from '../ui/HUD';
@@ -669,7 +669,7 @@ export class Game implements GameAPI {
     if (rollTrend(s, this.clock.day)) {
       this.toast(`STREET TALK: ${s.trend!.effect} is the hot effect today — products with it sell for +25%.`, 'pager', 7000);
     }
-    const ev = rollWorldEvent(s, this.clock.day);
+    const ev = rollWorldEvent(s, eventSlot(this.clock.day, this.clock.hour));
     if (ev) {
       this.audio.play('pager');
       this.hud.pagerNotify('NEWS FLASH\n' + describeEvent(ev)!.toUpperCase().slice(0, 60), '[P] PAGER');

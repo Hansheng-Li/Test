@@ -17,15 +17,21 @@ export interface WorldEvent {
 
 const ZONES = ['beach', 'downtown', 'docks'] as const;
 
+/** Two event slots a day: the daytime one and the one that starts at 20:00. */
+export function eventSlot(day: number, hour: number): number {
+  return day * 2 + (hour >= 20 ? 1 : 0);
+}
+
 /**
- * One deterministic event per day (from day 2 on) so automation keeps creating
- * fresh problems: police crackdowns, supplier shortages, and a beach club night
- * that pays extra after dark.
+ * One deterministic event per slot (two a day, none on the first afternoon) so a
+ * 45-minute session meets three or four: police crackdowns, supplier shortages, a
+ * beach club night that pays extra after dark, inspections and rival crews.
+ * `day` is the slot number (see eventSlot); it only serves as the event's identity.
  */
 export function rollWorldEvent(state: GameState, day: number): WorldEvent | null {
   const cur = state.event;
   if (cur && cur.day === day) return null;
-  if (day < 2) {
+  if (day < 3) {
     state.event = { id: 'none', day };
     return null;
   }
@@ -35,7 +41,7 @@ export function rollWorldEvent(state: GameState, day: number): WorldEvent | null
   if (roll < 3) ev = { id: 'crackdown', day, param: ZONES[hashString('zone' + day + salt) % ZONES.length] };
   else if (roll < 5) ev = { id: 'shortage', day, param: BASE_SUPPLY_IDS[hashString('supply' + day + salt) % BASE_SUPPLY_IDS.length] };
   else if (roll < 7) ev = { id: 'club_night', day };
-  else if (roll < 8 && state.properties.includes('warehouse') && state.suspicion >= 20) ev = { id: 'inspection', day };
+  else if (roll < 8 && day >= 4 && state.properties.includes('warehouse') && state.suspicion >= 20) ev = { id: 'inspection', day };
   else if (roll < 9) {
     // a rival crew works one of your unlocked customers for the day
     const unlocked = CUSTOMERS.filter((c) => state.customers[c.id]?.unlocked && !dealerHandles(state, c.id));

@@ -175,7 +175,7 @@ Design rules that shaped the code:
 - Haggling is one attempt per order with a mood factor (the REL and personality tags are hints, not a
   table); it unlocks after your second sale. The runner queues at most two runs and one in twenty
   deliveries goes wrong.
-- Daily trend bonus, daily world events (crackdown / shortage / club night), pedestrian gossip about
+- Daily trend bonus, world events twice a day (crackdown / shortage / club night), pedestrian gossip about
   your named products, 14 milestone goals with rewards, morning summaries.
 - Drivable arcade sedan (Kenney CC0 model, box fallback) with a chase camera that orbits with the mouse
   and pulls in at walls; horn, headlights and persisted parking spot. Streets are lined with Kenney

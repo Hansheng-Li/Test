@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createNewState } from '../src/systems/SaveSystem';
-import { rollWorldEvent, shopPriceMultiplier, orderPriceMultiplier, heatMultiplier, applyInspection, rivalTarget, winBackFromRival } from '../src/systems/EventSystem';
+import { eventSlot, rollWorldEvent, shopPriceMultiplier, orderPriceMultiplier, heatMultiplier, applyInspection, rivalTarget, winBackFromRival } from '../src/systems/EventSystem';
 import { generateOrder, streetSale, acceptOrder, completeSale } from '../src/systems/OrderSystem';
 import { addItem } from '../src/systems/InventorySystem';
 import { computeRecipe } from '../src/data/products';
@@ -119,12 +119,18 @@ describe('rival win-back through a pager deal', () => {
 });
 
 describe('per-save seed', () => {
+  it('the first afternoon has no event, the first evening can', () => {
+    expect(eventSlot(1, 15)).toBe(2);
+    expect(eventSlot(1, 20)).toBe(3);
+    expect(eventSlot(2, 9)).toBe(4);
+  });
+
   it('different saves see different event calendars', () => {
     const ids = new Set<string>();
     for (let seed = 0; seed < 12; seed++) {
       const s = createNewState();
       s.seed = seed;
-      rollWorldEvent(s, 2);
+      rollWorldEvent(s, 4);
       ids.add(s.event!.id);
     }
     expect(ids.size).toBeGreaterThan(1);
