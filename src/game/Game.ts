@@ -21,7 +21,7 @@ import { WorldObject } from '../world/WorldTypes';
 import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT, PROPERTY_ANCHORS, SUPPLIER_SPOT, zoneAt } from '../data/city';
 import { makeFigure, makeLabel } from '../world/Interiors';
 import { CUSTOMER_MAP } from '../data/customers';
-import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, VEHICLE_PRICE, MOTEL_PRICE, FRONT_PRICE, FRONT_DAILY_INCOME, FRONT_DAILY_SUSPICION, ITEMS } from '../data/items';
+import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, HANDLER_HIRE_PRICE, VEHICLE_PRICE, MOTEL_PRICE, FRONT_PRICE, FRONT_DAILY_INCOME, FRONT_DAILY_SUSPICION, ITEMS } from '../data/items';
 import { computeRecipe, parseRecipeKey, Effect } from '../data/products';
 import { GameState, Order, PlacedStation } from './GameState';
 import { createNewState, saveToStorage, loadFromStorage, hasSave, clearSave } from '../systems/SaveSystem';
@@ -39,6 +39,7 @@ import { LedgerUI } from '../ui/LedgerUI';
 import { checkMilestones } from '../systems/MilestoneSystem';
 import { takeLoan, repayLoan, tickLoanDay } from '../systems/LoanSystem';
 import { resprayCar, carPaint } from '../systems/GarageSystem';
+import { hireHandler, tickHandler } from '../systems/HandlerSystem';
 import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent, applyInspection, eventSlot, curfewExtraPolice } from '../systems/EventSystem';
 import { relationshipTier } from '../systems/CustomerSystem';
 import { AudioSystem, SfxName } from '../audio/Audio';
@@ -107,6 +108,7 @@ export class Game implements GameAPI {
   /** District 3's patrol cruiser, driving its loop on rails. */
   cruiser: Cruiser | null = null;
   private radioCooldown = 0;
+  private handlerIdleTimer = 0;
   private policeSpawned = 0;
   customers = new Map<number, CustomerNPC>();
   wanderers = new Map<string, WanderingCustomer>();
@@ -513,6 +515,9 @@ export class Game implements GameAPI {
       case 'dumpster':
         add({ prompt: () => (this.hiding ? null : this.state.heat >= 20 ? '[E] HIDE IN DUMPSTER' : '[E] HIDE IN DUMPSTER (nobody is looking for you… yet)'), onInteract: () => this.hideInDumpster(o), radius: 3, aimY: 0.8 });
         break;
+      case 'handler_contact':
+        add({ prompt: () => (!owned() || this.state.handler?.hired ? null : `[E] TALK · TEDDY (HIRE HANDLER $${HANDLER_HIRE_PRICE})`), onInteract: () => this.talkToTeddy(), radius: 3.5 });
+        break;
       case 'dealer_contact':
         add({ prompt: () => (this.state.dealer?.hired ? `[E] TALK · VINCE (DEALER · $${Math.round(this.state.dealer.cash)} waiting)` : `[E] TALK · VINCE (HIRE DEALER $${DEALER_HIRE_PRICE})`), onInteract: () => this.talkToVince(), radius: 3.5 });
         break;
@@ -832,6 +837,20 @@ export class Game implements GameAPI {
       if (this.workerBlockedTimer <= 0) {
         this.workerBlockedTimer = 90;
         this.toast(`Marisol is idle: ${wr.blocked === 'no_base' ? 'no base supply' : wr.blocked === 'no_mods' ? 'no modifiers' : 'storage full'} in ${s.worker!.property} storage.`, 'warn', 4000);
+      }
+    }
+    // handler: warehouse -> Vince
+    const hr = tickHandler(s, this.clock.totalMinutes);
+    if (hr.moved) this.toast(`Teddy dropped ${hr.moved} units at Vince's corner.`, 'info', 3000);
+    if (hr.lost) {
+      this.audio.play('siren');
+      this.toast(`Teddy got stopped on the way to Vince: ${hr.lost} units gone, the port is asking questions (suspicion +5).`, 'warn', 6000);
+    }
+    if (hr.idle) {
+      this.handlerIdleTimer -= 1;
+      if (this.handlerIdleTimer <= 0) {
+        this.handlerIdleTimer = 4;
+        this.toast(hr.idle === 'no_stock' ? 'Teddy: "Nothing packaged in the warehouse. I am not carrying air."' : 'Teddy: "Vince is full up. I will wait."', 'info', 4000);
       }
     }
     // dealer
@@ -1633,6 +1652,27 @@ export class Game implements GameAPI {
       this.hud.flash('MARISOL JOINED THE CREW', '#7fffd4');
       this.toast('Marisol is hired! Stock base supplies, modifiers and baggies in WAREHOUSE STORAGE, then assign her a recipe at a PREP TABLE.', 'cash', 9000);
       this.updateWorkerFigure();
+      this.save();
+    }
+  }
+
+  private talkToTeddy(): void {
+    const s = this.state;
+    if (s.handler?.hired) return;
+    if (!s.dealer?.hired) {
+      this.toast('Teddy: "I move product to a corner. You do not have a corner. Go hire Vince at the arcade, then we talk."', 'info', 6000);
+      return;
+    }
+    if (s.cash < HANDLER_HIRE_PRICE) {
+      this.audio.play('error');
+      this.toast(`Teddy: "$${HANDLER_HIRE_PRICE} and Vince never runs dry. You have $${Math.floor(s.cash)}."`, 'info', 5000);
+      return;
+    }
+    if (!this.confirmTwice('handler', `Hire Teddy for $${HANDLER_HIRE_PRICE}? Every hour he carries up to 20 packaged units from Warehouse 7 storage to Vince`)) return;
+    if (hireHandler(s, HANDLER_HIRE_PRICE)) {
+      this.audio.play('unlock');
+      this.hud.flash('TEDDY JOINED THE CREW', '#ffd180');
+      this.toast("Teddy is hired! Keep packaged product in WAREHOUSE STORAGE and he keeps Vince's corner stocked. Now and then a trip meets a patrol.", 'cash', 9000);
       this.save();
     }
   }

@@ -18,6 +18,7 @@ export interface WorldObject {
     | 'runner_contact'
     | 'worker_contact'
     | 'dealer_contact'
+    | 'handler_contact'
     | 'car_sale'
     | 'respray'
     | 'motel_sign'

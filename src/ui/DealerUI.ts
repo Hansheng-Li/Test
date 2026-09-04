@@ -32,6 +32,7 @@ export class DealerUI extends Panel {
     const stockSec = document.createElement('div');
     stockSec.innerHTML = `<h3>STOCK (${dealerStockCount(st)}/${DEALER_MAX_STOCK} UNITS)</h3>`;
     if (d.stock.length === 0) stockSec.innerHTML += '<div style="color:#ffb3c1">Empty. Vince cannot sell air. Hand him packaged product below.</div>';
+    if (st.handler?.hired) stockSec.innerHTML += '<div class="desc" style="color:#ffd180">Teddy restocks this corner from Warehouse 7 storage every hour (up to 20 packaged units a trip).</div>';
     for (const s of d.stock) {
       const row = document.createElement('div');
       row.className = 'row';

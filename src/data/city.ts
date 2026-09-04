@@ -154,6 +154,8 @@ export const SUPPLIER_SPOT = { x: -158, z: 22, name: 'Rico' };
 export const RUNNER_CONTACT_SPOT = { x: 154, z: -84, name: 'Dizzy' };
 export const WORKER_CONTACT_SPOT = { x: -152, z: 86, name: 'Marisol' };
 export const DEALER_CONTACT_SPOT = { x: 154, z: 100, name: 'Vince' };
+/** Teddy waits in the Warehouse 7 office corner (interior coordinates). */
+export const HANDLER_CONTACT_SPOT = { x: -152.5, z: -70, name: 'Teddy' };
 export const CAR_SALE_SPOT = { x: -74, z: -36.5, yaw: 0 };
 /** Rojas' respray bay sign, a few metres down the lot from the sale spot. */
 export const RESPRAY_SPOT = { x: -90, z: -37.5 };

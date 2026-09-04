@@ -39,6 +39,18 @@ export function giveDealerStock(state: GameState, itemId: string, qty: number): 
   return n;
 }
 
+/** Put packaged product straight into the dealer's stock (the handler's deliveries). Returns units added. */
+export function dealerAddStock(state: GameState, itemId: string, qty: number): number {
+  const d = state.dealer;
+  if (!d?.hired || !itemId.startsWith('pkg:')) return 0;
+  const n = Math.max(0, Math.min(qty, DEALER_MAX_STOCK - dealerStockCount(state)));
+  if (n <= 0) return 0;
+  const st = d.stock.find((s) => s.id === itemId);
+  if (st) st.qty += n;
+  else d.stock.push({ id: itemId, qty: n });
+  return n;
+}
+
 export function takeDealerStock(state: GameState, itemId: string, qty: number): number {
   const d = state.dealer;
   if (!d?.hired) return 0;

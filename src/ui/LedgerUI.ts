@@ -34,6 +34,7 @@ export class LedgerUI extends Panel {
           ${stat('Dizzy (runner)', st.runner?.hired ? `${st.runner.deliveries} deliveries · kept $${Math.round(st.runner.earned)}` : 'not hired')}
           ${stat('Marisol (worker)', st.worker?.hired ? `${st.worker.produced} units made` : 'not hired')}
           ${stat('Vince (dealer)', st.dealer?.hired ? `${st.dealer.sales} sales · holding $${Math.round(st.dealer.cash)}` : 'not hired')}
+          ${stat('Teddy (handler)', st.handler?.hired ? `${st.handler.trips} trips · ${st.handler.moved} units to Vince` : 'not hired')}
           ${st.trend ? `<h3>STREET TALK</h3><div class="pager-screen" style="background:#f4c542">${st.trend.effect} IS HOT TODAY · +25% ON SALES</div>` : ''}
         </div>
         <div>

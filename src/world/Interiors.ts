@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BuildingSpec } from '../data/city';
+import { BuildingSpec, HANDLER_CONTACT_SPOT } from '../data/city';
 import { PropBuilder } from './Props';
 import { lambert, basic, boxGeo, cylGeo } from './Materials';
 import { signTexture } from './Textures';
@@ -322,6 +322,16 @@ export function furnishInterior(spec: BuildingSpec, ctx: InteriorContext, doorDi
         p.position.set(x - 8 + i * 4, y + 0.08, z + d / 2 - 3);
         ctx.pb.group.add(p);
       }
+      // Teddy the handler waits in the office corner until hired
+      const teddy = makeFigure('#ff8f00', '#8d5524', '#37474f');
+      teddy.position.set(HANDLER_CONTACT_SPOT.x, y, HANDLER_CONTACT_SPOT.z);
+      teddy.rotation.y = -Math.PI / 2;
+      const teddyLabel = makeLabel('TEDDY', '#ffd180');
+      teddyLabel.position.y = 2.3;
+      teddy.add(teddyLabel);
+      ctx.pb.group.add(teddy);
+      ctx.pb.collider(aabbFromBottom(HANDLER_CONTACT_SPOT.x, y, HANDLER_CONTACT_SPOT.z, 0.7, 1.9, 0.7, 'npc'));
+      addObject(ctx, 'handler_contact', 'handler_contact', teddy, 'warehouse');
       // placement area marker (invisible anchor at room center)
       const anchor = new THREE.Object3D();
       anchor.position.set(x + 4, y, z);

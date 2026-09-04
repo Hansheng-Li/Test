@@ -109,6 +109,16 @@ export interface LoanState {
   lateDays: number;
 }
 
+/** Handler: carries packaged product from Warehouse 7 to Vince's corner on a schedule. */
+export interface HandlerState {
+  hired: boolean;
+  name: string;
+  lastTickMinute: number;
+  trips: number;
+  /** Units delivered to Vince, lifetime. */
+  moved: number;
+}
+
 export interface GameState {
   version: number;
   cash: number;
@@ -127,6 +137,7 @@ export interface GameState {
   worker: WorkerState | null;
   dealer: DealerState | null;
   loan: LoanState | null;
+  handler: HandlerState | null;
   vehicle: { owned: boolean; x: number; z: number; yaw: number; /** Body colour hex from CAR_PAINTS; unset = as sold. */ paint?: string } | null;
   /** Player-chosen name for the operation; shows on the warehouse sign and the ledger. */
   crewName: string;

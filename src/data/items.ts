@@ -86,6 +86,12 @@ export const DEALER_HIRE_PRICE = 1000;
 export const DEALER_MAX_CUSTOMERS = 5;
 export const DEALER_MAX_STOCK = 60;
 export const DEALER_PRICE_FACTOR = 0.65;
+export const HANDLER_HIRE_PRICE = 1100;
+/** Game minutes between the handler's restock trips, and how much one trip carries. */
+export const HANDLER_INTERVAL = 60;
+export const HANDLER_TRIP_UNITS = 20;
+/** Chance a live trip runs into a patrol and the bag is lost. */
+export const HANDLER_MISHAP_CHANCE = 0.05;
 export const STARTING_CASH = 80;
 export const VEHICLE_PRICE = 900;
 export const MOTEL_PRICE = 1200;

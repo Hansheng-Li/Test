@@ -182,6 +182,9 @@ Design rules that shaped the code:
   milestone.
 - Sol Palma Transit: a bus stop per district (marked B on the map) rides you across town for $5 and
   twelve minutes behind a fade, unless a cop is on your heels.
+- Teddy the handler (Warehouse 7 office, needs Vince): every hour he carries up to 20 packaged units from
+  warehouse storage to Vince's corner, so Marisol → Teddy → Vince runs while you work the street. One trip
+  in twenty meets a patrol and the bag is lost. The cash pickup from Vince stays yours.
 - Rojas resprays the sedan for $150 (six colours in a fixed rack, saved with the car): heat drops by
   30 and any officer chasing you loses the trail. Bring the car into the lot, then press E at the sign.
 - A District 3 patrol cruiser (Kenney police model, box fallback) drives a loop around the downtown
@@ -217,7 +220,8 @@ Design rules that shaped the code:
 - Engine drone while driving; Club Mirage streams a CC0 track that is muffled from the street and
   full-range inside.
 - localStorage save/load with validation and repair of partial saves.
-- 56 Vitest tests covering behavioural contracts + Playwright smoke and core-loop tests.
+- 93 Vitest tests covering behavioural contracts + six Playwright e2e specs (smoke, first sale, automation, crew,
+  police, UI).
 
 ## Known limitations
 
@@ -230,8 +234,8 @@ Design rules that shaped the code:
 
 ## Roadmap
 
-1. **Handler employee** moving goods between warehouse, dealer and motel, plus multiple workers and dealers.
-2. **Animated characters** (Kenney CC0 rigs) for customers, police and crew; police cruisers that patrol.
+1. **Second worker and dealer**, and a handler route that also feeds the motel stash.
+2. **Animated characters** (Kenney CC0 rigs) for customers, police and crew; a second cruiser on the beach loop.
 3. A talk/news station that reports the day's events in full.
 4. **Co-op** (one player produces, one sells, one manages, one drives) on top of the serializable state.
 5. More interiors and richer NPC schedules.

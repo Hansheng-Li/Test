@@ -33,6 +33,7 @@ export function createNewState(): GameState {
     worker: null,
     dealer: null,
     loan: null,
+    handler: null,
     vehicle: null,
     player: { x: SPAWN.x, y: SPAWN.y, z: SPAWN.z, yaw: SPAWN.yaw },
     stats: { sales: 0, earned: 0, arrests: 0, declined: 0, produced: 0, playSeconds: 0, earnedAtDayStart: 0, salesAtDayStart: 0, lastDay: 1 },
@@ -133,6 +134,8 @@ export function deserialize(json: string): GameState | null {
   if (state.dealer) state.dealer.stock = state.dealer.stock.filter((st) => st.id.startsWith('pkg:') && knownItem(st.id));
   if (state.worker && !state.properties.includes(state.worker.property)) state.worker.property = 'warehouse';
   if (state.worker && state.worker.recipeKey && !state.recipes[state.worker.recipeKey]) state.worker.recipeKey = null;
+  const rh = r.handler;
+  state.handler = rh && typeof rh === 'object' && rh.hired ? { hired: true, name: typeof rh.name === 'string' ? rh.name : 'Teddy', lastTickMinute: num(rh.lastTickMinute, state.clockMinutes), trips: num(rh.trips, 0), moved: num(rh.moved, 0) } : null;
   const rl = r.loan;
   state.loan = rl && typeof rl === 'object' && isFiniteNum(rl.principal) && isFiniteNum(rl.owed) && rl.owed > 0 && isFiniteNum(rl.dueDay)
     ? { principal: Math.max(1, Math.floor(rl.principal)), owed: Math.floor(rl.owed), takenDay: num(rl.takenDay, rl.dueDay - 3), dueDay: Math.floor(rl.dueDay), lateDays: Math.max(0, Math.floor(num(rl.lateDays, 0))) }
