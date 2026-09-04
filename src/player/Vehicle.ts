@@ -23,6 +23,8 @@ export class Vehicle {
   private steer = 0;
   private wheels: THREE.Mesh[] = [];
   private headlights: THREE.MeshLambertMaterial;
+  /** Body materials Rojas can respray (box body + hood, or the model's paint* materials). */
+  private paintMats: THREE.MeshLambertMaterial[] = [];
   private hornCooldown = 0;
   maxSpeed = 16;
   reverseMax = -5;
@@ -35,11 +37,13 @@ export class Vehicle {
     this.mesh = new THREE.Group();
     // local +z is the front of the car; rotation.y = yaw maps it to world (sin yaw, cos yaw)
     const body = new THREE.Mesh(boxGeo(1.9, 0.7, 4.4), lambert('#ff7eb6'));
+    this.paintMats.push(body.material as THREE.MeshLambertMaterial);
     body.position.y = 0.55;
     body.castShadow = true;
     const cabin = new THREE.Mesh(boxGeo(1.7, 0.65, 2.2), lambert('#2a1a3a', { transparent: true, opacity: 0.85 }));
     cabin.position.set(0, 1.2, -0.2);
     const hood = new THREE.Mesh(boxGeo(1.7, 0.12, 1.2), lambert('#ff9ecb'));
+    this.paintMats.push(hood.material as THREE.MeshLambertMaterial);
     hood.position.set(0, 0.95, 1.6);
     this.headlights = lambert('#fff7d6', { emissive: '#fff2b0', emissiveIntensity: 0 });
     for (const side of [-0.65, 0.65]) {
@@ -67,6 +71,11 @@ export class Vehicle {
     this.sync();
   }
 
+  /** Respray: recolour whichever body the car currently has. */
+  setPaint(hex: string): void {
+    for (const m of this.paintMats) m.color.set(hex);
+  }
+
   setNight(night: boolean): void {
     this.night = night;
     this.headlights.emissiveIntensity = night ? 1.5 : 0;
@@ -78,9 +87,11 @@ export class Vehicle {
   applyModel(model: THREE.Group): void {
     this.mesh.clear();
     this.wheels = [];
+    this.paintMats = [];
     const wheels: THREE.Object3D[] = [];
     model.traverse((o) => {
       if (o.name.startsWith('wheel')) wheels.push(o);
+      if (o instanceof THREE.Mesh && (o.material as THREE.Material).name.startsWith('paint') && !this.paintMats.includes(o.material as THREE.MeshLambertMaterial)) this.paintMats.push(o.material as THREE.MeshLambertMaterial);
       if (o instanceof THREE.Mesh && (o.material as THREE.Material).name === 'lightFront') {
         this.headlights = (o.material as THREE.MeshLambertMaterial).clone();
         this.headlights.emissive.set('#fff2b0');

@@ -9,7 +9,7 @@ import { dressInteriors } from '../world/Dressing';
 import { BusUI } from '../ui/BusUI';
 import { DiceUI } from '../ui/DiceUI';
 import { rollDice, DicePick, DiceResult } from '../systems/DiceSystem';
-import { BUS_STOPS, BUS_FARE, BUS_MINUTES, CRUISER_ROUTE } from '../data/city';
+import { BUS_STOPS, BUS_FARE, BUS_MINUTES, CRUISER_ROUTE, RESPRAY_PRICE } from '../data/city';
 import { hashString } from '../utils/math';
 import { GameClock } from '../core/Time';
 import { PlayerController } from '../player/PlayerController';
@@ -38,6 +38,7 @@ import { DealerUI } from '../ui/DealerUI';
 import { LedgerUI } from '../ui/LedgerUI';
 import { checkMilestones } from '../systems/MilestoneSystem';
 import { takeLoan, repayLoan, tickLoanDay } from '../systems/LoanSystem';
+import { resprayCar, carPaint } from '../systems/GarageSystem';
 import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent, applyInspection, eventSlot, curfewExtraPolice } from '../systems/EventSystem';
 import { relationshipTier } from '../systems/CustomerSystem';
 import { AudioSystem, SfxName } from '../audio/Audio';
@@ -523,6 +524,9 @@ export class Game implements GameAPI {
         break;
       case 'car_sale':
         add({ prompt: () => (this.state.vehicle?.owned ? null : `[E] BUY '88 SEDAN ($${VEHICLE_PRICE})`), onInteract: () => this.buyCar(), radius: 4 });
+        break;
+      case 'respray':
+        add({ prompt: () => (!this.state.vehicle?.owned || this.driving ? null : this.carNearRespray(o) ? `[E] ROJAS RESPRAY ($${RESPRAY_PRICE})` : '[E] ROJAS RESPRAY (bring the sedan here)'), onInteract: () => this.resprayCar(o), radius: 4 });
         break;
       case 'warehouse_sign':
         add({ prompt: () => (this.state.properties.includes('warehouse') ? null : `[E] BUY WAREHOUSE 7 ($${WAREHOUSE_PRICE})`), onInteract: () => { this.buyWarehouse(); }, radius: 3.5 });
@@ -1832,10 +1836,11 @@ export class Game implements GameAPI {
     if (sign) sign.mesh.visible = !v?.owned;
     if (!v?.owned) return;
     const vehicle = new Vehicle(v.x, v.z, v.yaw, this.city.colliders);
+    vehicle.setPaint(carPaint(this.state).hex);
     this.vehicle = vehicle;
     this.dynamicGroup.add(vehicle.mesh);
     void loadModel('sedanSports').then((m) => {
-      if (m && this.vehicle === vehicle) vehicle.applyModel(instanceModel(m, { paint: '#ff7eb6', scale: CAR_SCALE }));
+      if (m && this.vehicle === vehicle) vehicle.applyModel(instanceModel(m, { paint: carPaint(this.state).hex, scale: CAR_SCALE }));
     });
     this.interaction.add({
       id: 'car',
@@ -1906,6 +1911,33 @@ export class Game implements GameAPI {
     this.save();
   }
 
+  private carNearRespray(o: WorldObject): boolean {
+    return !!this.vehicle && Math.hypot(this.vehicle.position.x - o.position.x, this.vehicle.position.z - o.position.z) < 12;
+  }
+
+  /** Rojas resprays the sedan: a new colour, heat down, any chase called off. */
+  private resprayCar(o: WorldObject): void {
+    if (!this.vehicle || this.driving) return;
+    if (!this.carNearRespray(o)) {
+      this.audio.play('error');
+      this.toast('Rojas: "Bring the car into the lot first. I do not paint from memory."', 'info', 4000);
+      return;
+    }
+    const r = resprayCar(this.state);
+    if (!r.ok) {
+      this.audio.play('error');
+      this.toast(`Rojas wants $${RESPRAY_PRICE} for a respray. You have $${Math.floor(this.state.cash)}.`, 'warn');
+      return;
+    }
+    this.vehicle.setPaint(r.paint!);
+    this.audio.play('cash');
+    this.audio.play('door');
+    let called = 0;
+    for (const p of this.police) if (p.loseTrack()) called++;
+    this.toast(`Rojas sprayed the sedan ${r.name}. ${r.heatDropped ? `Heat -${r.heatDropped}. ` : ''}${called ? 'The cops are looking for the old colour.' : 'Looks new.'}`, 'cash', 6000);
+    this.save();
+  }
+
   private enterCar(): void {
     if (!this.vehicle || this.driving || this.hiding || this.arrested || this.cutscene.active) return;
     this.driving = true;
@@ -1922,7 +1954,7 @@ export class Game implements GameAPI {
     this.audio.play('door');
     const spot = this.vehicle.exitSpot();
     this.player.teleport(spot.x, this.vehicle.position.y + 0.3, spot.z, this.vehicle.cameraYaw);
-    this.state.vehicle = { owned: true, x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw };
+    this.state.vehicle = { owned: true, x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw, paint: this.state.vehicle?.paint };
     this.save();
   }
 
@@ -2433,7 +2465,7 @@ export class Game implements GameAPI {
     }
     if (!this.running || this.arrested) return;
     this.state.clockMinutes = this.clock.totalMinutes;
-    if (this.vehicle && this.state.vehicle) this.state.vehicle = { owned: true, x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw };
+    if (this.vehicle && this.state.vehicle) this.state.vehicle = { owned: true, x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw, paint: this.state.vehicle.paint };
     if (this.hiding) this.state.player = { x: this.hiding.exitX, y: 0.15, z: this.hiding.exitZ, yaw: this.player.yaw };
     if (this.driving) {
       // never save the player "inside" the car: put them next to it

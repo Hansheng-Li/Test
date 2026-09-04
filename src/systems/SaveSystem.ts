@@ -138,7 +138,7 @@ export function deserialize(json: string): GameState | null {
     ? { principal: Math.max(1, Math.floor(rl.principal)), owed: Math.floor(rl.owed), takenDay: num(rl.takenDay, rl.dueDay - 3), dueDay: Math.floor(rl.dueDay), lateDays: Math.max(0, Math.floor(num(rl.lateDays, 0))) }
     : null;
   const rv = r.vehicle;
-  state.vehicle = rv && typeof rv === 'object' && rv.owned ? { owned: true, x: num(rv.x, -70), z: num(rv.z, -32), yaw: num(rv.yaw, 0) } : null;
+  state.vehicle = rv && typeof rv === 'object' && rv.owned ? { owned: true, x: num(rv.x, -70), z: num(rv.z, -32), yaw: num(rv.yaw, 0), ...(typeof rv.paint === 'string' && /^#[0-9a-f]{6}$/i.test(rv.paint) ? { paint: rv.paint } : {}) } : null;
   const cleanName = (v: unknown): string => (typeof v === 'string' ? v.replace(/[<>&"'`]/g, '').slice(0, 24) : '');
   state.crewName = cleanName(r.crewName);
   for (const rec of Object.values(state.recipes)) if (rec.customName !== undefined) rec.customName = cleanName(rec.customName) || undefined;

@@ -61,6 +61,13 @@ export class Police extends NPC {
     this.pickRandomNextNode();
   }
 
+  /** The car they were after just changed colour: drop the pursuit and search instead. */
+  loseTrack(): boolean {
+    if (this.pstate !== 'CHASE' && this.pstate !== 'APPROACH') return false;
+    this.enter('SEARCH', LOST_LINES);
+    return true;
+  }
+
   /** Radio call from the cruiser: an idle officer goes to look where the player was last seen. */
   dispatchTo(x: number, y: number, z: number): boolean {
     if (this.pstate !== 'PATROL' && this.pstate !== 'RETURN_TO_PATROL') return false;

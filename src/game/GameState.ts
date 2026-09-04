@@ -127,7 +127,7 @@ export interface GameState {
   worker: WorkerState | null;
   dealer: DealerState | null;
   loan: LoanState | null;
-  vehicle: { owned: boolean; x: number; z: number; yaw: number } | null;
+  vehicle: { owned: boolean; x: number; z: number; yaw: number; /** Body colour hex from CAR_PAINTS; unset = as sold. */ paint?: string } | null;
   /** Player-chosen name for the operation; shows on the warehouse sign and the ledger. */
   crewName: string;
   player: { x: number; y: number; z: number; yaw: number };
@@ -139,7 +139,9 @@ export interface GameState {
     diceNet?: number;
     /** Pawn shop markers taken and paid off. */
     loansTaken?: number;
-    loansRepaid?: number; sales: number; earned: number; arrests: number; declined: number; produced: number; playSeconds: number; earnedAtDayStart: number; salesAtDayStart: number; lastDay: number };
+    loansRepaid?: number;
+    /** Resprays bought at Rojas. */
+    resprays?: number; sales: number; earned: number; arrests: number; declined: number; produced: number; playSeconds: number; earnedAtDayStart: number; salesAtDayStart: number; lastDay: number };
   flags: Record<string, boolean>;
   /** Per-save seed so daily trends and world events differ between playthroughs. */
   seed: number;

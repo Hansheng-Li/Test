@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
   BUILDINGS, BuildingSpec, ROADS_X, ROADS_Z, ROAD_WIDTH, SIDEWALK_WIDTH, MAP_MIN_X, MAP_MAX_X, MAP_MIN_Z, MAP_MAX_Z,
-  OCEAN_X, CANAL_X, CANAL_Z, PAYPHONES, BUS_STOPS, SUPPLIER_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT, DEALER_CONTACT_SPOT, CAR_SALE_SPOT, WAREHOUSE_SIGN, Facing,
+  OCEAN_X, CANAL_X, CANAL_Z, PAYPHONES, BUS_STOPS, SUPPLIER_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT, DEALER_CONTACT_SPOT, CAR_SALE_SPOT, RESPRAY_SPOT, WAREHOUSE_SIGN, Facing,
 } from '../data/city';
 import { CollisionWorld, aabbFromBottom } from '../physics/Colliders';
 import { lambert, basic, boxGeo, cylGeo, PALETTE } from './Materials';
@@ -363,6 +363,11 @@ export function buildCity(): CityResult {
   carAnchor.position.set(CAR_SALE_SPOT.x, SLAB, CAR_SALE_SPOT.z);
   group.add(carAnchor);
   objects.push({ kind: 'car_sale', id: 'car_sale', position: carAnchor.position.clone(), mesh: carSign });
+  // respray bay at the other end of the lot
+  const spraySign = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.9), new THREE.MeshBasicMaterial({ map: signTexture('RESPRAY $150', { color: '#ffffff', bg: '#1565c0', glow: false, sub: 'NEW COAT · NO QUESTIONS' }), side: THREE.DoubleSide }));
+  spraySign.position.set(RESPRAY_SPOT.x, SLAB + 1.9, RESPRAY_SPOT.z - 1.6);
+  group.add(spraySign);
+  objects.push({ kind: 'respray', id: 'respray', position: new THREE.Vector3(RESPRAY_SPOT.x, SLAB, RESPRAY_SPOT.z), mesh: spraySign });
 
   // laundromat business for sale (legit front)
   const laundro = BUILDINGS.find((b) => b.id === 'laundromat')!;

@@ -155,5 +155,19 @@ export const RUNNER_CONTACT_SPOT = { x: 154, z: -84, name: 'Dizzy' };
 export const WORKER_CONTACT_SPOT = { x: -152, z: 86, name: 'Marisol' };
 export const DEALER_CONTACT_SPOT = { x: 154, z: 100, name: 'Vince' };
 export const CAR_SALE_SPOT = { x: -74, z: -36.5, yaw: 0 };
+/** Rojas' respray bay sign, a few metres down the lot from the sale spot. */
+export const RESPRAY_SPOT = { x: -90, z: -37.5 };
+export const RESPRAY_PRICE = 150;
+/** Heat dropped by a respray: the cops are looking for the old colour. */
+export const RESPRAY_HEAT = 30;
+/** The paint rack at Rojas, in the order he sprays them. The sedan is sold in the first. */
+export const CAR_PAINTS: { hex: string; name: string }[] = [
+  { hex: '#ff7eb6', name: 'Flamingo' },
+  { hex: '#4ff2e8', name: 'Lagoon' },
+  { hex: '#ffd23f', name: 'Citrus' },
+  { hex: '#c77dff', name: 'Neon Grape' },
+  { hex: '#f4f6f8', name: 'Pearl' },
+  { hex: '#7dff9a', name: 'Key Lime' },
+];
 export const CAR_HOME_SPOT = { x: -8, z: 26, yaw: Math.PI / 2 };
 export const WAREHOUSE_SIGN = { x: -149, z: -66 };
