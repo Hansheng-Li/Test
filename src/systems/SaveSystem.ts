@@ -129,7 +129,7 @@ export function deserialize(json: string): GameState | null {
   state.worker = rw && typeof rw === 'object' && rw.hired ? { hired: true, name: typeof rw.name === 'string' ? rw.name : 'Marisol', recipeKey: typeof rw.recipeKey === 'string' ? rw.recipeKey : null, property: typeof rw.property === 'string' ? rw.property : 'warehouse', progress: num(rw.progress, 0), produced: num(rw.produced, 0) } : null;
   const rd = r.dealer;
   state.dealer = rd && typeof rd === 'object' && rd.hired ? { hired: true, name: typeof rd.name === 'string' ? rd.name : 'Vince', stock: Array.isArray(rd.stock) ? rd.stock.filter(validStack) : [], cash: num(rd.cash, 0), customers: Array.isArray(rd.customers) ? rd.customers.filter((x) => typeof x === 'string' && !!CUSTOMER_MAP[x]) : [], lastTickMinute: num(rd.lastTickMinute, state.clockMinutes), sales: num(rd.sales, 0), earnedTotal: num(rd.earnedTotal, 0), starvedRounds: num(rd.starvedRounds, 0) } : null;
-  if (state.dealer) state.dealer.stock = state.dealer.stock.filter((st) => knownItem(st.id));
+  if (state.dealer) state.dealer.stock = state.dealer.stock.filter((st) => st.id.startsWith('pkg:') && knownItem(st.id));
   if (state.worker && !state.properties.includes(state.worker.property)) state.worker.property = 'warehouse';
   if (state.worker && state.worker.recipeKey && !state.recipes[state.worker.recipeKey]) state.worker.recipeKey = null;
   const rv = r.vehicle;
@@ -141,6 +141,12 @@ export function deserialize(json: string): GameState | null {
   state.trend = r.trend && typeof r.trend === 'object' && ALL_EFFECTS.includes(r.trend.effect) && isFiniteNum(r.trend.day) ? r.trend : null;
   state.event = r.event && typeof r.event === 'object' && typeof r.event.id === 'string' && isFiniteNum(r.event.day) ? r.event : null;
   if (state.event?.id === 'rival' && !CUSTOMER_MAP[state.event.param ?? '']) state.event = { id: 'none', day: state.event.day };
+  // v2 saves keyed events by calendar day; v3 keys them by half-day slot
+  if (state.event && (typeof r.version !== 'number' || r.version < 3)) {
+    const day = Math.floor(state.clockMinutes / (24 * 60));
+    const hour = (state.clockMinutes % (24 * 60)) / 60;
+    state.event.day = hour >= 20 ? day * 2 + 1 : hour < 6 ? (day - 1) * 2 + 1 : day * 2;
+  }
   for (const key of Object.keys(state.storage)) state.storage[key] = Array.isArray(state.storage[key]) ? state.storage[key].filter(validStack) : [];
   state.clockMinutes = Math.max(0, state.clockMinutes);
   for (const k of Object.keys(state.stats) as (keyof typeof state.stats)[]) state.stats[k] = num(state.stats[k], fresh.stats[k]);

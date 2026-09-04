@@ -17,9 +17,11 @@ export interface WorldEvent {
 
 const ZONES = ['beach', 'downtown', 'docks'] as const;
 
-/** Two event slots a day: the daytime one and the one that starts at 20:00. */
+/** Two event slots a day: 06:00-19:59 (even) and the night from 20:00 to 05:59 (odd, belongs to the day it started). */
 export function eventSlot(day: number, hour: number): number {
-  return day * 2 + (hour >= 20 ? 1 : 0);
+  if (hour >= 20) return day * 2 + 1;
+  if (hour < 6) return (day - 1) * 2 + 1;
+  return day * 2;
 }
 
 /**
@@ -40,10 +42,10 @@ export function rollWorldEvent(state: GameState, day: number): WorldEvent | null
   let ev: WorldEvent;
   if (roll < 3) ev = { id: 'crackdown', day, param: ZONES[hashString('zone' + day + salt) % ZONES.length] };
   else if (roll < 5) ev = { id: 'shortage', day, param: BASE_SUPPLY_IDS[hashString('supply' + day + salt) % BASE_SUPPLY_IDS.length] };
-  else if (roll < 7) ev = { id: 'club_night', day };
+  else if (roll < 7) ev = day % 2 === 1 ? { id: 'club_night', day } : { id: 'none', day }; // club nights only at night
   else if (roll < 8 && day >= 4 && state.properties.includes('warehouse') && state.suspicion >= 20) ev = { id: 'inspection', day };
-  else if (roll < 9) {
-    // a rival crew works one of your unlocked customers for the day
+  else if (roll < 9 && day % 2 === 0) {
+    // a rival crew works one of your unlocked customers for the day (day slot only, so the -3 lands once a day at most)
     const unlocked = CUSTOMERS.filter((c) => state.customers[c.id]?.unlocked && !dealerHandles(state, c.id));
     if (unlocked.length >= 3) {
       const target = unlocked[hashString('rival' + day + salt) % unlocked.length];

@@ -136,3 +136,28 @@ describe('per-save seed', () => {
     expect(ids.size).toBeGreaterThan(1);
   });
 });
+
+describe('event slots', () => {
+  it('the night slot runs 20:00-05:59 and belongs to the day it started; club nights only at night, rivals only by day', () => {
+    expect(eventSlot(3, 20)).toBe(7);
+    expect(eventSlot(4, 2)).toBe(7);
+    expect(eventSlot(4, 6)).toBe(8);
+    for (let seed = 0; seed < 40; seed++) {
+      const s = createNewState();
+      s.seed = seed;
+      for (const c of Object.values(s.customers)) c.unlocked = true;
+      for (let slot = 4; slot < 30; slot++) {
+        rollWorldEvent(s, slot);
+        if (s.event!.id === 'club_night') expect(slot % 2).toBe(1);
+        if (s.event!.id === 'rival') expect(slot % 2).toBe(0);
+      }
+    }
+  });
+
+  it('a v2 save keyed by calendar day keeps its event on load', async () => {
+    const { deserialize } = await import('../src/systems/SaveSystem');
+    const s = deserialize(JSON.stringify({ version: 2, cash: 1, inventory: [], clockMinutes: 3 * 24 * 60 + 10 * 60, event: { id: 'rival', day: 3, param: 'tasha', wonBack: true } }))!;
+    expect(s.event).toEqual({ id: 'rival', day: 6, param: 'tasha', wonBack: true });
+    expect(rollWorldEvent(s, eventSlot(3, 10))).toBeNull();
+  });
+});

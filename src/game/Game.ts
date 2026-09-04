@@ -1347,7 +1347,7 @@ export class Game implements GameAPI {
 
   buyDelivered(shopId: string, itemId: string, qty: number): PurchaseResult {
     const r = buyDelivered(this.state, shopId, itemId, qty);
-    if (r.ok) this.toast(`Rico will drop ${qty}x ${ITEMS[itemId].name} at Warehouse 7 storage.`, 'info', 2500);
+    if (r.ok) this.toast(`${qty}x ${ITEMS[itemId].name} will be dropped at Warehouse 7 storage.`, 'info', 2500);
     return r;
   }
 
@@ -1566,7 +1566,7 @@ export class Game implements GameAPI {
     this.toast('You slept until morning. Heat is gone.', 'info');
     for (const o of expireOrders(s, this.clock.totalMinutes)) {
       this.despawnCustomer(o.id);
-      if (s.customers[o.customerId]) s.customers[o.customerId].relationship = Math.max(0, s.customers[o.customerId].relationship - 2);
+      if (o.expiredFrom === 'accepted' && s.customers[o.customerId]) s.customers[o.customerId].relationship = Math.max(0, s.customers[o.customerId].relationship - 2);
     }
     this.orderTimer = 10;
     this.save();

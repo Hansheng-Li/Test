@@ -40,6 +40,7 @@ describe('save hardening', () => {
     expect(Number.isFinite(s.customers.tasha.relationship)).toBe(true);
     expect(s.dealer!.customers).toEqual(['tasha']);
     expect(s.dealer!.stock).toEqual([]);
+    expect(deserialize(JSON.stringify({ cash: 1, inventory: [], dealer: { hired: true, stock: [{ id: 'prod:SUNSET', qty: 2 }, { id: 'baggies', qty: 3 }] }, recipes: { SUNSET: { key: 'SUNSET', base: 'SUNSET', mods: [], effects: ['ENERGY'], value: 24 } } }))!.dealer!.stock).toEqual([]);
     expect(s.dealer!.cash).toBe(0);
     expect(s.worker!.property).toBe('warehouse');
     expect(s.worker!.recipeKey).toBeNull();

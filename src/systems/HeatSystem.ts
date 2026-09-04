@@ -1,6 +1,7 @@
 import { GameState } from '../game/GameState';
 import { removeAllOfCategory } from './InventorySystem';
 import { ItemStack } from '../game/GameState';
+import { LATE_GRACE_MINUTES } from './OrderSystem';
 
 export const HEAT_MAX = 100;
 
@@ -65,6 +66,6 @@ export function applyArrest(state: GameState): ArrestResult {
   const minutesLost = 6 * 60;
   state.clockMinutes += minutesLost;
   state.stats.arrests += 1;
-  for (const o of state.orders) if (o.status === 'accepted' && o.windowEnd < state.clockMinutes) o.status = 'failed';
+  for (const o of state.orders) if (o.status === 'accepted' && o.windowEnd + LATE_GRACE_MINUTES < state.clockMinutes) o.status = 'failed';
   return { confiscated, fine, minutesLost };
 }

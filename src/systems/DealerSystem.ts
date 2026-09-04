@@ -2,8 +2,8 @@ import { GameState } from '../game/GameState';
 import { DEALER_MAX_CUSTOMERS, DEALER_MAX_STOCK, DEALER_PRICE_FACTOR } from '../data/items';
 import { computeRecipe, parseRecipeKey } from '../data/products';
 import { countItem, removeItem, addItem, spaceFor } from './InventorySystem';
-import { customerState, customerDef, spendingLimit } from './CustomerSystem';
-import { offeredUnitPrice } from './OrderSystem';
+import { customerState, customerDef } from './CustomerSystem';
+import { offeredUnitPrice, walletFor } from './OrderSystem';
 import { addCash } from './EconomySystem';
 
 /** Game minutes between dealer sales rounds (1.5 real minutes): passive income, not a money printer. */
@@ -130,11 +130,12 @@ function tickDealerRound(state: GameState, d: NonNullable<GameState['dealer']>, 
     if (dealerStockCount(state) === 0) break;
     const def = customerDef(cid);
     // favourite base first, then whatever is cheapest; a customer only buys what fits their wallet
-    const budget = spendingLimit(state, cid);
-    const priced = d.stock.map((st) => {
-      const parsed = parseRecipeKey(st.id.slice(4))!;
+    const budget = walletFor(state, cid);
+    const priced = d.stock.flatMap((st) => {
+      const parsed = st.id.startsWith('pkg:') ? parseRecipeKey(st.id.slice(4)) : null;
+      if (!parsed) return [];
       const unit = Math.round(offeredUnitPrice(state, def, computeRecipe(parsed.base, parsed.mods).value) * DEALER_PRICE_FACTOR);
-      return { st, parsed, unit };
+      return [{ st, parsed, unit }];
     });
     priced.sort((a, b) => (a.parsed.base === def.prefBase ? 0 : 1) - (b.parsed.base === def.prefBase ? 0 : 1) || a.unit - b.unit);
     const pick = priced.find((p) => p.unit <= budget);

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createNewState } from '../src/systems/SaveSystem';
 import { addItem, countItem } from '../src/systems/InventorySystem';
-import { generateOrder, acceptOrder, completeSale, expireOrders, orderMatchesItem, counterOffer, rollTrend, streetSale } from '../src/systems/OrderSystem';
+import { generateOrder, acceptOrder, completeSale, expireOrders, orderMatchesItem, counterOffer, rollTrend, streetSale, cheapestValueFor } from '../src/systems/OrderSystem';
 import { offerSample } from '../src/systems/CustomerSystem';
 import { computeRecipe } from '../src/data/products';
 
@@ -221,5 +221,21 @@ describe('customer boredom', () => {
     expect(r.ok).toBe(true);
     expect(r.itemKey).toBe('SUNSET+mod_velvet_drops');
     expect(s.customers['tasha'].sameStreak).toBe(1);
+  });
+});
+
+describe('trend as demand', () => {
+  it('never asks for an effect set that no product on the base can carry', () => {
+    expect(cheapestValueFor('SUNSET', ['CHILL', 'ENERGY'])).toBe(Infinity);
+    for (const effect of ['CHILL', 'ENERGY', 'CHAOTIC', 'FOCUS', 'DREAMY', 'GLOW', 'SOCIAL', 'CONFIDENT'] as const) {
+      for (let i = 0; i < 40; i++) {
+        const s = createNewState();
+        s.trend = { effect, day: 1 };
+        for (const c of Object.values(s.customers)) { c.unlocked = true; c.relationship = 35; c.lastOrderMinute = -9999; }
+        const o = generateOrder(s, { now: s.clockMinutes, rng: Math.random });
+        if (!o) continue;
+        expect(cheapestValueFor(o.base, o.effects, s)).not.toBe(Infinity);
+      }
+    }
   });
 });

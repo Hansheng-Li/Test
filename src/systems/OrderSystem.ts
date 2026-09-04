@@ -98,6 +98,8 @@ export function generateOrder(state: GameState, opts: OrderGenOptions): Order | 
     base = 'SUNSET';
     effects = [];
   }
+  // never ask for something no product on this base can carry (some effect pairs cancel each other out)
+  if (effects.length && cheapestValueFor(base, effects, state) === Infinity) effects = [c.prefEffects[0]];
   // quantity grows with relationship
   const sizeBoost = tier === 'stranger' ? 0 : tier === 'acquaintance' ? 0 : tier === 'regular' ? 1 : 2;
   const qty = Math.max(1, Math.min(c.orderSize[0] + Math.floor(rng() * (c.orderSize[1] - c.orderSize[0] + 1)) + sizeBoost, 8));
@@ -141,7 +143,12 @@ export function referenceValue(base: import('../data/products').BaseId, effects:
     if (parsed) return computeRecipe(parsed.base, parsed.mods).value;
   }
   if (effects.length === 0) return BASES[base].baseValue;
-  // search known recipes and 1-2 modifier combos for the cheapest match
+  const best = cheapestValueFor(base, effects, state);
+  return best === Infinity ? BASES[base].baseValue * 2 : best;
+}
+
+/** Cheapest product on `base` carrying every effect (up to 3 modifiers + known recipes); Infinity when none exists. */
+export function cheapestValueFor(base: import('../data/products').BaseId, effects: Effect[], state?: GameState): number {
   let best = Infinity;
   const consider = (b: import('../data/products').BaseId, mods: string[]): void => {
     const r = computeRecipe(b, mods);
@@ -151,9 +158,17 @@ export function referenceValue(base: import('../data/products').BaseId, effects:
   consider(base, []);
   for (const m of modIds) consider(base, [m]);
   for (const m of modIds) for (const n of modIds) consider(base, [m, n]);
-  for (const r of Object.values(state.recipes)) if (r.base === base) consider(r.base, r.mods);
-  if (best === Infinity) best = BASES[base].baseValue * 2;
+  for (const m of modIds) for (const n of modIds) for (const o of modIds) consider(base, [m, n, o]);
+  if (state) for (const r of Object.values(state.recipes)) if (r.base === base) consider(r.base, r.mods);
   return best;
+}
+
+/** Wallet for a deal right now: the base spending limit scaled by whatever the customer would pay tonight. */
+export function walletFor(state: GameState, customerId: string): number {
+  const c = customerDef(customerId);
+  const hour = (state.clockMinutes % (24 * 60)) / 60;
+  const night = hour >= 20 || hour < 6;
+  return Math.round(spendingLimit(state, customerId) * orderPriceMultiplier(state, c.homeZone, night));
 }
 
 export function orderMatchesItem(order: Order, packagedItemKey: string): boolean {
@@ -224,7 +239,7 @@ export function counterOffer(state: GameState, orderId: number, markup: number, 
   const tolerance = 0.06 + c.generosity * 0.3 + tierBonus + (rng() - 0.5) * 0.16;
   o.haggled = true;
   const asked = Math.round(o.price * (1 + markup));
-  if (markup <= tolerance) {
+  if (markup <= tolerance + 1e-9) {
     o.price = asked;
     return { outcome: 'accepted', price: o.price, line: pick(rng, ['Fine, fine. You drive a hard bargain.', 'Ugh. Okay. But you owe me.', 'Deal. Do not tell anyone I paid that.']) };
   }
@@ -379,7 +394,7 @@ export function canStreetSell(state: GameState, customerId: string, now: number)
   const item = streetSaleCandidate(state, customerId);
   if (!item) return { ok: false, reason: 'no_item' };
   if (isBored(state, customerId) && cs.lastRecipe === item.key) return { ok: false, reason: 'bored' };
-  if (streetUnitPrice(state, customerId, item.key) > spendingLimit(state, customerId)) return { ok: false, reason: 'too_pricey' };
+  if (streetUnitPrice(state, customerId, item.key) > walletFor(state, customerId)) return { ok: false, reason: 'too_pricey' };
   return { ok: true, item };
 }
 
@@ -393,7 +408,7 @@ export function streetSale(state: GameState, customerId: string, now: number, rn
   if (!gate.ok) return { ok: false, reason: gate.reason };
   const item = gate.item;
   const unit = streetUnitPrice(state, customerId, item.key);
-  const qty = Math.min(item.qty, 1 + (rng() < 0.5 ? 1 : 0), Math.max(1, Math.floor(spendingLimit(state, customerId) / unit)));
+  const qty = Math.min(item.qty, 1 + (rng() < 0.5 ? 1 : 0), Math.max(1, Math.floor(walletFor(state, customerId) / unit)));
   const parsed = parseRecipeKey(item.key)!;
   const recipe = computeRecipe(parsed.base, parsed.mods);
   const trendHit = !!state.trend && recipe.effects.includes(state.trend.effect);
