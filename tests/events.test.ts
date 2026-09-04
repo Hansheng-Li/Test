@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createNewState } from '../src/systems/SaveSystem';
-import { eventSlot, rollWorldEvent, shopPriceMultiplier, orderPriceMultiplier, heatMultiplier, applyInspection, rivalTarget, winBackFromRival } from '../src/systems/EventSystem';
+import { eventSlot, rollWorldEvent, shopPriceMultiplier, orderPriceMultiplier, heatMultiplier, applyInspection, rivalTarget, winBackFromRival, curfewExtraPolice } from '../src/systems/EventSystem';
 import { generateOrder, streetSale, acceptOrder, completeSale } from '../src/systems/OrderSystem';
 import { addItem } from '../src/systems/InventorySystem';
 import { computeRecipe } from '../src/data/products';
@@ -159,5 +159,36 @@ describe('event slots', () => {
     const s = deserialize(JSON.stringify({ version: 2, cash: 1, inventory: [], clockMinutes: 3 * 24 * 60 + 10 * 60, event: { id: 'rival', day: 3, param: 'tasha', wonBack: true } }))!;
     expect(s.event).toEqual({ id: 'rival', day: 6, param: 'tasha', wonBack: true });
     expect(rollWorldEvent(s, eventSlot(3, 10))).toBeNull();
+  });
+});
+
+describe('curfew', () => {
+  it('only falls on night slots from the fourth night and never before', () => {
+    let seen = 0;
+    for (let seed = 0; seed < 60; seed++) {
+      const s = createNewState();
+      s.seed = seed;
+      for (let slot = 3; slot < 40; slot++) {
+        rollWorldEvent(s, slot);
+        if (s.event!.id === 'curfew') {
+          seen++;
+          expect(slot % 2).toBe(1);
+          expect(slot).toBeGreaterThanOrEqual(8);
+        }
+      }
+    }
+    expect(seen).toBeGreaterThan(0);
+  });
+
+  it('raises heat everywhere, pays more after dark and adds two patrols', () => {
+    const s = createNewState();
+    s.event = { id: 'curfew', day: 9 };
+    expect(heatMultiplier(s, 'beach')).toBe(1.5);
+    expect(heatMultiplier(s, 'docks')).toBe(1.5);
+    expect(orderPriceMultiplier(s, 'downtown', true)).toBe(1.2);
+    expect(orderPriceMultiplier(s, 'downtown', false)).toBe(1);
+    expect(curfewExtraPolice(s)).toBe(2);
+    s.event = { id: 'none', day: 10 };
+    expect(curfewExtraPolice(s)).toBe(0);
   });
 });

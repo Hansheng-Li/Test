@@ -38,7 +38,7 @@ import { DealerUI } from '../ui/DealerUI';
 import { LedgerUI } from '../ui/LedgerUI';
 import { checkMilestones } from '../systems/MilestoneSystem';
 import { takeLoan, repayLoan, tickLoanDay } from '../systems/LoanSystem';
-import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent, applyInspection, eventSlot } from '../systems/EventSystem';
+import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent, applyInspection, eventSlot, curfewExtraPolice } from '../systems/EventSystem';
 import { relationshipTier } from '../systems/CustomerSystem';
 import { AudioSystem, SfxName } from '../audio/Audio';
 import { HUD } from '../ui/HUD';
@@ -102,6 +102,7 @@ export class Game implements GameAPI {
   running = false;
   civilians: Civilian[] = [];
   police: Police[] = [];
+  private policeSpawned = 0;
   customers = new Map<number, CustomerNPC>();
   wanderers = new Map<string, WanderingCustomer>();
   private wandererTimer = 0;
@@ -587,20 +588,25 @@ export class Game implements GameAPI {
       this.police.push(p);
       this.dynamicGroup.add(p.mesh);
     });
+    this.policeSpawned = spots.length;
   }
 
-  /** Long-term suspicion puts more officers on the street (4 base, up to 6). */
+  /** Long-term suspicion puts more officers on the street (4 base, up to 6); a curfew adds two more until morning. */
   private syncPoliceCount(announce = true): void {
-    const want = 4 + (this.state.suspicion >= 30 ? 1 : 0) + (this.state.suspicion >= 60 ? 1 : 0);
+    const curfew = curfewExtraPolice(this.state);
+    const want = 4 + (this.state.suspicion >= 30 ? 1 : 0) + (this.state.suspicion >= 60 ? 1 : 0) + curfew;
     while (this.police.length < want) {
       const n = this.city.waypoints.random();
-      const p = new Police('cop' + this.police.length, n.x, n.z, this.city.colliders, this.city.waypoints);
+      const p = new Police('cop' + this.policeSpawned++, n.x, n.z, this.city.colliders, this.city.waypoints);
       this.police.push(p);
       this.dynamicGroup.add(p.mesh);
-      if (announce) this.toast('District 3 added a patrol. Your name is getting around.', 'warn', 5000);
+      if (announce && !curfew) this.toast('District 3 added a patrol. Your name is getting around.', 'warn', 5000);
     }
+    // when the curfew lifts only idle officers clock off: one mid-chase does not vanish
     while (this.police.length > want) {
-      const p = this.police.pop()!;
+      const i = this.police.map((p) => p.pstate).lastIndexOf('PATROL');
+      if (i < 0) break;
+      const [p] = this.police.splice(i, 1);
       p.dispose();
       this.dynamicGroup.remove(p.mesh);
     }

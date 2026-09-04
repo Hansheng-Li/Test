@@ -350,6 +350,10 @@ export class Radio {
       this.lastText = 'trend';
       return `${st.dj}: ` + (st.synth ? `Everybody on the strip wants ${c.trend} tonight. You did not hear it from me.` : `Street report: ${c.trend} is the word on the boardwalk today. Whatever that means.`);
     }
+    if (c && c.eventId === 'curfew' && Math.random() < 0.5 && this.lastText !== 'event') {
+      this.lastText = 'event';
+      return `${st.dj}: ` + (st.synth ? 'Curfew tonight. Twice the cruisers, half the shadows. Stay sharp out there.' : 'District 3 has declared a curfew from eight until six. Extra patrols on every corner, folks. Get home safe.');
+    }
     if (c && c.eventId === 'club_night' && Math.random() < 0.5 && this.lastText !== 'event') {
       this.lastText = 'event';
       return `${st.dj}: Club night at Club Mirage. Line around the block, wallets wide open.`;
