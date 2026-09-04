@@ -200,6 +200,8 @@ Design rules that shaped the code:
 - Markers at Sol Palma Pawn: borrow $300, $800 or $1,500 (bigger sizes need a track record) and pay back
   +25% within three days. Overdue markers grow 20% a day, add heat and the collectors take any cash
   above bus fare; the balance is capped so a broke player is never buried. Shown in the ledger.
+- Every block figure wears a CC0 face from the Kenney Blocky Characters pack (customers keep the same
+  face between sessions, officers share the moustache); heads are tinted to the face's skin tone.
 - Interiors dressed with the Kenney Furniture Kit (CC0): sofa, TV and bookcase in the back room, a lounge
   chair in the motel, bar stools and a lounge corner in Club Mirage, a desk and fridge in the warehouse
   office. Merged statically (about 30 extra draw calls), solid pieces block movement, rooms keep their

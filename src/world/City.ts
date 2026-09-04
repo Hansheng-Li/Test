@@ -309,7 +309,7 @@ export function buildCity(): CityResult {
   });
 
   // supplier + runner contact figures
-  const rico = makeFigure('#f39c12', '#8d5524', '#1c1c1c');
+  const rico = makeFigure('#f39c12', '#8d5524', '#1c1c1c', 'rico');
   rico.position.set(SUPPLIER_SPOT.x, SLAB, SUPPLIER_SPOT.z);
   rico.rotation.y = Math.PI / 2;
   const ricoLabel = makeLabel('RICO · SUPPLIER', '#ffd166');
@@ -321,7 +321,7 @@ export function buildCity(): CityResult {
   // van behind Rico
   parkCar(SUPPLIER_SPOT.x + 4, SUPPLIER_SPOT.z + 5, Math.PI / 2, '#ecf0f1');
 
-  const dizzy = makeFigure('#00bcd4', '#f1c27d', '#ff4081');
+  const dizzy = makeFigure('#00bcd4', '#f1c27d', '#ff4081', 'dizzy');
   dizzy.position.set(RUNNER_CONTACT_SPOT.x, SLAB, RUNNER_CONTACT_SPOT.z);
   dizzy.rotation.y = -Math.PI / 2;
   const dizzyLabel = makeLabel('DIZZY', '#7fffd4');
@@ -331,7 +331,7 @@ export function buildCity(): CityResult {
   colliders.add(aabbFromBottom(RUNNER_CONTACT_SPOT.x, SLAB, RUNNER_CONTACT_SPOT.z, 0.7, 1.9, 0.7, 'npc'));
   objects.push({ kind: 'runner_contact', id: 'runner_contact', position: dizzy.position.clone(), mesh: dizzy });
 
-  const marisol = makeFigure('#8e24aa', '#c68642', '#263238');
+  const marisol = makeFigure('#8e24aa', '#c68642', '#263238', 'marisol');
   marisol.position.set(WORKER_CONTACT_SPOT.x, SLAB, WORKER_CONTACT_SPOT.z);
   marisol.rotation.y = Math.PI / 2;
   const marisolLabel = makeLabel('MARISOL', '#e1bee7');
@@ -341,7 +341,7 @@ export function buildCity(): CityResult {
   colliders.add(aabbFromBottom(WORKER_CONTACT_SPOT.x, SLAB, WORKER_CONTACT_SPOT.z, 0.7, 1.9, 0.7, 'npc'));
   objects.push({ kind: 'worker_contact', id: 'worker_contact', position: marisol.position.clone(), mesh: marisol });
 
-  const vince = makeFigure('#212121', '#e0ac69', '#f5f5f5');
+  const vince = makeFigure('#212121', '#e0ac69', '#f5f5f5', 'vince');
   vince.position.set(DEALER_CONTACT_SPOT.x, SLAB, DEALER_CONTACT_SPOT.z);
   vince.rotation.y = -Math.PI / 2;
   const vinceLabel = makeLabel('VINCE', '#ffd166');

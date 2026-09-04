@@ -15,7 +15,7 @@ export class RunnerNPC extends NPC {
   homeZ: number;
 
   constructor(x: number, z: number, world: CollisionWorld, graph: WaypointGraph) {
-    super('runner', x, z, '#00bcd4', '#f1c27d', '#ff4081', world, graph);
+    super('dizzy', x, z, '#00bcd4', '#f1c27d', '#ff4081', world, graph);
     this.homeX = x;
     this.homeZ = z;
     const label = makeLabel('DIZZY · RUNNER', '#7fffd4');

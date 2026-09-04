@@ -29,6 +29,11 @@ Fetched from the community mirror https://github.com/ETdoFresh/kenney.nl
 | models/tree_palmTall.glb, tree_palmDetailedTall.glb | Nature Kit 2.1 |
 | models/furniture/*.glb (bookcaseOpen, cabinetTelevision, chair, computerScreen, deskCorner, kitchenFridgeSmall, lampSquareFloor, loungeChair, loungeSofa, plantSmall2, pottedPlant, rugRectangle, speaker, stoolBar, tableCoffee, televisionVintage) | Furniture Kit |
 
+## Textures — Kenney, CC0
+| File | Source pack |
+| --- | --- |
+| textures/faces/face_man.png, face_manAlternative.png, face_woman.png, face_womanAlternative.png, face_adventurer.png, face_soldier.png | Blocky Characters (Faces) |
+
 ## Music — CC0 tracks (re-encoded to Opus 64 kbps)
 Fetched from the CC0 corpus https://github.com/SoundSafari/CC0-1.0-Music (LICENSE: CC0 1.0).
 

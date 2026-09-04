@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { NPC } from './NPC';
 import { CollisionWorld } from '../physics/Colliders';
 import { WaypointGraph } from '../world/Waypoints';
+import { attachFace, FACE_POLICE } from '../world/Faces';
 
 export type PoliceState = 'PATROL' | 'NOTICE' | 'INVESTIGATE' | 'APPROACH' | 'SEARCH' | 'CHASE' | 'RETURN_TO_PATROL';
 
@@ -46,6 +47,7 @@ export class Police extends NPC {
   constructor(id: string, x: number, z: number, world: CollisionWorld, graph: WaypointGraph) {
     super(id, x, z, '#1e3a8a', '#e0ac69', '#0f1e4a', world, graph);
     this.speed = 1.5;
+    attachFace(this.mesh.children[2] as THREE.Mesh, FACE_POLICE);
     const hat = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.14, 0.4), new THREE.MeshLambertMaterial({ color: '#0f1e4a' }));
     hat.position.y = 1.95;
     this.mesh.add(hat);

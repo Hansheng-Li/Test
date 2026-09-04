@@ -30,7 +30,7 @@ export class NPC {
   lodAccum = 0;
 
   constructor(public id: string, x: number, z: number, shirt: string, skin: string, pants = '#2c3e50', public world?: CollisionWorld, public graph?: WaypointGraph) {
-    this.mesh = makeFigure(shirt, skin, pants);
+    this.mesh = makeFigure(shirt, skin, pants, id);
     this.position = new THREE.Vector3(x, 0.15, z);
     this.mesh.position.copy(this.position);
     const kids = this.mesh.children;

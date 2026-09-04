@@ -1610,7 +1610,7 @@ export class Game implements GameAPI {
     if (!this.state.worker?.hired) return;
     const property = this.state.properties.includes(this.state.worker.property) ? this.state.worker.property : 'safehouse';
     const station = [...this.city.objects, ...this.placedObjects].find((o) => o.kind === 'prep_table' && o.property === property) ?? this.city.objects.find((o) => o.kind === 'storage' && o.property === property);
-    const fig = makeFigure('#8e24aa', '#c68642', '#263238');
+    const fig = makeFigure('#8e24aa', '#c68642', '#263238', 'marisol');
     const label = makeLabel('MARISOL · WORKER', '#e1bee7');
     label.position.y = 2.3;
     fig.add(label);

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { BuildingSpec, HANDLER_CONTACT_SPOT } from '../data/city';
+import { attachFace, faceIndexFor } from './Faces';
 import { PropBuilder } from './Props';
 import { lambert, basic, boxGeo, cylGeo } from './Materials';
 import { signTexture } from './Textures';
@@ -115,7 +116,8 @@ function counter(ctx: InteriorContext, x: number, z: number, w: number, rotY: nu
 }
 
 /** A static shopkeeper figure behind a counter. */
-export function makeFigure(shirt: string, skin = '#d9a077', pants = '#2c3e50'): THREE.Group {
+/** Block figure. `face` picks a Kenney face for the head (index into FACES); a string is hashed to one. */
+export function makeFigure(shirt: string, skin = '#d9a077', pants = '#2c3e50', face?: number | string): THREE.Group {
   const g = new THREE.Group();
   const legs = new THREE.Mesh(boxGeo(0.5, 0.8, 0.3), lambert(pants));
   legs.position.y = 0.4;
@@ -123,6 +125,7 @@ export function makeFigure(shirt: string, skin = '#d9a077', pants = '#2c3e50'): 
   torso.position.y = 1.15;
   const head = new THREE.Mesh(boxGeo(0.34, 0.36, 0.34), lambert(skin));
   head.position.y = 1.7;
+  if (face !== undefined) attachFace(head, typeof face === 'string' ? faceIndexFor(face) : face);
   const armL = new THREE.Mesh(boxGeo(0.14, 0.6, 0.14), lambert(shirt));
   armL.position.set(-0.38, 1.12, 0);
   const armR = armL.clone();
@@ -242,7 +245,7 @@ export function furnishInterior(spec: BuildingSpec, ctx: InteriorContext, doorDi
     case 'store': {
       ctx.night.lights.push(pointLight(ctx, x, y + fh - 0.5, z, '#f0f6ff', 24, 22));
       const c = counter(ctx, x - w / 2 + 3.5, z + 2, 5, Math.PI / 2, '#d7d2c8');
-      const clerk = makeFigure('#e53935', '#c68642');
+      const clerk = makeFigure('#e53935', '#c68642', undefined, 'clerk');
       clerk.position.set(x - w / 2 + 2.2, y, z + 2);
       clerk.rotation.y = Math.PI / 2;
       ctx.pb.group.add(clerk);
@@ -266,7 +269,7 @@ export function furnishInterior(spec: BuildingSpec, ctx: InteriorContext, doorDi
     case 'pawn': {
       ctx.night.lights.push(pointLight(ctx, x, y + fh - 0.5, z, '#ffe4b3', 20, 20));
       const c = counter(ctx, x, z - d / 2 + 6, 8, 0, '#8d6e63');
-      const owner = makeFigure('#795548', '#8d5524', '#3e2723');
+      const owner = makeFigure('#795548', '#8d5524', '#3e2723', 'pawn owner');
       owner.position.set(x, y, z - d / 2 + 4.6);
       owner.rotation.y = Math.PI;
       ctx.pb.group.add(owner);
@@ -323,7 +326,7 @@ export function furnishInterior(spec: BuildingSpec, ctx: InteriorContext, doorDi
         ctx.pb.group.add(p);
       }
       // Teddy the handler waits in the office corner until hired
-      const teddy = makeFigure('#ff8f00', '#8d5524', '#37474f');
+      const teddy = makeFigure('#ff8f00', '#8d5524', '#37474f', 'teddy');
       teddy.position.set(HANDLER_CONTACT_SPOT.x, y, HANDLER_CONTACT_SPOT.z);
       teddy.rotation.y = -Math.PI / 2;
       const teddyLabel = makeLabel('TEDDY', '#ffd180');
@@ -357,7 +360,7 @@ export function furnishInterior(spec: BuildingSpec, ctx: InteriorContext, doorDi
           k++;
         }
       const c = counter(ctx, x + 6, z, 12, Math.PI / 2, '#4a148c');
-      const bartender = makeFigure('#212121', '#f1c27d');
+      const bartender = makeFigure('#212121', '#f1c27d', undefined, 'bartender');
       bartender.position.set(x + 7.5, y, z);
       bartender.rotation.y = -Math.PI / 2;
       ctx.pb.group.add(bartender);
