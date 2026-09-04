@@ -1625,6 +1625,14 @@ export class Game implements GameAPI {
     if (this.hiding || this.driving) return;
     const px = this.player.position.x;
     const pz = this.player.position.z;
+    // a cop who is close and looking at you watches you climb in: break line of sight first
+    const watcher = this.police.find((p) => (p.pstate === 'CHASE' || p.pstate === 'APPROACH') && p.distanceTo(px, pz) < 10 && this.city.colliders.lineOfSight(p.position.x, p.position.y + 1.6, p.position.z, px, this.player.position.y + 1.2, pz, 10));
+    if (watcher) {
+      watcher.say('Nice try. Out of the trash.', '#9ecbff', 2.5);
+      this.audio.play('error');
+      this.toast('He is right on top of you — break line of sight before you hide.', 'warn', 3500);
+      return;
+    }
     this.hiding = { x: o.position.x, z: o.position.z, exitX: px, exitZ: pz };
     this.player.velocity.set(0, 0, 0);
     this.player.position.set(o.position.x, -0.55, o.position.z);
