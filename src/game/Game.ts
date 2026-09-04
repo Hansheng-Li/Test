@@ -642,11 +642,14 @@ export class Game implements GameAPI {
     const px = this.player.position.x;
     const pz = this.player.position.z;
     const f = c.forward();
-    const ax = px - c.position.x;
-    const az = pz - c.position.z;
-    const along = ax * f.x + az * f.z;
-    const side = Math.abs(ax * f.z - az * f.x);
-    const blockAhead = !this.hiding && !safe && along > 0 && along < 8 && side < 3.5;
+    const inLane = (x: number, z: number): boolean => {
+      const ax = x - c.position.x;
+      const az = z - c.position.z;
+      const along = ax * f.x + az * f.z;
+      return along > 0 && along < 8 && Math.abs(ax * f.z - az * f.x) < 3.5;
+    };
+    // the player on foot (or driving), or their car left in the lane
+    const blockAhead = (!this.hiding && !safe && inLane(px, pz)) || (!!this.vehicle && !this.driving && inLane(this.vehicle.position.x, this.vehicle.position.z));
     const alert = this.state.heat >= 60 || curfewExtraPolice(this.state) > 0;
     c.update(dt, { blockAhead, alert, night: this.clock.isNight });
     this.radioCooldown -= dt;

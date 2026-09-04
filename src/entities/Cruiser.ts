@@ -12,6 +12,8 @@ export interface CruiserContext {
 /** Cruising speed in m/s (about 20 mph): fast enough to matter, slow enough to read. */
 const CRUISE = 9;
 const TURN_RATE = 2.2;
+/** A cruiser brakes for a car in its lane, but a car parked there for good is driven around, not waited on. */
+const PATIENCE = 6;
 
 /**
  * District 3's patrol cruiser. It drives a fixed loop around the downtown blocks on
@@ -26,6 +28,8 @@ export class Cruiser {
   speed = 0;
   /** Seconds the cruiser holds still (after a radio call it stops to look). */
   holdTimer = 0;
+  /** Seconds spent braked behind the same obstacle; after PATIENCE it drives on. */
+  private blockedFor = 0;
   private target = 1;
   private wheels: THREE.Object3D[] = [];
   private headlights: THREE.MeshLambertMaterial;
@@ -122,6 +126,8 @@ export class Cruiser {
 
   update(dt: number, ctx: CruiserContext): void {
     if (this.holdTimer > 0) this.holdTimer -= dt;
+    this.blockedFor = ctx.blockAhead ? this.blockedFor + dt : 0;
+    const blocked = ctx.blockAhead && this.blockedFor < PATIENCE;
     const t = this.route[this.target];
     const dx = t.x - this.position.x;
     const dz = t.z - this.position.z;
@@ -132,7 +138,7 @@ export class Cruiser {
     while (diff < -Math.PI) diff += Math.PI * 2;
     const turning = Math.abs(diff) > 0.15;
     this.yaw += Math.max(-TURN_RATE * dt, Math.min(TURN_RATE * dt, diff));
-    const targetSpeed = ctx.blockAhead || this.holdTimer > 0 ? 0 : turning ? CRUISE * 0.45 : dist < 6 ? CRUISE * 0.6 : CRUISE;
+    const targetSpeed = blocked || this.holdTimer > 0 ? 0 : turning ? CRUISE * 0.45 : dist < 6 ? CRUISE * 0.6 : CRUISE;
     if (this.speed < targetSpeed) this.speed = Math.min(targetSpeed, this.speed + 6 * dt);
     else this.speed = Math.max(targetSpeed, this.speed - 12 * dt);
     const f = this.forward();
