@@ -42,6 +42,9 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | `B` | Place equipment (inside your warehouse, with a station kit in your backpack) |
 | `N` | Walkman on/off (original procedural synth radio, also plays in the car) |
 | `H` | Hide/show the HUD (screenshot mode) |
+
+A compass at the top of the screen points at the current target (the waiting customer, Rico when you need
+supplies, the right table when you need to prep or bag, or Vince when he is holding cash).
 | `W S A D` / `Shift` / `Space` | In the car: drive / brake / horn |
 | `R` | Rotate equipment in placement mode |
 | `Esc` | Close panel / pause menu (save, how to play, settings: sensitivity & volumes) |

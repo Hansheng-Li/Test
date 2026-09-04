@@ -46,6 +46,7 @@ export class HUD {
       <div id="prompt"></div>
       <div id="toasts"></div>
       <div id="pager-notify"><div class="screen"></div><div class="hint">[Y] ACCEPT · [X] DECLINE · [P] PAGER</div></div>
+      <div id="compass"><span class="arrow"></span><span class="label"></span></div>
       <div id="flash"></div>
       <div id="vignette"></div>
       <div id="clickhint" style="display:none;position:absolute;left:50%;top:62%;transform:translateX(-50%);background:var(--panel);border:2px solid var(--cyan);padding:10px 18px;border-radius:6px;font-size:16px;letter-spacing:1px">CLICK TO CAPTURE THE MOUSE</div>`;
@@ -143,6 +144,18 @@ export class HUD {
       this.pagerTimer -= dt;
       if (this.pagerTimer <= 0) this.pagerEl.classList.remove('on');
     }
+  }
+
+  /** Direction + distance to the current target; angle is relative to the view (0 = straight ahead). */
+  setCompass(label: string | null, angleRad: number, meters: number): void {
+    const el = this.root.querySelector('#compass') as HTMLElement;
+    if (!label) {
+      el.style.display = 'none';
+      return;
+    }
+    el.style.display = 'flex';
+    (el.querySelector('.arrow') as HTMLElement).style.transform = `rotate(${(angleRad * 180) / Math.PI}deg)`;
+    (el.querySelector('.label') as HTMLElement).textContent = `${label} · ${Math.round(meters)}m`;
   }
 
   /** Big centre-screen text for viewer-readable moments: SOLD +$68, BUSTED, NEW PROPERTY. */

@@ -8,7 +8,7 @@ import { DayNight } from '../world/DayNight';
 import { PropBuilder } from '../world/Props';
 import { buildPlacedStation, InteriorContext } from '../world/Interiors';
 import { WorldObject } from '../world/WorldTypes';
-import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT, PROPERTY_ANCHORS, zoneAt } from '../data/city';
+import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT, PROPERTY_ANCHORS, SUPPLIER_SPOT, zoneAt } from '../data/city';
 import { makeFigure, makeLabel } from '../world/Interiors';
 import { CUSTOMER_MAP } from '../data/customers';
 import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, VEHICLE_PRICE, MOTEL_PRICE, FRONT_PRICE, FRONT_DAILY_INCOME, FRONT_DAILY_SUSPICION, ITEMS } from '../data/items';
@@ -723,6 +723,7 @@ export class Game implements GameAPI {
     this.hud.setClickHint(!this.input.locked && !uiOpen && !this.arrested);
     this.hud.speedText = this.driving && this.vehicle ? `${Math.round(this.vehicle.mph)} MPH` : null;
     this.hud.stamina = this.player.stamina;
+    this.updateCompass();
     this.hudTextTimer -= dt;
     if (this.hudTextTimer <= 0) {
       this.hudTextTimer = 0.2;
@@ -1796,6 +1797,52 @@ export class Game implements GameAPI {
   }
 
   // ------------------------------------------------------------------ HUD helpers
+
+  /** Where the player should be heading right now, if the game can tell. */
+  private compassTarget(): { label: string; x: number; z: number } | null {
+    const s = this.state;
+    if (!s.flags.starterTaken) return null;
+    const active = activeOrders(s).filter((o) => o.status === 'accepted');
+    if (active.length) {
+      const o = active[0];
+      const c = CUSTOMER_MAP[o.customerId];
+      if (findFulfillingItem(s, o)) {
+        const npc = this.customers.get(o.id);
+        const l = LANDMARKS.find((x) => x.id === o.locationId);
+        const x = npc ? npc.position.x : l?.x ?? 0;
+        const z = npc ? npc.position.z : l?.z ?? 0;
+        return { label: `${c.name.split(' ')[0]} · ${landmarkName(o.locationId)}`, x, z };
+      }
+      const hasBase = ['pulp_sunset', 'wax_velvet', 'gel_neon'].some((id) => countItem(s, id) > 0);
+      const loose = looseProductsInInventory(s).length > 0;
+      if (!hasBase && !loose) return { label: 'Rico (supplies)', x: SUPPLIER_SPOT.x, z: SUPPLIER_SPOT.z };
+      const prop = s.properties.includes('warehouse') && this.playerInsideBuilding('warehouse') ? 'warehouse' : 'safehouse';
+      const station = [...this.city.objects, ...this.placedObjects].find((o) => o.kind === (loose ? 'pack_table' : 'prep_table') && o.property === prop);
+      if (station) return { label: loose ? 'Packaging table' : 'Prep table', x: station.position.x, z: station.position.z };
+    }
+    if (s.dealer?.hired && s.dealer.cash >= 200) return { label: `Vince · $${Math.round(s.dealer.cash)} waiting`, x: 154, z: 100 };
+    return null;
+  }
+
+  private updateCompass(): void {
+    const t = this.compassTarget();
+    if (!t) {
+      this.hud.setCompass(null, 0, 0);
+      return;
+    }
+    const dx = t.x - this.player.position.x;
+    const dz = t.z - this.player.position.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist < 4) {
+      this.hud.setCompass(null, 0, 0);
+      return;
+    }
+    // player forward is (-sin yaw, -cos yaw); angle of target relative to forward, clockwise positive
+    const bearing = Math.atan2(-dx, -dz);
+    let rel = bearing - this.player.yaw;
+    rel = Math.atan2(Math.sin(rel), Math.cos(rel));
+    this.hud.setCompass(t.label, -rel, dist);
+  }
 
   private computeObjective(): string {
     const s = this.state;
