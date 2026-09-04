@@ -28,6 +28,8 @@ export interface RadioContext {
   crewName: string;
   eventId: string | null;
   day: number;
+  /** Today's hot effect, if any (products with it sell for a bonus). */
+  trend: string | null;
 }
 
 /** All music is CC0 — see public/assets/LICENSES.md. Files live in public/assets/music. */
@@ -340,6 +342,10 @@ export class Radio {
     if (c && c.eventId === 'crackdown' && Math.random() < 0.5 && this.lastText !== 'event') {
       this.lastText = 'event';
       return `${st.dj}: Sol Palma PD announced a crackdown this morning. Extra patrols, extra attitude.`;
+    }
+    if (c && c.trend && Math.random() < 0.35 && this.lastText !== 'trend') {
+      this.lastText = 'trend';
+      return `${st.dj}: ` + (st.synth ? `Everybody on the strip wants ${c.trend} tonight. You did not hear it from me.` : `Street report: ${c.trend} is the word on the boardwalk today. Whatever that means.`);
     }
     if (c && c.eventId === 'club_night' && Math.random() < 0.5 && this.lastText !== 'event') {
       this.lastText = 'event';

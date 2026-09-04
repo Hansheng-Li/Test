@@ -5,7 +5,7 @@ export class Menu {
 
   constructor(
     parent: HTMLElement,
-    private actions: { newGame: () => void; continueGame: () => void; resetSave: () => void; resume: () => void; save: () => void; quit: () => void; hasSave: () => boolean; saveSummary: () => string | null; runStats: () => string | null; getSettings: () => { sensitivity: number; masterVolume: number; radioVolume: number }; setSetting: (key: 'sensitivity' | 'masterVolume' | 'radioVolume', value: number) => void },
+    private actions: { newGame: () => void; continueGame: () => void; resetSave: () => void; resume: () => void; save: () => void; quit: () => void; hasSave: () => boolean; saveSummary: () => string | null; runStats: () => string | null; getSettings: () => { sensitivity: number; masterVolume: number; radioVolume: number; cutscenes: number }; setSetting: (key: 'sensitivity' | 'masterVolume' | 'radioVolume' | 'cutscenes', value: number) => void },
   ) {
     this.el = document.createElement('div');
     this.el.id = 'menu';
@@ -95,6 +95,18 @@ export class Menu {
     slider('Mouse sensitivity', 'sensitivity', 0.2, 3, 0.05);
     slider('Master volume', 'masterVolume', 0, 1, 0.05);
     slider('Radio volume', 'radioVolume', 0, 1, 0.05);
+    const row = document.createElement('label');
+    row.style.display = 'flex';
+    row.style.justifyContent = 'space-between';
+    row.style.alignItems = 'center';
+    row.style.margin = '6px 0';
+    row.style.cursor = 'pointer';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = st.cutscenes >= 0.5;
+    cb.addEventListener('change', () => this.actions.setSetting('cutscenes', cb.checked ? 1 : 0));
+    row.append('Cutscenes (intro, purchases, arrests)', cb);
+    settingsEl.appendChild(row);
     const stats = this.mode === 'title' ? this.actions.saveSummary() : this.actions.runStats();
     const statsEl = this.el.querySelector('.runstats') as HTMLElement;
     if (stats) {

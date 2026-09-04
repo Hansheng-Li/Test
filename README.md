@@ -41,6 +41,7 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | `1`–`8` | Select hotbar slot |
 | `B` | Place equipment (inside your warehouse, with a station kit in your backpack) |
 | `N` | Radio: cycles SOL PALMA FM → THE WAVE → FUNK CITY → SIGNAL ZERO → off (walkman on foot, car stereo while driving) |
+| any key | Skips a cutscene (Escape pauses instead) |
 | `H` | Hide/show the HUD (screenshot mode) |
 
 A compass at the top of the screen points at the current target (the waiting customer, Rico when you need
@@ -218,6 +219,15 @@ street deals, dealer, worker, runner queue, heat/arrest, events, milestones, sav
 Playwright smoke + core-loop e2e; scripted browser regressions for warehouse placement, worker, dealer,
 runner queue, motel, car, hiding, arrest; a 6-game-hour automated soak of the late-game economy with
 reload; screenshot passes for every district by day and night.
+
+**v0.2 (audio-visual pass)** — four-station radio with DJ chatter, commercials and topical lines;
+Kenney CC0 sample sound effects and jingles with synth fallbacks; Kenney car models for the player's
+sedan, parked cars and police cruisers, with a chase camera; skippable cutscenes (opening flyover,
+property purchases, crew sign, arrest) that can be switched off in SETTINGS; live 3D title screen with
+theme music and a credits page; engine drone, club music by proximity, surf and distant sirens; a
+seventh code-review round (car orientation, mirrored-wheel winding, radio cycle, cutscene cancel on
+quit, sample preloading). Verified with scripted headless-browser passes for every new feature plus
+the existing Vitest and Playwright suites.
 
 **Known issues** — see *Known limitations*; additionally pointer-lock recovery after a browser-forced
 exit can need one extra click, and the software-rendered headless browser used for CI-style checks runs

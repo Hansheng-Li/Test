@@ -188,7 +188,7 @@ export class Game implements GameAPI {
     this.applySetting('radioVolume', this.settings.radioVolume, false);
     this.applySetting('radioStation', this.settings.radioStation, false);
     this.audio.radio.onAir = (st, track, line) => this.hud.setRadio(st, track, line);
-    this.audio.radio.context = () => ({ heat: this.state.heat, night: this.clock.isNight, crewName: this.state.crewName, eventId: activeEvent(this.state)?.id ?? null, day: this.clock.day });
+    this.audio.radio.context = () => ({ heat: this.state.heat, night: this.clock.isNight, crewName: this.state.crewName, eventId: activeEvent(this.state)?.id ?? null, day: this.clock.day, trend: this.state.trend?.effect ?? null });
     window.addEventListener('beforeunload', () => this.save());
     // the first click on the title screen is the gesture that unlocks audio: start the theme there
     this.menu.el.addEventListener('pointerdown', () => {
@@ -239,7 +239,7 @@ export class Game implements GameAPI {
     ];
     this.tipTimer = 0.5;
     this.beginPlay();
-    if (intro) this.playIntro();
+    if (intro && this.settings.cutscenes) this.playIntro();
   }
 
   /** Opening flyover: ocean → skyline → the back room. Any key skips it. */
@@ -1908,13 +1908,17 @@ export class Game implements GameAPI {
     this.arrestTimer = 6.2;
     this.audio.play('jingle_bust');
     this.hud.arrestMode = true;
-    this.hud.setVisible(false);
+    if (this.settings.cutscenes) this.hud.setVisible(false);
+    else {
+      this.arrestTimer = 3.2;
+      this.hud.flash('BUSTED', '#7fbfff');
+    }
     const r = applyArrest(this.state);
     this.clock.totalMinutes = this.state.clockMinutes;
     const items = r.confiscated.map((c) => `${c.qty}x ${resolveItem(this.state, c.id).name}`).join(', ');
     const p = this.player.position;
     const eye: [number, number, number] = [p.x, p.y + 1.6, p.z];
-    this.cutscene.play(
+    if (this.settings.cutscenes) this.cutscene.play(
       [
         { from: eye, to: [p.x + 5, p.y + 9, p.z + 7], lookFrom: [p.x, p.y + 1, p.z], dur: 3.6, text: 'BUSTED', sub: items ? `confiscated: ${items} · fine $${r.fine}` : `fine $${r.fine}` },
         { from: [p.x + 5, p.y + 9, p.z + 7], to: [p.x + 6, p.y + 10, p.z + 8], lookFrom: [p.x, p.y + 1, p.z], dur: 2.6, fade: 1, text: '6 HOURS LATER', sub: 'Sol Palma County Jail' },
@@ -2098,6 +2102,7 @@ export class Game implements GameAPI {
 
   /** Run an in-game cutscene: closes panels, hides the HUD and hands control back afterwards. */
   private playShots(shots: Shot[]): void {
+    if (!this.settings.cutscenes) return;
     if (this.openPanelId) this.closePanel();
     this.hud.setVisible(false);
     this.cutscene.play(shots, () => {
