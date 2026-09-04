@@ -90,5 +90,5 @@ export const STARTING_CASH = 80;
 export const VEHICLE_PRICE = 900;
 export const MOTEL_PRICE = 1200;
 export const FRONT_PRICE = 3000;
-export const FRONT_DAILY_INCOME = 60;
+export const FRONT_DAILY_INCOME = 150;
 export const FRONT_DAILY_SUSPICION = 12;

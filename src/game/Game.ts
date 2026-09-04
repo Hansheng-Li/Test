@@ -1266,6 +1266,7 @@ export class Game implements GameAPI {
   }
 
   openPanel(id: string): void {
+    if (this.cutscene.active || this.arrested) return;
     if (this.placement) this.cancelPlacement();
     if (this.openPanelId && this.openPanelId !== id) this.panels[this.openPanelId].close();
     this.openPanelId = id;
@@ -1523,6 +1524,12 @@ export class Game implements GameAPI {
   rest(): void {
     const s = this.state;
     const h = this.clock.hour;
+    // sleeping is a night-time reset, not a day-skip button (each skipped day would pay the laundromat and cool suspicion)
+    if (h >= 7 && h < 19) {
+      this.audio.play('error');
+      this.toast(`Too early to sleep. The bed is for nights (after 19:00) — it is ${this.clock.formatClock()}.`, 'warn');
+      return;
+    }
     const target = h < 7 ? 7 : 7 + 24;
     const add = (target - h) * 60;
     this.clock.totalMinutes += add;
@@ -1591,9 +1598,15 @@ export class Game implements GameAPI {
   private takeStarterBox(): void {
     const s = this.state;
     if (s.flags.starterTaken) return;
+    if (addItem(s, 'pulp_sunset', 3) > 0 || addItem(s, 'baggies', 6) > 0) {
+      // not enough room: put back whatever fit and let the player make space
+      removeItem(s, 'pulp_sunset', countItem(s, 'pulp_sunset'));
+      removeItem(s, 'baggies', Math.min(6, countItem(s, 'baggies')));
+      this.audio.play('error');
+      this.toast('Your backpack is full. Make room for 3 Sunset Pulp and 6 baggies first.', 'warn');
+      return;
+    }
     s.flags.starterTaken = true;
-    addItem(s, 'pulp_sunset', 3);
-    addItem(s, 'baggies', 6);
     this.syncStarterBox();
     this.audio.play('unlock');
     this.toast('Starter box: 3x Sunset Pulp, 6x Zip Baggies. Prep the pulp at the PREP TABLE, then bag it at PACKAGING.', 'cash', 7000);
@@ -1734,7 +1747,7 @@ export class Game implements GameAPI {
   }
 
   private enterCar(): void {
-    if (!this.vehicle || this.driving) return;
+    if (!this.vehicle || this.driving || this.hiding || this.arrested || this.cutscene.active) return;
     this.driving = true;
     this.player.pitch = 0;
     this.player.yaw = this.vehicle.cameraYaw;
