@@ -1,3 +1,4 @@
+import { STATIONS } from '../audio/Radio';
 /** Title screen + pause overlay. */
 export class Menu {
   el: HTMLDivElement;
@@ -5,7 +6,7 @@ export class Menu {
 
   constructor(
     parent: HTMLElement,
-    private actions: { newGame: () => void; continueGame: () => void; resetSave: () => void; resume: () => void; save: () => void; quit: () => void; hasSave: () => boolean; saveSummary: () => string | null; runStats: () => string | null; getSettings: () => { sensitivity: number; masterVolume: number; radioVolume: number; cutscenes: number }; setSetting: (key: 'sensitivity' | 'masterVolume' | 'radioVolume' | 'cutscenes', value: number) => void },
+    private actions: { newGame: () => void; continueGame: () => void; resetSave: () => void; resume: () => void; save: () => void; quit: () => void; hasSave: () => boolean; saveSummary: () => string | null; runStats: () => string | null; getSettings: () => { sensitivity: number; masterVolume: number; radioVolume: number; cutscenes: number; radioStation: number }; setSetting: (key: 'sensitivity' | 'masterVolume' | 'radioVolume' | 'cutscenes' | 'radioStation', value: number) => void },
   ) {
     this.el = document.createElement('div');
     this.el.id = 'menu';
@@ -95,6 +96,26 @@ export class Menu {
     slider('Mouse sensitivity', 'sensitivity', 0.2, 3, 0.05);
     slider('Master volume', 'masterVolume', 0, 1, 0.05);
     slider('Radio volume', 'radioVolume', 0, 1, 0.05);
+    const stRow = document.createElement('div');
+    stRow.style.display = 'flex';
+    stRow.style.justifyContent = 'space-between';
+    stRow.style.alignItems = 'center';
+    stRow.style.margin = '6px 0';
+    const sel = document.createElement('select');
+    sel.style.background = '#1a1026';
+    sel.style.color = '#eee';
+    sel.style.border = '1px solid #555';
+    sel.style.padding = '2px 6px';
+    STATIONS.forEach((station, i) => {
+      const opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = `${station.name} ${station.freq}`;
+      opt.selected = i === st.radioStation;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', () => this.actions.setSetting('radioStation', parseInt(sel.value, 10)));
+    stRow.append('Radio station', sel);
+    settingsEl.appendChild(stRow);
     const row = document.createElement('label');
     row.style.display = 'flex';
     row.style.justifyContent = 'space-between';
