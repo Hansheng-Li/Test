@@ -27,6 +27,7 @@ Fetched from the community mirror https://github.com/ETdoFresh/kenney.nl
 | --- | --- |
 | models/sedan.glb, sedanSports.glb, hatchbackSports.glb, suv.glb, suvLuxury.glb, taxi.glb, van.glb, delivery.glb, police.glb | Car Kit 1.4 |
 | models/tree_palmTall.glb, tree_palmDetailedTall.glb | Nature Kit 2.1 |
+| models/furniture/*.glb (bookcaseOpen, cabinetTelevision, chair, computerScreen, deskCorner, kitchenFridgeSmall, lampSquareFloor, loungeChair, loungeSofa, plantSmall2, pottedPlant, rugRectangle, speaker, stoolBar, tableCoffee, televisionVintage) | Furniture Kit |
 
 ## Music — CC0 tracks (re-encoded to Opus 64 kbps)
 Fetched from the CC0 corpus https://github.com/SoundSafari/CC0-1.0-Music (LICENSE: CC0 1.0).

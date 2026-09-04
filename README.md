@@ -182,6 +182,10 @@ Design rules that shaped the code:
   milestone.
 - Sol Palma Transit: a bus stop per district (marked B on the map) rides you across town for $5 and
   twelve minutes behind a fade, unless a cop is on your heels.
+- Interiors dressed with the Kenney Furniture Kit (CC0): sofa, TV and bookcase in the back room, a lounge
+  chair in the motel, bar stools and a lounge corner in Club Mirage, a desk and fridge in the warehouse
+  office. Merged statically (about 30 extra draw calls), solid pieces block movement, rooms keep their
+  box furniture if a model fails to load.
 - Drivable arcade sedan (Kenney CC0 model, box fallback) with a chase camera that orbits with the mouse
   and pulls in at walls; horn, headlights and persisted parking spot. Streets are lined with Kenney
   sedans, hatchbacks, SUVs, taxis and vans merged into a handful of draw calls.

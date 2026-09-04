@@ -5,6 +5,7 @@ import { STATIONS } from '../audio/Radio';
 import { loadModel, instanceModel, upgradeParkedCars, CAR_SCALE } from '../world/Models';
 import { Cutscene, Shot } from './Cutscene';
 import { Weather } from '../world/Weather';
+import { dressInteriors } from '../world/Dressing';
 import { BusUI } from '../ui/BusUI';
 import { DiceUI } from '../ui/DiceUI';
 import { rollDice, DicePick, DiceResult } from '../systems/DiceSystem';
@@ -171,6 +172,7 @@ export class Game implements GameAPI {
     this.city = buildCity();
     this.scene.add(this.city.group);
     this.weather = new Weather(this.scene);
+    void dressInteriors(this.scene, this.city);
     void upgradeParkedCars(this.city);
     this.scene.add(this.dynamicGroup);
     this.dayNight = new DayNight(this.scene, this.city.night);
