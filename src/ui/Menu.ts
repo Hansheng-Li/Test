@@ -42,7 +42,7 @@ export class Menu {
         <b style="color:#4ff2e8">PRODUCTS</b> · Base + up to 3 modifiers (order matters). Name your products. Watch the daily hot effect (+25%).<br/>
         <b style="color:#4ff2e8">HEAT</b> · Cops who see a deal raise it. Break line of sight, go home, or rest. Clean hands survive a stop-and-search; contraband does not. Sprint has stamina — you cannot outrun a chase forever. Dumpsters in the alleys are hiding spots (E).<br/>
         <b style="color:#4ff2e8">SCALE UP</b> · Pawn shop equipment → Dizzy the runner (motel) → Warehouse 7 (docks) → Marisol the worker (port) → Vince the dealer (arcade) → the '88 sedan (Rojas).<br/>
-        <b style="color:#4ff2e8">KEYS</b> · E interact · TAB backpack · P pager · M map · N walkman · B place equipment · F3 fps.
+        <b style="color:#4ff2e8">KEYS</b> · E interact · TAB backpack · P pager · M map · N radio · B place equipment · F3 fps.
       </div>
       <div class="credits">
         <b>SUNSET SYNDICATE</b> — an original game. All products, businesses, people and the city of Sol Palma are fictional.<br/><br/>
@@ -52,7 +52,7 @@ export class Menu {
         SIGNAL ZERO and every other sound not listed above is synthesised in-game.<br/><br/>
         Full per-file table: public/assets/LICENSES.md in the repository.
       </div>
-      <div class="controls">WASD move · MOUSE look · SHIFT sprint · SPACE jump<br/>E interact · TAB inventory · P pager · Y/X accept/decline page · M map · N walkman · 1-8 select item · ESC pause<br/><br/><span style="color:#ff9a3c">All products in this game are fictional. Click to capture the mouse.</span></div>
+      <div class="controls">WASD move · MOUSE look · SHIFT sprint · SPACE jump<br/>E interact · TAB inventory · P pager · Y/X accept/decline page · M map · N radio · 1-8 select item · ESC pause<br/><br/><span style="color:#ff9a3c">All products in this game are fictional. Click to capture the mouse.</span></div>
       <div class="stripe bottom"></div>`;
     const btns = this.el.querySelector('.buttons') as HTMLElement;
     btns.style.display = 'flex';

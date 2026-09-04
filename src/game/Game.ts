@@ -190,6 +190,12 @@ export class Game implements GameAPI {
     this.audio.radio.onAir = (st, track, line) => this.hud.setRadio(st, track, line);
     this.audio.radio.context = () => ({ heat: this.state.heat, night: this.clock.isNight, crewName: this.state.crewName, eventId: activeEvent(this.state)?.id ?? null, day: this.clock.day });
     window.addEventListener('beforeunload', () => this.save());
+    // the first click on the title screen is the gesture that unlocks audio: start the theme there
+    this.menu.el.addEventListener('pointerdown', () => {
+      this.audio.init();
+      this.audio.resume();
+      if (!this.running) this.audio.setTitleMusic(true);
+    });
     this.hud.setVisible(false);
     this.debugEl = document.createElement('div');
     this.debugEl.id = 'debug';
@@ -275,6 +281,8 @@ export class Game implements GameAPI {
     this.hud.arrestMode = false;
     this.hud.setVisible(false);
     if (this.audio.radio.playing) this.audio.radio.stop();
+    this.audio.setEngine(false, 0);
+    this.audio.setTitleMusic(true);
     this.clock.totalMinutes = Math.floor(this.clock.totalMinutes / (24 * 60)) * 24 * 60 + 19 * 60;
   }
 
@@ -306,6 +314,7 @@ export class Game implements GameAPI {
     this.menu.hide();
     this.hud.setVisible(true);
     this.audio.init();
+    this.audio.setTitleMusic(false);
     this.input.requestLock();
   }
 

@@ -183,6 +183,36 @@ export class AudioSystem {
     if (level <= 0.02 && !this.clubEl.paused) this.clubEl.pause();
   }
 
+  private titleEl: HTMLAudioElement | null = null;
+  private titleGain: GainNode | null = null;
+
+  /** Title-screen theme (CC0 'Retro Synths'); needs a user gesture first, so call it from a click. */
+  setTitleMusic(on: boolean): void {
+    if (!this.ctx || !this.master) return;
+    const ctx = this.ctx;
+    if (!this.titleEl) {
+      if (!on) return;
+      try {
+        this.titleEl = new Audio('/assets/music/holizna_retro_synths.ogg');
+        this.titleEl.loop = true;
+        this.titleGain = ctx.createGain();
+        this.titleGain.gain.value = 0;
+        ctx.createMediaElementSource(this.titleEl).connect(this.titleGain).connect(this.master);
+      } catch {
+        this.titleEl = null;
+        return;
+      }
+    }
+    if (!this.titleGain) return;
+    this.titleGain.gain.setTargetAtTime(on ? 0.3 : 0, ctx.currentTime, on ? 1.2 : 0.4);
+    if (on && this.titleEl.paused) void this.titleEl.play().catch(() => undefined);
+    if (!on) window.setTimeout(() => { if (this.titleEl && this.titleGain && this.titleGain.gain.value < 0.01) this.titleEl.pause(); }, 1500);
+  }
+
+  get titlePlaying(): boolean {
+    return !!this.titleEl && !this.titleEl.paused;
+  }
+
   get clubPlaying(): boolean {
     return !!this.clubEl && !this.clubEl.paused;
   }

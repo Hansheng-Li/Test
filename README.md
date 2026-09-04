@@ -181,8 +181,11 @@ Design rules that shaped the code:
   with the original procedural synth sounds as fallback when a file is missing.
 - Accelerated day/night with neon, lit windows, lamp pool, fog and sunset tint.
 - Skippable cutscenes: an opening flyover over Sol Palma with title cards, and a BUSTED / 6 HOURS LATER
-  sequence on arrest. The title screen orbits the live city at sunset; the menu has HOW TO PLAY, SETTINGS
-  and a CREDITS page listing every CC0 asset.
+  sequence on arrest. The title screen orbits the live city at sunset with a CC0 theme (starts on the first
+  click) and shows the save at a glance; the menu has HOW TO PLAY, SETTINGS and a CREDITS page listing
+  every CC0 asset.
+- Engine drone while driving; Club Mirage streams a CC0 track that is muffled from the street and
+  full-range inside.
 - localStorage save/load with validation and repair of partial saves.
 - 56 Vitest tests covering behavioural contracts + Playwright smoke and core-loop tests.
 
