@@ -5,7 +5,7 @@ export class Menu {
 
   constructor(
     parent: HTMLElement,
-    private actions: { newGame: () => void; continueGame: () => void; resetSave: () => void; resume: () => void; save: () => void; quit: () => void; hasSave: () => boolean; getSettings: () => { sensitivity: number; masterVolume: number; radioVolume: number }; setSetting: (key: 'sensitivity' | 'masterVolume' | 'radioVolume', value: number) => void },
+    private actions: { newGame: () => void; continueGame: () => void; resetSave: () => void; resume: () => void; save: () => void; quit: () => void; hasSave: () => boolean; saveSummary: () => string | null; runStats: () => string | null; getSettings: () => { sensitivity: number; masterVolume: number; radioVolume: number }; setSetting: (key: 'sensitivity' | 'masterVolume' | 'radioVolume', value: number) => void },
   ) {
     this.el = document.createElement('div');
     this.el.id = 'menu';
@@ -33,6 +33,7 @@ export class Menu {
       <div class="stripe top"></div>
       <h1>SUNSET SYNDICATE</h1>
       <div class="sub">SOL PALMA, FLORIDA · 1996</div>
+      <div class="runstats" style="display:none;font-family:var(--mono);font-size:13px;color:var(--cyan);letter-spacing:1px;margin-top:-18px;margin-bottom:6px"></div>
       <div class="buttons"></div>
       <div class="settings" style="display:none;min-width:360px;font-size:13px;color:#ddd;background:rgba(0,0,0,0.4);padding:12px 16px;border-radius:6px;border:1px solid #444"></div>
       <div class="howto" style="display:none;max-width:640px;font-size:13px;line-height:1.5;color:#ddd;background:rgba(0,0,0,0.4);padding:12px 16px;border-radius:6px;border:1px solid #444">
@@ -94,6 +95,12 @@ export class Menu {
     slider('Mouse sensitivity', 'sensitivity', 0.2, 3, 0.05);
     slider('Master volume', 'masterVolume', 0, 1, 0.05);
     slider('Radio volume', 'radioVolume', 0, 1, 0.05);
+    const stats = this.mode === 'title' ? this.actions.saveSummary() : this.actions.runStats();
+    const statsEl = this.el.querySelector('.runstats') as HTMLElement;
+    if (stats) {
+      statsEl.textContent = stats;
+      statsEl.style.display = 'block';
+    }
     if (this.mode === 'title') {
       if (hasSave) add('CONTINUE', this.actions.continueGame, 'big primary');
       add('NEW GAME', this.actions.newGame, hasSave ? 'big' : 'big primary');

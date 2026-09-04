@@ -178,6 +178,8 @@ export class Game implements GameAPI {
       resume: () => this.resume(),
       save: () => { this.save(); this.toast('Game saved.'); },
       hasSave: () => hasSave(localStorage),
+      saveSummary: () => this.saveSummary(),
+      runStats: () => (this.running ? this.describeRun(this.state) : null),
       getSettings: () => this.settings,
       setSetting: (key, value) => this.applySetting(key, value),
     });
@@ -248,6 +250,22 @@ export class Game implements GameAPI {
       this.hud.setVisible(true);
       this.input.requestLock();
     });
+  }
+
+  /** One line about the save on the title screen, e.g. "DAY 3 · $1,240 · 4 CUSTOMERS · 2 PROPERTIES". */
+  private saveSummary(): string | null {
+    const s = loadFromStorage(localStorage);
+    return s ? this.describeRun(s) : null;
+  }
+
+  private describeRun(s: GameState): string {
+    const day = Math.max(1, Math.floor(s.clockMinutes / (24 * 60)));
+    const unlocked = Object.values(s.customers).filter((c) => c.unlocked).length;
+    const crew = [s.runner?.hired, s.worker?.hired, s.dealer?.hired].filter(Boolean).length;
+    const parts = [`DAY ${day}`, `$${Math.round(s.cash).toLocaleString('en-US')}`, `${s.stats.sales} SALES`, `${unlocked} CUSTOMERS`, `${s.properties.length} ${s.properties.length === 1 ? 'PROPERTY' : 'PROPERTIES'}`];
+    if (crew) parts.push(`${crew} CREW`);
+    if (s.crewName) parts.unshift(s.crewName);
+    return parts.join(' · ');
   }
 
   quitToTitle(): void {
