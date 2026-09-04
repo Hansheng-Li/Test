@@ -58,7 +58,7 @@ const CIVILIAN_COLORS = ['#e91e63', '#9c27b0', '#3f51b5', '#03a9f4', '#009688', 
 const SKINS = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac'];
 const PANTS = ['#2c3e50', '#37474f', '#5d4037', '#1a237e', '#455a64', '#c9b79c'];
 
-/** Bigger deals get a bigger SOLD card: $35 -> 1.0x, $150 -> 1.25x, $600 -> 1.5x (capped). */
+/** Bigger deals get a bigger SOLD card: $35 -> 1.16x, $150 -> 1.35x, $600 -> 1.53x, capped at 1.7x. */
 function flashScale(earned: number): number {
   return Math.min(1.7, 0.7 + Math.log10(Math.max(10, earned)) * 0.3);
 }
@@ -683,13 +683,12 @@ export class Game implements GameAPI {
     // orders
     this.orderTimer -= dt;
     if (this.orderTimer <= 0) this.tryGenerateOrder();
-    const wasAccepted = new Set(s.orders.filter((o) => o.status === 'accepted').map((o) => o.id));
     const expired = expireOrders(s, this.clock.totalMinutes);
     for (const o of expired) {
       const c = CUSTOMER_MAP[o.customerId];
       this.despawnCustomer(o.id);
       // ignoring a page is free (declining is); standing up a customer you accepted is not
-      if (o.status === 'expired' && wasAccepted.has(o.id) && s.customers[o.customerId]) {
+      if (o.status === 'expired' && o.expiredFrom === 'accepted' && s.customers[o.customerId]) {
         s.customers[o.customerId].relationship = Math.max(0, s.customers[o.customerId].relationship - 2);
         this.toast(`${c.name.split(' ')[0]} got tired of waiting. Order expired.`, 'warn');
       }
@@ -743,9 +742,9 @@ export class Game implements GameAPI {
       this.audio.play('siren');
       this.toast(`Cops shook Vince down: ${dr.hassled.lost} units lost, HEAT +8.`, 'warn', 6000);
     }
-    if (dr.poached) {
+    for (const poached of dr.poachedAll ?? []) {
       this.audio.play('error');
-      this.toast(`${CUSTOMER_MAP[dr.poached].name.split(' ')[0]} got tired of Vince's empty corner and now buys from a rival crew. Keep him stocked!`, 'warn', 8000);
+      this.toast(`${CUSTOMER_MAP[poached].name.split(' ')[0]} got tired of Vince's empty corner and now buys from a rival crew. Keep him stocked!`, 'warn', 8000);
     }
     if (dr.starved) {
       this.dealerStarvedTimer -= 1;
@@ -1625,10 +1624,12 @@ export class Game implements GameAPI {
   private takeStarterBox(): void {
     const s = this.state;
     if (s.flags.starterTaken) return;
-    if (addItem(s, 'pulp_sunset', 3) > 0 || addItem(s, 'baggies', 6) > 0) {
-      // not enough room: put back whatever fit and let the player make space
-      removeItem(s, 'pulp_sunset', countItem(s, 'pulp_sunset'));
-      removeItem(s, 'baggies', Math.min(6, countItem(s, 'baggies')));
+    const leftPulp = addItem(s, 'pulp_sunset', 3);
+    const leftBags = addItem(s, 'baggies', 6);
+    if (leftPulp > 0 || leftBags > 0) {
+      // not enough room: take back only what the box managed to add and let the player make space
+      removeItem(s, 'pulp_sunset', 3 - leftPulp);
+      removeItem(s, 'baggies', 6 - leftBags);
       this.audio.play('error');
       this.toast('Your backpack is full. Make room for 3 Sunset Pulp and 6 baggies first.', 'warn');
       return;
@@ -2166,7 +2167,9 @@ export class Game implements GameAPI {
     if (after === before) return;
     const first = CUSTOMER_MAP[customerId].name.split(' ')[0].toUpperCase();
     const perk = after === 'regular' ? 'orders +1 · haggles easier' : after === 'friend' ? 'orders +2 · double effects' : after === 'family' ? 'top prices' : 'effect requests begin';
+    const stateAtCall = this.state;
     setTimeout(() => {
+      if (!this.running || this.state !== stateAtCall) return;
       this.audio.play('jingle_customer');
       this.hud.flash(`${first} IS NOW ${after === 'acquaintance' ? 'AN' : 'A'} ${after.toUpperCase()}`, '#ffd166');
       this.toast(`${CUSTOMER_MAP[customerId].name} is now a ${after}: ${perk}.`, 'cash', 6000);

@@ -315,6 +315,7 @@ export function expireOrders(state: GameState, now: number): Order[] {
   const expired: Order[] = [];
   for (const o of state.orders) {
     if ((o.status === 'pending' || o.status === 'accepted') && now > o.windowEnd + (o.status === 'pending' ? -60 : 0)) {
+      o.expiredFrom = o.status;
       o.status = 'expired';
       expired.push(o);
     }

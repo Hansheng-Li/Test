@@ -16,7 +16,7 @@ export class ShopUI extends Panel {
   /** Select which vendor to show; the game then opens the panel through its panel manager. */
   setShop(id: string): void {
     this.shopId = id;
-    if (id !== 'supplier') this.deliver = false;
+    this.deliver = false; // delivery is opt-in per visit
     this.el.querySelector('h2')!.childNodes[0].textContent = SHOPS[id].name.toUpperCase();
   }
 
@@ -25,7 +25,7 @@ export class ShopUI extends Panel {
     const shop = SHOPS[this.shopId];
     const body = this.body;
     body.innerHTML = `<div style="display:flex;justify-content:space-between"><span>CASH: <b style="color:#7dff9a">$${Math.floor(st.cash)}</b></span><span class="desc" style="color:#999">${this.deliver ? 'Delivered to WAREHOUSE storage (+20% fee).' : 'Items go straight into your backpack (8 slots).'}</span></div>`;
-    if (this.shopId === 'supplier' && st.properties.includes('warehouse')) {
+    if ((this.shopId === 'supplier' || this.shopId === 'store') && st.properties.includes('warehouse')) {
       const row = document.createElement('div');
       row.className = 'pager-btns';
       row.appendChild(this.button(this.deliver ? '✓ DELIVER TO WAREHOUSE (+20%)' : 'DELIVER TO WAREHOUSE (+20%)', () => { this.deliver = !this.deliver; this.render(); }, this.deliver ? 'primary' : 'cyan'));

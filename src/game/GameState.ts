@@ -39,6 +39,8 @@ export interface Order {
   windowStart: number;
   windowEnd: number;
   status: OrderStatus;
+  /** Status the order had when it expired (a stood-up accepted order costs relationship; an ignored page does not). */
+  expiredFrom?: OrderStatus;
   createdMinute: number;
   /** Runner progress 0..1 when status === 'runner'. */
   runnerProgress?: number;
