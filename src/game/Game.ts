@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Input } from '../core/Input';
 import { loadSettings, saveSettings, Settings } from '../core/Settings';
 import { STATIONS } from '../audio/Radio';
+import { loadModel, instanceModel, upgradeParkedCars, CAR_SCALE } from '../world/Models';
 import { GameClock } from '../core/Time';
 import { PlayerController } from '../player/PlayerController';
 import { buildCity, CityResult } from '../world/City';
@@ -103,6 +104,7 @@ export class Game implements GameAPI {
   private hideLineTimer = 0;
   private carHitTimer = 0;
   private carEye = new THREE.Vector3();
+  private carLook = new THREE.Vector3();
   private workerToastTimer = 0;
   private workerBlockedTimer = 0;
   dancers: Civilian[] = [];
@@ -147,6 +149,7 @@ export class Game implements GameAPI {
     this.input = new Input(this.renderer.domElement);
     this.city = buildCity();
     this.scene.add(this.city.group);
+    void upgradeParkedCars(this.city);
     this.scene.add(this.dynamicGroup);
     this.dayNight = new DayNight(this.scene, this.city.night);
     this.dayNight.setLampPositions(this.city.lampPositions);
@@ -1568,8 +1571,12 @@ export class Game implements GameAPI {
     const sign = this.city.objects.find((o) => o.kind === 'car_sale');
     if (sign) sign.mesh.visible = !v?.owned;
     if (!v?.owned) return;
-    this.vehicle = new Vehicle(v.x, v.z, v.yaw, this.city.colliders);
-    this.dynamicGroup.add(this.vehicle.mesh);
+    const vehicle = new Vehicle(v.x, v.z, v.yaw, this.city.colliders);
+    this.vehicle = vehicle;
+    this.dynamicGroup.add(vehicle.mesh);
+    void loadModel('sedanSports').then((m) => {
+      if (m && this.vehicle === vehicle) vehicle.applyModel(instanceModel(m, { paint: '#ff7eb6', scale: CAR_SCALE }));
+    });
     this.interaction.add({
       id: 'car',
       position: this.vehicle.position,
@@ -1670,10 +1677,21 @@ export class Game implements GameAPI {
       const rel = ((this.player.yaw - v.cameraYaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
       this.player.yaw = v.cameraYaw + rel * Math.max(0, 1 - dt * 1.5);
     }
-    v.eye(this.carEye);
-    this.camera.position.copy(this.carEye);
+    // chase camera: sits behind the car, orbits with the mouse, pulls in when a wall is in the way
+    const yaw = this.player.yaw;
+    const look = this.carLook.set(v.position.x, v.position.y + 1.1, v.position.z);
+    const dist = 7.5;
+    const camY = Math.max(0.7, 2.6 - this.player.pitch * 4);
+    const desired = this.carEye.set(look.x + Math.sin(yaw) * dist, camY, look.z + Math.cos(yaw) * dist);
+    let t = 1;
+    for (; t > 0.35; t -= 0.1) {
+      if (this.city.colliders.lineOfSight(look.x, look.y, look.z, look.x + (desired.x - look.x) * t, look.y + (desired.y - look.y) * t, look.z + (desired.z - look.z) * t, 10)) break;
+    }
+    t = Math.max(0.3, t - 0.08); // stay a little clear of the wall so the near plane does not clip it
+    this.camera.position.set(look.x + (desired.x - look.x) * t, look.y + (desired.y - look.y) * t, look.z + (desired.z - look.z) * t);
     this.camera.rotation.order = 'YXZ';
-    this.camera.rotation.set(this.player.pitch, this.player.yaw, 0);
+    // aim a little ahead of the car so the road, not the roof, fills the screen
+    this.camera.lookAt(look.x - Math.sin(yaw) * 4, look.y + 0.2, look.z - Math.cos(yaw) * 4);
     if (r === 'hit') {
       this.audio.play('bump');
       this.carHitTimer -= dt;

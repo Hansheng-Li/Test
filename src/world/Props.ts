@@ -149,16 +149,27 @@ export function buildDumpster(pb: PropBuilder, x: number, z: number, rot = 0): T
   return g;
 }
 
+const carMats = new Map<string, THREE.MeshLambertMaterial>();
+function carMat(color: string): THREE.MeshLambertMaterial {
+  let m = carMats.get(color);
+  if (!m) {
+    m = lambert(color);
+    carMats.set(color, m);
+  }
+  return m;
+}
+
+/** Box fallback for a parked car (shared materials per colour so the static merge stays small). */
 export function buildCar(pb: PropBuilder, x: number, z: number, rot: number, color: string): void {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(boxGeo(4.4, 0.7, 1.9), lambert(color));
+  const body = new THREE.Mesh(boxGeo(4.4, 0.7, 1.9), carMat(color));
   body.position.y = 0.55;
-  const cabin = new THREE.Mesh(boxGeo(2.4, 0.65, 1.7), lambert('#1c2533'));
+  const cabin = new THREE.Mesh(boxGeo(2.4, 0.65, 1.7), carMat('#1c2533'));
   cabin.position.set(-0.2, 1.2, 0);
   g.add(body, cabin);
   const wheelGeo = cylGeo(0.35, 0.35, 0.25, 8);
   for (const [wx, wz] of [[-1.4, 0.95], [1.4, 0.95], [-1.4, -0.95], [1.4, -0.95]]) {
-    const w = new THREE.Mesh(wheelGeo, lambert('#151515'));
+    const w = new THREE.Mesh(wheelGeo, carMat('#151515'));
     w.rotation.x = Math.PI / 2;
     w.position.set(wx, 0.35, wz);
     g.add(w);

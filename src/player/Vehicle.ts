@@ -68,7 +68,44 @@ export class Vehicle {
   }
 
   setNight(night: boolean): void {
+    this.night = night;
     this.headlights.emissiveIntensity = night ? 1.5 : 0;
+  }
+
+  private night = false;
+
+  /** Swap the box body for a loaded model (already scaled). Wheels named wheel_* keep spinning and steering. */
+  applyModel(model: THREE.Group): void {
+    this.mesh.clear();
+    this.wheels = [];
+    const wheels: THREE.Object3D[] = [];
+    model.traverse((o) => {
+      if (o.name.startsWith('wheel')) wheels.push(o);
+      if (o instanceof THREE.Mesh && (o.material as THREE.Material).name === 'lightFront') {
+        this.headlights = (o.material as THREE.MeshLambertMaterial).clone();
+        this.headlights.emissive.set('#fff2b0');
+        o.material = this.headlights;
+      }
+      if (o instanceof THREE.Mesh && (o.material as THREE.Material).name === 'lightBack') {
+        const m = (o.material as THREE.MeshLambertMaterial).clone();
+        m.emissive.set('#ff2d2d');
+        m.emissiveIntensity = 0.5;
+        o.material = m;
+      }
+    });
+    // front wheels first so the steering rule (index < 2) keeps working
+    wheels.sort((a, b) => b.position.z - a.position.z);
+    for (const w of wheels) {
+      const pivot = new THREE.Group();
+      pivot.rotation.order = 'YXZ';
+      pivot.position.copy(w.position);
+      w.parent!.add(pivot);
+      w.position.set(0, 0, 0);
+      pivot.add(w);
+      this.wheels.push(pivot as unknown as THREE.Mesh);
+    }
+    this.mesh.add(model);
+    this.setNight(this.night);
   }
 
   /** Drive with keyboard. Returns 'hit' on a wall bump, 'horn' when honking. */

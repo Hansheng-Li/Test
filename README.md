@@ -171,7 +171,9 @@ Design rules that shaped the code:
   automatic corner sales and shakedown events.
 - Daily trend bonus, daily world events (crackdown / shortage / club night), pedestrian gossip about
   your named products, 14 milestone goals with rewards, morning summaries.
-- Drivable arcade sedan with horn, headlights and persisted parking spot.
+- Drivable arcade sedan (Kenney CC0 model, box fallback) with a chase camera that orbits with the mouse
+  and pulls in at walls; horn, headlights and persisted parking spot. Streets are lined with Kenney
+  sedans, hatchbacks, SUVs, taxis and vans merged into a handful of draw calls.
 - GTA-style radio: three CC0 music stations plus a procedural pirate synth loop, each with its own DJ,
   fake 1996 commercials for in-game businesses and topical lines (police heat, world events); stations
   keep running while you are tuned elsewhere and the last station is remembered.
@@ -222,7 +224,7 @@ and multi-worker warehouses; 3. richer NPC schedules (customers at work/home/clu
 ## Licensing
 
 All code, textures and world geometry in this repository are original. The only third-party content is in
-`public/assets/` and every file there is CC0 1.0 (public domain): Kenney sound effects and music jingles,
-and music by HoliznaCC0, Komiku and Loyalty Freak Music. The full per-file attribution table is in
+`public/assets/` and every file there is CC0 1.0 (public domain): Kenney sound effects, music jingles and
+car models, and music by HoliznaCC0, Komiku and Loyalty Freak Music. The full per-file attribution table is in
 [`public/assets/LICENSES.md`](public/assets/LICENSES.md). None of these files is required: if they are
 missing the game falls back to the procedural sounds and the synth radio loop.

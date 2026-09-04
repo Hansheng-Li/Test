@@ -27,6 +27,9 @@ export interface CityResult {
   water: THREE.Mesh[];
   buildings: Map<string, { spec: BuildingSpec; doorPos: THREE.Vector3; box: THREE.Box3 }>;
   lampPositions: { x: number; z: number }[];
+  /** Box cars parked along the streets (swapped for GLB models when those load). */
+  parkedGroup: THREE.Group;
+  parkedCars: { x: number; z: number; rot: number; color: string }[];
 }
 
 function facingDir(f: Facing): THREE.Vector3 {
@@ -196,10 +199,19 @@ export function buildCity(): CityResult {
     if (ROADS_Z.some((rz) => Math.abs(rz - z) < 12)) continue;
     if (rnd() < 0.4) carSpots.push([x + (rnd() < 0.5 ? -4.5 : 4.5), z, Math.PI / 2]);
   }
-  for (const [x, z, r] of carSpots) buildCar(pb, x, z, r, carColors[Math.floor(rnd() * carColors.length)]);
+  const parkedGroup = new THREE.Group();
+  parkedGroup.userData.dynamic = true; // merged on its own so it can be swapped for models later
+  group.add(parkedGroup);
+  const pbCars = new PropBuilder(parkedGroup, colliders);
+  const parkedCars: CityResult['parkedCars'] = [];
+  const parkCar = (x: number, z: number, rot: number, color: string): void => {
+    buildCar(pbCars, x, z, rot, color);
+    parkedCars.push({ x, z, rot, color });
+  };
+  for (const [x, z, r] of carSpots) parkCar(x, z, r, carColors[Math.floor(rnd() * carColors.length)]);
   // yard cars at Rojas
-  buildCar(pb, -70, -66, 0.3, '#95a5a6');
-  buildCar(pb, -108, -66, -0.4, '#c0392b');
+  parkCar(-70, -66, 0.3, '#95a5a6');
+  parkCar(-108, -66, -0.4, '#c0392b');
 
   // industrial fences and containers
   buildFence(pb, -200, -40, -150, -40);
@@ -226,8 +238,8 @@ export function buildCity(): CityResult {
   buildContainer(pb, -175, -108, containerColors[0], 0);
   buildContainer(pb, -175, -108, containerColors[2], 0, 2.6);
   buildContainer(pb, -130 + 6, -132, containerColors[1], 0);
-  buildCar(pb, -150, 52, Math.PI / 2, '#ecf0f1');
-  buildCar(pb, -145, 62, Math.PI / 2, '#5d6d7e');
+  parkCar(-150, 52, Math.PI / 2, '#ecf0f1');
+  parkCar(-145, 62, Math.PI / 2, '#5d6d7e');
   // box truck at the port
   pb.solidBox(-160, SLAB, 70, 7, 3, 2.6, lambert('#f5f5f5'), 'truck', true);
   pb.solidBox(-165.5, SLAB, 70, 2.2, 2.2, 2.4, lambert('#c0392b'), 'truck', true);
@@ -235,9 +247,9 @@ export function buildCity(): CityResult {
   buildFence(pb, -121, -180, -59, -180);
   buildFence(pb, -121, -180, -121, -110);
   buildFence(pb, -59, -180, -59, -110);
-  buildCar(pb, -110, -150, 0.2, '#7f8c8d');
-  buildCar(pb, -95, -160, -0.3, '#b03a2e');
-  buildCar(pb, -75, -145, 0.8, '#1f618d');
+  parkCar(-110, -150, 0.2, '#7f8c8d');
+  parkCar(-95, -160, -0.3, '#b03a2e');
+  parkCar(-75, -145, 0.8, '#1f618d');
   buildCar(pb, -100, -125, 0.1, '#f4d03f');
   // west block empty lot: basketball court + bleachers
   pb.visualBox(-90, SLAB, -140, 26, 0.04, 16, lambert('#3e7c59'));
@@ -385,9 +397,11 @@ export function buildCity(): CityResult {
   for (const o of objects) o.mesh.userData.dynamic = true;
   for (const w of water) w.userData.dynamic = true;
   const stats = mergeStaticMeshes(group);
-  if (typeof console !== 'undefined') console.info(`[city] static merge: ${stats.before} meshes -> ${stats.after}`);
+  parkedGroup.userData.dynamic = false;
+  const carStats = mergeStaticMeshes(parkedGroup);
+  if (typeof console !== 'undefined') console.info(`[city] static merge: ${stats.before} meshes -> ${stats.after - carStats.before + carStats.after}`);
   const waypoints = new WaypointGraph();
-  return { group, colliders, objects, night, waypoints, water, buildings, lampPositions };
+  return { group, colliders, objects, night, waypoints, water, buildings, lampPositions, parkedGroup, parkedCars };
 }
 
 // ------------------------------------------------------------------ helpers

@@ -24,7 +24,7 @@ Fetched from the community mirror https://github.com/ETdoFresh/kenney.nl
 ## 3D models — Kenney, CC0
 | File | Source pack |
 | --- | --- |
-| models/sedan.glb, sedanSports.glb, hatchbackSports.glb, suv.glb, suvLuxury.glb, taxi.glb, van.glb, delivery.glb, police.glb, wheelDefault.glb | Car Kit 1.4 |
+| models/sedan.glb, sedanSports.glb, hatchbackSports.glb, suv.glb, suvLuxury.glb, taxi.glb, van.glb, delivery.glb, police.glb | Car Kit 1.4 |
 | models/tree_palmTall.glb, tree_palmDetailedTall.glb | Nature Kit 2.1 |
 
 ## Music — CC0 tracks (re-encoded to Opus 64 kbps)
