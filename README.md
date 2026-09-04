@@ -206,11 +206,11 @@ Design rules that shaped the code:
 
 ## Roadmap
 
-1. **Rival organisation** contesting neighbourhoods and poaching dealer customers.
-2. **More pressure events**: warehouse inspections, VIP orders, dealer loyalty problems.
-3. **Handler employee** moving goods between stations, plus multiple workers and dealers.
+1. **Handler employee** moving goods between warehouse, dealer and motel, plus multiple workers and dealers.
+2. **Animated characters** (Kenney CC0 rigs) for customers, police and crew; police cruisers that patrol.
+3. **Weather** (night rain with sound) and a talk/news station that reports the day's events in full.
 4. **Co-op** (one player produces, one sells, one manages, one drives) on top of the serializable state.
-5. More interiors, richer NPC schedules, and more original radio stations.
+5. More interiors and richer NPC schedules.
 
 ## Development report (v0.1)
 

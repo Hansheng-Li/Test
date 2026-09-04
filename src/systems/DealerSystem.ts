@@ -104,11 +104,12 @@ export function tickDealer(state: GameState, nowMinutes: number, rng: () => numb
   if (rounds < 1) return out;
   d.lastTickMinute = nowMinutes;
   if (d.customers.length === 0) return out;
-  for (let round = 0; round < rounds; round++) tickDealerRound(state, d, out, rng);
+  // rounds replayed after a sleep or an arrest do not heat you up: you were not on the corner
+  for (let round = 0; round < rounds; round++) tickDealerRound(state, d, out, rng, rounds === 1);
   return out;
 }
 
-function tickDealerRound(state: GameState, d: NonNullable<GameState['dealer']>, out: DealerTickResult, rng: () => number): void {
+function tickDealerRound(state: GameState, d: NonNullable<GameState['dealer']>, out: DealerTickResult, rng: () => number, live: boolean): void {
   if (dealerStockCount(state) === 0) {
     out.starved = true;
     d.starvedRounds = (d.starvedRounds ?? 0) + 1;
@@ -156,7 +157,7 @@ function tickDealerRound(state: GameState, d: NonNullable<GameState['dealer']>, 
     cs.deals += 1;
     state.stats.sales += 1;
     state.stats.earned += earned;
-    state.heat = Math.min(100, state.heat + 1);
+    if (live) state.heat = Math.min(100, state.heat + 1);
     out.sales.push({ customerId: cid, itemKey: parsed.base + (parsed.mods.length ? '+' + parsed.mods.join('+') : ''), qty, earned });
   }
   if (rng() < 0.06 && dealerStockCount(state) > 0) {
@@ -167,7 +168,7 @@ function tickDealerRound(state: GameState, d: NonNullable<GameState['dealer']>, 
       lost += l;
     }
     d.stock = d.stock.filter((s) => s.qty > 0);
-    state.heat = Math.min(100, state.heat + 8);
-    out.hassled = { lost: (out.hassled?.lost ?? 0) + lost, heat: (out.hassled?.heat ?? 0) + 8 };
+    if (live) state.heat = Math.min(100, state.heat + 8);
+    out.hassled = { lost: (out.hassled?.lost ?? 0) + lost, heat: (out.hassled?.heat ?? 0) + (live ? 8 : 0) };
   }
 }
