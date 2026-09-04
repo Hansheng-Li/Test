@@ -46,6 +46,7 @@ export class HUD {
       <div id="prompt"></div>
       <div id="toasts"></div>
       <div id="pager-notify"><div class="screen"></div><div class="hint">[Y] ACCEPT · [X] DECLINE · [P] PAGER</div></div>
+      <div id="flash"></div>
       <div id="vignette"></div>
       <div id="clickhint" style="display:none;position:absolute;left:50%;top:62%;transform:translateX(-50%);background:var(--panel);border:2px solid var(--cyan);padding:10px 18px;border-radius:6px;font-size:16px;letter-spacing:1px">CLICK TO CAPTURE THE MOUSE</div>`;
     parent.appendChild(this.root);
@@ -142,6 +143,17 @@ export class HUD {
       this.pagerTimer -= dt;
       if (this.pagerTimer <= 0) this.pagerEl.classList.remove('on');
     }
+  }
+
+  /** Big centre-screen text for viewer-readable moments: SOLD +$68, BUSTED, NEW PROPERTY. */
+  flash(text: string, color = '#7dff9a'): void {
+    const el = this.root.querySelector('#flash') as HTMLElement;
+    el.textContent = text;
+    el.style.color = color;
+    el.style.textShadow = `0 0 18px ${color}99, 0 3px 0 #000`;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
   }
 
   setPrompt(text: string | null): void {

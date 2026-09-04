@@ -1006,6 +1006,7 @@ export class Game implements GameAPI {
       return;
     }
     this.audio.play('cash');
+    this.hud.flash(`STREET DEAL  +$${r.earned}`);
     const name = recipeDisplayName(s, r.itemKey!);
     this.toast(`+$${r.earned} · Street deal: ${r.qty}x ${name} to ${def.name}${r.trendHit ? ' · TREND BONUS +25%' : ''}`, 'cash');
     for (const id of r.unlocked ?? []) this.announceUnlock(id);
@@ -1048,6 +1049,7 @@ export class Game implements GameAPI {
     const r = completeSale(s, order.id, this.clock.totalMinutes);
     if (!r.ok) return;
     this.audio.play('cash');
+    this.hud.flash(`SOLD  +$${r.earned}`);
     const name = recipeDisplayName(s, r.itemKey!);
     this.toast(`+$${r.earned} · Sold ${order.qty}x ${name} to ${def.name}${r.onTime ? '' : ' (late, 30% off)'}${r.trendHit ? ' · TREND BONUS +25%' : ''}`, 'cash');
     const rel = s.customers[def.id];
@@ -1374,6 +1376,7 @@ export class Game implements GameAPI {
     s.properties.push('warehouse');
     s.storage.warehouse = s.storage.warehouse ?? [];
     this.audio.play('unlock');
+    this.hud.flash('WAREHOUSE 7 IS YOURS', '#ffd166');
     this.toast('YOU OWN WAREHOUSE 7. Buy station kits at the pawn shop and place them inside (walk in with a kit, press B).', 'cash', 8000);
     if (!s.crewName) this.toast('Name your operation at the fax/ledger in your back room — it goes up in neon on the warehouse.', 'info', 7000);
     this.updateWarehouseSign();
@@ -1753,6 +1756,7 @@ export class Game implements GameAPI {
     this.arrestTimer = 3.2;
     this.audio.play('arrest');
     this.hud.arrestMode = true;
+    this.hud.flash('BUSTED', '#7fbfff');
     const r = applyArrest(this.state);
     this.clock.totalMinutes = this.state.clockMinutes;
     const items = r.confiscated.map((c) => `${c.qty}x ${resolveItem(this.state, c.id).name}`).join(', ');

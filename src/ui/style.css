@@ -102,3 +102,7 @@ input[type=text] { font-family: var(--font); background: #120a20; color: var(--c
 .kbd { display: inline-block; border: 1px solid #888; border-radius: 3px; padding: 0 5px; font-family: var(--mono); font-size: 12px; color: #fff; background: #222; }
 #debug { position: absolute; left: 16px; bottom: 16px; font-family: var(--mono); font-size: 11px; color: #8f8; opacity: 0.7; display: none; white-space: pre; }
 .speech { pointer-events: none; }
+
+#flash { position: absolute; left: 50%; top: 34%; transform: translateX(-50%); font-family: Impact, 'Arial Black', sans-serif; font-size: 56px; letter-spacing: 4px; color: #7dff9a; text-shadow: 0 0 18px rgba(125,255,154,0.6), 0 3px 0 #000; opacity: 0; pointer-events: none; white-space: nowrap; }
+#flash.show { animation: flash-pop 1.6s ease-out forwards; }
+@keyframes flash-pop { 0% { opacity: 0; transform: translateX(-50%) scale(0.6); } 12% { opacity: 1; transform: translateX(-50%) scale(1.08); } 25% { transform: translateX(-50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-30px); } }
