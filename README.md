@@ -170,6 +170,11 @@ Design rules that shaped the code:
 - Runner employee (Dizzy) with visible deliveries and a 20 % cut; production worker (Marisol) who
   converts warehouse storage into packaged product; dealer (Vince) with stock, assigned customers,
   automatic corner sales and shakedown events.
+- Customers carry a wallet ($75 + $6 per relationship point, more when generous): dealer rounds and
+  street deals only move what they can afford, so premium product needs real relationships first.
+- Haggling is one attempt per order with a mood factor (the REL and personality tags are hints, not a
+  table); it unlocks after your second sale. The runner queues at most two runs and one in twenty
+  deliveries goes wrong.
 - Daily trend bonus, daily world events (crackdown / shortage / club night), pedestrian gossip about
   your named products, 14 milestone goals with rewards, morning summaries.
 - Drivable arcade sedan (Kenney CC0 model, box fallback) with a chase camera that orbits with the mouse
