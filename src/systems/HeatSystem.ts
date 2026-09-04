@@ -39,7 +39,7 @@ export function decayHeat(state: GameState, dtSeconds: number, opts: { atSafehou
  * unless you break line of sight, so being seen is a moment, not a number.
  */
 export function witnessedDeal(state: GameState, dealValue: number): number {
-  const base = 34 + Math.min(22, dealValue / 10);
+  const base = 38 + Math.min(22, dealValue / 10);
   const susp = 1 + state.suspicion / 200;
   addHeat(state, base * susp);
   state.suspicion = Math.min(100, state.suspicion + 4);
