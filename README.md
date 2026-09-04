@@ -80,8 +80,9 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
   customers buy straight out of your backpack in street deals.
 * **Street talk & news**: every day one effect is "hot" (+25 % on sales), and from day 2 a world event
   may hit — police crackdown in a zone, a supply shortage that doubles Rico's price, a beach club
-  night that pays +30 % after dark, or (once you own the warehouse and have a reputation) a port
-  authority inspection that seizes a quarter of the product on your shelves.
+  night that pays +30 % after dark, a port authority inspection that seizes a quarter of the product on
+  your warehouse shelves (once you own it and have a reputation), or Sal's rival crew working one of your
+  customers for the day — no pages from them until you show up in person and close a deal.
 * **Police & Heat**: witnessed deals and loud customer reactions raise Heat (0–100). Officers escalate
   through PATROL → NOTICE → INVESTIGATE → APPROACH → SEARCH → CHASE. At medium heat they stop and
   search you: carrying contraband means arrest, being clean means they lose interest. Break line of
@@ -170,7 +171,7 @@ Design rules that shaped the code:
 - Drivable arcade sedan with horn, headlights and persisted parking spot; procedural synth radio.
 - Accelerated day/night with neon, lit windows, lamp pool, fog and sunset tint; procedural audio.
 - localStorage save/load with validation and repair of partial saves.
-- 55 Vitest tests covering behavioural contracts + Playwright smoke and core-loop tests.
+- 56 Vitest tests covering behavioural contracts + Playwright smoke and core-loop tests.
 
 ## Known limitations
 
@@ -206,7 +207,7 @@ reload; screenshot passes for every district by day and night.
 exit can need one extra click, and the software-rendered headless browser used for CI-style checks runs
 at ~4 fps, so timing-sensitive checks there rely on frame counting.
 
-**Next 5 priorities** — 1. rival crew that contests dealer customers and corners; 2. handler employee
+**Next 5 priorities** — 1. a persistent rival crew with territory (beyond the daily event); 2. handler employee
 and multi-worker warehouses; 3. richer NPC schedules (customers at work/home/club by hour);
 4. co-op on top of the serialisable state; 5. more original radio stations and interiors.
 

@@ -2,7 +2,7 @@ import { GameState, Order } from '../game/GameState';
 import { CustomerDef } from '../data/customers';
 import { BASES, computeRecipe, Effect, ALL_EFFECTS, packagedItemId, parseRecipeKey } from '../data/products';
 import { hashString } from '../utils/math';
-import { orderPriceMultiplier } from './EventSystem';
+import { orderPriceMultiplier, rivalTarget, winBackFromRival } from './EventSystem';
 import { LANDMARKS } from '../data/city';
 import { customerState, relationshipTier, unlockedCustomers, recordSuccessfulDeal, customerDef } from './CustomerSystem';
 import { countItem, removeItem, packagedInInventory } from './InventorySystem';
@@ -48,7 +48,8 @@ export function generateOrder(state: GameState, opts: OrderGenOptions): Order | 
   const isNight = hour >= 20 || hour < 6;
   const busy = new Set(state.orders.filter((o) => o.status === 'pending' || o.status === 'accepted' || o.status === 'runner').map((o) => o.customerId));
   const dealerHas = new Set(state.dealer?.customers ?? []);
-  let candidates = unlockedCustomers(state).filter((c) => !busy.has(c.id) && !dealerHas.has(c.id));
+  const rival = rivalTarget(state);
+  let candidates = unlockedCustomers(state).filter((c) => !busy.has(c.id) && !dealerHas.has(c.id) && c.id !== rival);
   if (opts.customerId) candidates = candidates.filter((c) => c.id === opts.customerId);
   candidates = candidates.filter((c) => now - customerState(state, c.id).lastOrderMinute > 40);
   const c = pickWeighted(
@@ -340,6 +341,7 @@ export interface StreetSaleResult {
   itemKey?: string;
   unlocked?: string[];
   trendHit?: boolean;
+  wonBack?: boolean;
 }
 
 export const STREET_SALE_COOLDOWN = 30; // game minutes
@@ -388,6 +390,7 @@ export function streetSale(state: GameState, customerId: string, now: number, rn
   state.orders.push({ id: state.nextOrderId++, customerId, base: parsed.base, effects: [], recipeKey: item.key, qty, price: earned, locationId: 'street', windowStart: now, windowEnd: now, status: 'completed', createdMinute: now });
   const def = customerDef(customerId);
   noteRecipeBought(state, customerId, item.key);
+  const wonBack = winBackFromRival(state, customerId);
   const unlocked = recordSuccessfulDeal(state, customerId, { onTime: true, matchedPreference: def.prefEffects.some((e) => recipe.effects.includes(e)) });
-  return { ok: true, earned, qty, itemKey: item.key, unlocked, trendHit };
+  return { ok: true, earned, qty, itemKey: item.key, unlocked, trendHit, wonBack };
 }

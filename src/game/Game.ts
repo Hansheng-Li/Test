@@ -1006,7 +1006,8 @@ export class Game implements GameAPI {
       return;
     }
     this.audio.play('cash');
-    this.hud.flash(`STREET DEAL  +$${r.earned}`);
+    this.hud.flash(r.wonBack ? `WON BACK FROM SAL  +$${r.earned}` : `STREET DEAL  +$${r.earned}`);
+    if (r.wonBack) this.toast(`${def.name.split(' ')[0]} is back with you. Sal's crew can keep walking.`, 'cash', 5000);
     const name = recipeDisplayName(s, r.itemKey!);
     this.toast(`+$${r.earned} · Street deal: ${r.qty}x ${name} to ${def.name}${r.trendHit ? ' · TREND BONUS +25%' : ''}`, 'cash');
     for (const id of r.unlocked ?? []) this.announceUnlock(id);

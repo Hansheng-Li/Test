@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { createNewState } from '../src/systems/SaveSystem';
-import { rollWorldEvent, shopPriceMultiplier, orderPriceMultiplier, heatMultiplier, applyInspection } from '../src/systems/EventSystem';
+import { rollWorldEvent, shopPriceMultiplier, orderPriceMultiplier, heatMultiplier, applyInspection, rivalTarget, winBackFromRival } from '../src/systems/EventSystem';
+import { generateOrder, streetSale } from '../src/systems/OrderSystem';
+import { addItem } from '../src/systems/InventorySystem';
+import { computeRecipe } from '../src/data/products';
 import { buyFromShop, shopPrice } from '../src/systems/EconomySystem';
 
 describe('world events', () => {
@@ -67,5 +70,31 @@ describe('warehouse inspection', () => {
       rollWorldEvent(s, d);
       expect(s.event!.id).not.toBe('inspection');
     }
+  });
+});
+
+describe('rival crew', () => {
+  it('blocks pages from the courted customer until a street deal wins them back', () => {
+    const s = createNewState();
+    for (const c of Object.values(s.customers)) c.unlocked = true;
+    let day = 2;
+    while (day < 300) {
+      const t = createNewState();
+      for (const c of Object.values(t.customers)) c.unlocked = true;
+      rollWorldEvent(t, day);
+      if (t.event!.id === 'rival') break;
+      day++;
+    }
+    rollWorldEvent(s, day);
+    expect(s.event!.id).toBe('rival');
+    const target = rivalTarget(s)!;
+    expect(target).toBeTruthy();
+    expect(generateOrder(s, { now: 5000, customerId: target, simple: true, rng: () => 0.1 })).toBeNull();
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    addItem(s, 'pkg:SUNSET', 2);
+    const r = streetSale(s, target, 5000, () => 0.9);
+    expect(r.ok && r.wonBack).toBe(true);
+    expect(rivalTarget(s)).toBeNull();
+    expect(winBackFromRival(s, target)).toBe(false);
   });
 });

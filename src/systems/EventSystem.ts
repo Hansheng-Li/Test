@@ -1,8 +1,9 @@
 import { GameState } from '../game/GameState';
 import { hashString } from '../utils/math';
 import { BASE_SUPPLY_IDS } from '../data/items';
+import { CUSTOMERS } from '../data/customers';
 
-export type WorldEventId = 'none' | 'crackdown' | 'shortage' | 'club_night' | 'inspection';
+export type WorldEventId = 'none' | 'crackdown' | 'shortage' | 'club_night' | 'inspection' | 'rival';
 
 export interface WorldEvent {
   id: WorldEventId;
@@ -31,7 +32,16 @@ export function rollWorldEvent(state: GameState, day: number): WorldEvent | null
   else if (roll < 5) ev = { id: 'shortage', day, param: BASE_SUPPLY_IDS[hashString('supply' + day) % BASE_SUPPLY_IDS.length] };
   else if (roll < 7) ev = { id: 'club_night', day };
   else if (roll < 8 && state.properties.includes('warehouse') && state.suspicion >= 20) ev = { id: 'inspection', day };
-  else ev = { id: 'none', day };
+  else if (roll < 9) {
+    // a rival crew works one of your unlocked customers for the day
+    const unlocked = CUSTOMERS.filter((c) => state.customers[c.id]?.unlocked && !(state.dealer?.customers ?? []).includes(c.id));
+    if (unlocked.length >= 3) {
+      const target = unlocked[hashString('rival' + day) % unlocked.length];
+      ev = { id: 'rival', day, param: target.id };
+      const cs = state.customers[target.id];
+      cs.relationship = Math.max(0, cs.relationship - 3);
+    } else ev = { id: 'none', day };
+  } else ev = { id: 'none', day };
   state.event = ev;
   return ev.id === 'none' ? null : ev;
 }
@@ -94,7 +104,25 @@ export function describeEvent(ev: WorldEvent | null): string | null {
       return 'CLUB NIGHT at the beach: beach customers pay +30% after dark.';
     case 'inspection':
       return 'PORT AUTHORITY INSPECTION at Warehouse 7 this morning: a quarter of any product on the shelves was seized.';
+    case 'rival':
+      return `RIVAL CREW: Sal's people are working ${CUSTOMERS.find((c) => c.id === ev.param)?.name ?? 'one of your customers'} today. No pages from them until you show up in person with a deal.`;
     default:
       return null;
   }
+}
+
+/** Customer currently being courted by the rival crew (no pager orders until the player wins them back). */
+export function rivalTarget(state: GameState): string | null {
+  const ev = activeEvent(state);
+  return ev?.id === 'rival' && ev.param && !state.flags['rival_won_' + ev.day] ? ev.param : null;
+}
+
+/** A face-to-face deal wins the customer back for the day. */
+export function winBackFromRival(state: GameState, customerId: string): boolean {
+  const ev = activeEvent(state);
+  if (ev?.id !== 'rival' || ev.param !== customerId || state.flags['rival_won_' + ev.day]) return false;
+  state.flags['rival_won_' + ev.day] = true;
+  const cs = state.customers[customerId];
+  if (cs) cs.relationship = Math.min(100, cs.relationship + 5);
+  return true;
 }
