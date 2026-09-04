@@ -193,6 +193,9 @@ Design rules that shaped the code:
   blocks: it brakes for whoever is in its lane, counts as a witness to deals it can see, lights up when
   the city is hot or under curfew and radios the nearest idle officer to your position once it spots
   you. Shows on the scanner map.
+- Fog mornings: one morning in three (seeded) the bay fogs in from 05:00 until about 08:30. The horizon
+  pulls in to a block and every sight range in the city (officers, the cruiser, deal witnesses) drops by
+  up to 45%. WSOL reads the forecast.
 - Curfew nights (from the fourth night, one night in five): District 3 puts two extra officers on the
   street until 06:00, every deal draws 50% more heat and officers notice you sooner, but customers pay
   +20% after dark. Announced on the pager, the radio and the ledger; idle officers clock off at dawn, one

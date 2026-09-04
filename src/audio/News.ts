@@ -51,6 +51,7 @@ export function composeBulletin(c: RadioContext | null, ns: NewsState): string {
       if (c.heat < 60) return 'Police blotter: District 3 says an investigation into street sales downtown is ongoing and patrols have been stepped up. Residents are asked to report anything unusual. Anything.';
       return 'Breaking: police are asking residents to report a suspect on foot. District 3 has every unit out, and a cruiser is circling downtown. Stay indoors if you can.';
     case 'weather':
+      if (c?.foggy) return 'Weather: fog on the bay this morning, visibility down to a block. It burns off by mid-morning. Drive slow, and mind who you cannot see.';
       if (c?.raining) return 'Weather: showers over the bay right now, clearing within the hour. Roads are slick and the beach is empty.';
       return c?.night ? 'Weather: clear and warm overnight, low in the seventies, a breeze off the ocean. Sunrise a little after six.' : 'Weather: sunny, eighty-eight degrees, humidity you could swim in. Drink water, wear a hat, pay your parking.';
     case 'traffic':

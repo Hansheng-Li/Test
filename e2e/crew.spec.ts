@@ -81,8 +81,8 @@ test('runner delivers from storage and the dealer sells from his corner', async 
   expect(s.orders.some((o) => o.status === 'runner')).toBe(true);
   expect(s.storage.safehouse.find((x) => x.id === 'pkg:SUNSET')!.qty).toBeLessThan(20);
   const cashBefore = s.cash;
-  // the trip is real-time (up to ~90 s); skip to the last stretch so the suite stays quick
-  await page.evaluate(() => { const game = (window as unknown as { game: G & { state: { orders: { status: string; runnerProgress?: number }[] } } }).game; for (const o of game.state.orders) if (o.status === 'runner') o.runnerProgress = 0.97; });
+  // the trip is real-time (up to ~90 s) and physics dt is capped at 0.05 s a frame: skip to the last second so 40 frames always cover it
+  await page.evaluate(() => { const game = (window as unknown as { game: G & { state: { orders: { status: string; runnerProgress?: number }[] } } }).game; for (const o of game.state.orders) if (o.status === 'runner') o.runnerProgress = 0.99; });
   await frames(page, 40);
   s = (await g(page)).state;
   expect(s.runner?.deliveries).toBeGreaterThanOrEqual(1);

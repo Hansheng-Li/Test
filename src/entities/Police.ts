@@ -16,6 +16,8 @@ export interface PoliceContext {
   /** Player is carrying contraband right now. */
   playerHolding: boolean;
   los: (ax: number, ay: number, az: number, bx: number, by: number, bz: number) => boolean;
+  /** Sight range multiplier (fog mornings shorten it). */
+  sight?: number;
 }
 
 const NOTICE_LINES = ['Hm?', 'What was that?', 'Hold on…'];
@@ -109,7 +111,7 @@ export class Police extends NPC {
     this.noticeCooldown -= dt;
     const d = this.distanceTo(ctx.playerX, ctx.playerZ);
     const eyeY = this.position.y + 1.6;
-    const canSee = d < 32 && !ctx.playerSafe && ctx.los(this.position.x, eyeY, this.position.z, ctx.playerX, ctx.playerY + 1.2, ctx.playerZ);
+    const canSee = d < 32 * (ctx.sight ?? 1) && !ctx.playerSafe && ctx.los(this.position.x, eyeY, this.position.z, ctx.playerX, ctx.playerY + 1.2, ctx.playerZ);
     const facing = (): boolean => {
       const fx = Math.sin(this.yaw);
       const fz = Math.cos(this.yaw);

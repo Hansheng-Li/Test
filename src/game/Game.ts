@@ -39,6 +39,7 @@ import { LedgerUI } from '../ui/LedgerUI';
 import { checkMilestones } from '../systems/MilestoneSystem';
 import { takeLoan, repayLoan, tickLoanDay } from '../systems/LoanSystem';
 import { resprayCar, carPaint } from '../systems/GarageSystem';
+import { fogLevel, sightMultiplier } from '../systems/WeatherSystem';
 import { hireHandler, tickHandler } from '../systems/HandlerSystem';
 import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent, applyInspection, eventSlot, curfewExtraPolice, crackdownIn } from '../systems/EventSystem';
 import { relationshipTier } from '../systems/CustomerSystem';
@@ -135,6 +136,9 @@ export class Game implements GameAPI {
   private wasRaining = false;
   /** This frame's shower state, computed once in frame(). */
   private rainNow = false;
+  /** Fog density this frame (0..1) and whether the fog notice has fired for this bank. */
+  private fogNow = 0;
+  private wasFoggy = false;
   private workerToastTimer = 0;
   private dealerPriceyTimer = 0;
   private workerBlockedTimer = 0;
@@ -220,7 +224,7 @@ export class Game implements GameAPI {
     this.applySetting('radioVolume', this.settings.radioVolume, false);
     this.applySetting('radioStation', this.settings.radioStation, false);
     this.audio.radio.onAir = (st, track, line) => this.hud.setRadio(st, track, line);
-    this.audio.radio.context = () => ({ heat: this.state.heat, night: this.clock.isNight, crewName: this.state.crewName, eventId: activeEvent(this.state)?.id ?? null, day: this.clock.day, trend: this.state.trend?.effect ?? null, raining: this.isRaining(), sales: this.state.stats.sales, arrests: this.state.stats.arrests });
+    this.audio.radio.context = () => ({ heat: this.state.heat, night: this.clock.isNight, crewName: this.state.crewName, eventId: activeEvent(this.state)?.id ?? null, day: this.clock.day, trend: this.state.trend?.effect ?? null, raining: this.isRaining(), foggy: this.fogNow > 0.5, sales: this.state.stats.sales, arrests: this.state.stats.arrests });
     window.addEventListener('beforeunload', () => this.save());
     // the first click on the title screen is the gesture that unlocks audio: start the theme there
     this.menu.el.addEventListener('pointerdown', () => {
@@ -319,6 +323,16 @@ export class Game implements GameAPI {
     this.audio.setEngine(false, 0);
     this.audio.setTitleMusic(true);
     this.clock.totalMinutes = Math.floor(this.clock.totalMinutes / (24 * 60)) * 24 * 60 + 19 * 60;
+  }
+
+  /** Fog density right now: seeded per day, mornings only. */
+  fogDensity(): number {
+    return fogLevel(this.state.seed ?? 0, this.clock.day, this.clock.hour);
+  }
+
+  /** How far anyone sees this frame, as a multiplier on the usual ranges. */
+  private sight(): number {
+    return sightMultiplier(this.fogNow);
   }
 
   /** Showers are decided per event slot from the save seed (about one slot in four). */
@@ -638,7 +652,7 @@ export class Game implements GameAPI {
   /** The cruiser is a moving witness: close, and with a clear line to the spot. */
   private cruiserSees(x: number, z: number): boolean {
     const c = this.cruiser;
-    return !!c && c.distanceTo(x, z) < 24 && this.city.colliders.lineOfSight(c.position.x, 1.4, c.position.z, x, 1.2, z, 10);
+    return !!c && c.distanceTo(x, z) < 24 * this.sight() && this.city.colliders.lineOfSight(c.position.x, 1.4, c.position.z, x, 1.2, z, 10);
   }
 
   /**
@@ -722,10 +736,11 @@ export class Game implements GameAPI {
     if (!this.running) this.updateTitleCamera(this.uiDt);
     else if (this.cutscene.active && !paused) this.cutscene.update(this.uiDt, this.camera);
     this.rainNow = this.isRaining();
+    this.fogNow = this.fogDensity();
     // showers stay outside: interiors are in place, so the cloud is switched off while you are under a roof
     this.weather.setRaining(this.rainNow && !(this.running && this.playerInsideAnyInterior()));
     this.weather.update(this.uiDt, this.camera.position);
-    this.dayNight.update(this.clock, this.player.position, this.weather.intensity);
+    this.dayNight.update(this.clock, this.player.position, this.weather.intensity, this.fogNow);
     this.renderer.render(this.scene, this.camera);
     this.input.endFrame();
     this.frames++;
@@ -921,6 +936,11 @@ export class Game implements GameAPI {
       this.wasRaining = raining;
       if (raining) this.toast('Rain over Sol Palma. Heat cools a little faster while it lasts.', 'info', 5000);
     }
+    const foggy = this.fogNow > 0.5;
+    if (foggy !== this.wasFoggy) {
+      this.wasFoggy = foggy;
+      if (foggy && this.running) this.toast('Fog over the bay. Nobody sees far this morning — cops included.', 'info', 6000);
+    }
 
     // radio: car stereo while driving, walkman when toggled
     const wantRadio = this.driving ? this.carRadioOn : this.boomboxOn;
@@ -1045,7 +1065,7 @@ export class Game implements GameAPI {
     const holding = this.state.inventory.some((st) => st && (st.id.startsWith('pkg:') || st.id.startsWith('prod:')));
     for (const p of this.police) {
       const crack = heatMultiplier(this.state, zoneAt(p.position.x)) > 1;
-      const result = p.update(dt, { playerX: px, playerZ: pz, playerY: py, heat: this.state.heat + (crack ? 15 : 0), playerSafe: safe, playerHolding: holding, los });
+      const result = p.update(dt, { playerX: px, playerZ: pz, playerY: py, heat: this.state.heat + (crack ? 15 : 0), playerSafe: safe, playerHolding: holding, los, sight: this.sight() });
       p.syncVisual(dt);
       if (result === 'arrest' && !this.arrested) this.beginArrest();
       if (result === 'searched') {
@@ -1306,7 +1326,7 @@ export class Game implements GameAPI {
     // same exposure rules as a pager deal, but a street corner is a little riskier
     let witnessed = false;
     for (const p of this.police) {
-      if (p.distanceTo(w.position.x, w.position.z) < 28 && this.city.colliders.lineOfSight(p.position.x, p.position.y + 1.6, p.position.z, w.position.x, w.position.y + 1.2, w.position.z, 10)) {
+      if (p.distanceTo(w.position.x, w.position.z) < 28 * this.sight() && this.city.colliders.lineOfSight(p.position.x, p.position.y + 1.6, p.position.z, w.position.x, w.position.y + 1.2, w.position.z, 10)) {
         witnessed = true;
         break;
       }
@@ -1375,7 +1395,7 @@ export class Game implements GameAPI {
     let witnessed = false;
     for (const p of this.police) {
       const d = p.distanceTo(npc.position.x, npc.position.z);
-      if (d < (loud ? 40 : 26) && this.city.colliders.lineOfSight(p.position.x, p.position.y + 1.6, p.position.z, npc.position.x, npc.position.y + 1.2, npc.position.z, 10)) {
+      if (d < (loud ? 40 : 26) * this.sight() && this.city.colliders.lineOfSight(p.position.x, p.position.y + 1.6, p.position.z, npc.position.x, npc.position.y + 1.2, npc.position.z, 10)) {
         witnessed = true;
         break;
       }

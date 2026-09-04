@@ -77,18 +77,21 @@ export class DayNight {
   }
 
   private rainSky = new THREE.Color('#6d7683');
+  private fogSky = new THREE.Color('#c3ccd2');
 
-  update(clock: GameClock, focus: THREE.Vector3, rain = 0): void {
+  update(clock: GameClock, focus: THREE.Vector3, rain = 0, fog = 0): void {
     const h = clock.hour;
     const daylight = clock.daylight;
     // sunset tint peaks around 18:30-19:30
     const sunsetAmt = Math.max(0, 1 - Math.abs(h - 19) / 1.6) * 0.9 + Math.max(0, 1 - Math.abs(h - 6.5) / 1.2) * 0.6;
     this.tmp.copy(this.skyNight).lerp(this.skyDay, daylight).lerp(this.skySunset, Math.min(1, sunsetAmt) * (0.35 + 0.65 * daylight));
     if (rain > 0) this.tmp.lerp(this.rainSky, rain * (0.35 + 0.4 * daylight));
+    if (fog > 0) this.tmp.lerp(this.fogSky, fog * (0.3 + 0.6 * daylight));
     (this.scene.background as THREE.Color).copy(this.tmp);
     (this.scene.fog as THREE.Fog).color.copy(this.tmp);
-    (this.scene.fog as THREE.Fog).near = lerp(60, 120, daylight) * (1 - 0.45 * rain);
-    (this.scene.fog as THREE.Fog).far = lerp(260, 420, daylight) * (1 - 0.45 * rain);
+    // fog mornings pull the horizon in to about a block
+    (this.scene.fog as THREE.Fog).near = lerp(60, 120, daylight) * (1 - 0.45 * rain) * (1 - 0.85 * fog);
+    (this.scene.fog as THREE.Fog).far = lerp(260, 420, daylight) * (1 - 0.45 * rain) * (1 - 0.75 * fog);
 
     const sunAngle = ((h - 6) / 12) * Math.PI; // 6h -> 0, 18h -> PI
     const isNight = daylight < 0.15;

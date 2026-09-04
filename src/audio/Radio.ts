@@ -34,6 +34,7 @@ export interface RadioContext {
   /** Today's hot effect, if any (products with it sell for a bonus). */
   trend: string | null;
   raining: boolean;
+  foggy: boolean;
   /** Lifetime sales and arrests: the news desk notices a busy outfit. */
   sales: number;
   arrests: number;
