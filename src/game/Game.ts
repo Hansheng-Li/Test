@@ -1569,7 +1569,7 @@ export class Game implements GameAPI {
     const o = generateOrder(s, { now: this.clock.totalMinutes, simple: s.stats.sales < 2 });
     if (o) {
       this.toast('You called around… someone paged you back.', 'info');
-      setTimeout(() => this.announceOrder(o), 1200);
+      setTimeout(() => { if (this.running && this.state.orders.includes(o) && o.status === 'pending') this.announceOrder(o); }, 1200);
     } else this.toast('Nobody is picking up right now. Try later.', 'warn');
   }
 

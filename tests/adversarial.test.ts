@@ -121,3 +121,20 @@ describe('adversarial: typed names cannot carry markup', () => {
     expect(esc('<b>&"x')).toBe('&lt;b&gt;&amp;&quot;x');
   });
 });
+
+describe('adversarial: time jumps', () => {
+  it('the dealer plays the rounds a sleep or arrest skipped, capped', () => {
+    const s = createNewState();
+    s.cash = 5000;
+    hireDealer(s, 1000);
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    addItem(s, 'pkg:SUNSET', 40);
+    giveDealerStock(s, 'pkg:SUNSET', 40);
+    assignDealerCustomer(s, 'tasha');
+    const start = s.dealer!.lastTickMinute;
+    const r = tickDealer(s, start + 12 * 60, () => 0.1);
+    expect(r.sales.length).toBe(8);
+    expect(s.dealer!.sales).toBe(8);
+    expect(tickDealer(s, start + 12 * 60 + 10, () => 0.1).sales.length).toBe(0);
+  });
+});

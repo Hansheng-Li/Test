@@ -97,9 +97,16 @@ export function tickDealer(state: GameState, nowMinutes: number, rng: () => numb
   const d = state.dealer;
   const out: DealerTickResult = { sales: [] };
   if (!d?.hired) return out;
-  if (nowMinutes - d.lastTickMinute < DEALER_INTERVAL) return out;
+  // one round per interval; a long jump (sleep, arrest) plays the missed rounds, capped so a corrupt clock cannot spin forever
+  const rounds = Math.min(8, Math.floor((nowMinutes - d.lastTickMinute) / DEALER_INTERVAL));
+  if (rounds < 1) return out;
   d.lastTickMinute = nowMinutes;
   if (d.customers.length === 0) return out;
+  for (let round = 0; round < rounds; round++) tickDealerRound(state, d, out, rng);
+  return out;
+}
+
+function tickDealerRound(state: GameState, d: NonNullable<GameState['dealer']>, out: DealerTickResult, rng: () => number): void {
   if (dealerStockCount(state) === 0) {
     out.starved = true;
     d.starvedRounds = (d.starvedRounds ?? 0) + 1;
@@ -111,7 +118,7 @@ export function tickDealer(state: GameState, nowMinutes: number, rng: () => numb
       d.starvedRounds = 0;
       out.poached = cid;
     }
-    return out;
+    return;
   }
   d.starvedRounds = 0;
   for (const cid of d.customers) {
@@ -148,5 +155,4 @@ export function tickDealer(state: GameState, nowMinutes: number, rng: () => numb
     state.heat = Math.min(100, state.heat + 8);
     out.hassled = { lost };
   }
-  return out;
 }
