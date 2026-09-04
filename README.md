@@ -234,6 +234,12 @@ seventh code-review round (car orientation, mirrored-wheel winding, radio cycle,
 quit, sample preloading). Verified with scripted headless-browser passes for every new feature plus
 the existing Vitest and Playwright suites.
 
+**v0.3 (adversarial pass)** — hostile-save fuzzing, monkey testing with state invariants, injection probes,
+a 120-minute scripted-player balance simulation and two review agents drove: full save repair, a stored-XSS
+fix, night-only sleeping, the dumpster line-of-sight rule, customer wallets, haggle mood noise, runner
+limits and mishaps, late-order grace, half-day event slots with a v3 save migration, per-save seeds,
+witnessed deals that trigger a stop-and-search, and a 60% triangle cut on parked cars.
+
 **Known issues** — see *Known limitations*; additionally pointer-lock recovery after a browser-forced
 exit can need one extra click, and the software-rendered headless browser used for CI-style checks runs
 at ~4 fps, so timing-sensitive checks there rely on frame counting.
