@@ -58,6 +58,7 @@ export class AudioSystem {
   private clubFilter: BiquadFilterNode | null = null;
   private clubStarted = false;
   private waveGain: GainNode | null = null;
+  private rainGain: GainNode | null = null;
   private sirenTimer = 20;
 
   init(): void {
@@ -141,6 +142,25 @@ export class AudioSystem {
     surf.connect(bp).connect(swell).connect(this.waveGain).connect(this.master);
     surf.start();
     lfo.start();
+    // rain: brighter band-passed noise, faded by the weather
+    const rain = ctx.createBufferSource();
+    rain.buffer = buf;
+    rain.loop = true;
+    rain.playbackRate.value = 1.6;
+    const rbp = ctx.createBiquadFilter();
+    rbp.type = 'bandpass';
+    rbp.frequency.value = 2200;
+    rbp.Q.value = 0.3;
+    this.rainGain = ctx.createGain();
+    this.rainGain.gain.value = 0;
+    rain.connect(rbp).connect(this.rainGain).connect(this.master);
+    rain.start();
+  }
+
+  /** Rain loudness 0..1 (muffled indoors by the caller). */
+  setRain(level: number): void {
+    if (!this.ctx || !this.rainGain) return;
+    this.rainGain.gain.setTargetAtTime(level * 0.28, this.ctx.currentTime, 0.8);
   }
 
   /** Car engine: a two-oscillator drone whose pitch and brightness follow the throttle (0..1). */

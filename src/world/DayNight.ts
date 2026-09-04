@@ -76,16 +76,19 @@ export class DayNight {
     });
   }
 
-  update(clock: GameClock, focus: THREE.Vector3): void {
+  private rainSky = new THREE.Color('#6d7683');
+
+  update(clock: GameClock, focus: THREE.Vector3, rain = 0): void {
     const h = clock.hour;
     const daylight = clock.daylight;
     // sunset tint peaks around 18:30-19:30
     const sunsetAmt = Math.max(0, 1 - Math.abs(h - 19) / 1.6) * 0.9 + Math.max(0, 1 - Math.abs(h - 6.5) / 1.2) * 0.6;
     this.tmp.copy(this.skyNight).lerp(this.skyDay, daylight).lerp(this.skySunset, Math.min(1, sunsetAmt) * (0.35 + 0.65 * daylight));
+    if (rain > 0) this.tmp.lerp(this.rainSky, rain * (0.35 + 0.4 * daylight));
     (this.scene.background as THREE.Color).copy(this.tmp);
     (this.scene.fog as THREE.Fog).color.copy(this.tmp);
-    (this.scene.fog as THREE.Fog).near = lerp(60, 120, daylight);
-    (this.scene.fog as THREE.Fog).far = lerp(260, 420, daylight);
+    (this.scene.fog as THREE.Fog).near = lerp(60, 120, daylight) * (1 - 0.45 * rain);
+    (this.scene.fog as THREE.Fog).far = lerp(260, 420, daylight) * (1 - 0.45 * rain);
 
     const sunAngle = ((h - 6) / 12) * Math.PI; // 6h -> 0, 18h -> PI
     const isNight = daylight < 0.15;
@@ -94,7 +97,7 @@ export class DayNight {
     const sy = isNight ? 110 : Math.max(20, Math.sin(sunAngle) * 120);
     this.sun.position.set(focus.x + sx, sy, focus.z + 60);
     this.sun.target.position.copy(focus);
-    this.sun.intensity = isNight ? 0.35 : lerp(0.3, 2.3, daylight);
+    this.sun.intensity = (isNight ? 0.35 : lerp(0.3, 2.3, daylight)) * (1 - 0.45 * rain);
     this.sun.color.set(sunsetAmt > 0.3 ? '#ffb27a' : daylight > 0.05 ? '#fff2d0' : '#7080c0');
     this.hemi.intensity = lerp(0.7, 0.9, daylight);
     this.hemi.color.set(daylight > 0.1 ? '#bfe8ff' : '#4a5a9a');

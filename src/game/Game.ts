@@ -4,6 +4,8 @@ import { loadSettings, saveSettings, Settings } from '../core/Settings';
 import { STATIONS } from '../audio/Radio';
 import { loadModel, instanceModel, upgradeParkedCars, CAR_SCALE } from '../world/Models';
 import { Cutscene, Shot } from './Cutscene';
+import { Weather } from '../world/Weather';
+import { hashString } from '../utils/math';
 import { GameClock } from '../core/Time';
 import { PlayerController } from '../player/PlayerController';
 import { buildCity, CityResult } from '../world/City';
@@ -113,6 +115,8 @@ export class Game implements GameAPI {
   private carLook = new THREE.Vector3();
   cutscene: Cutscene;
   private titleAngle = 0;
+  private weather!: Weather;
+  private wasRaining = false;
   private workerToastTimer = 0;
   private dealerPriceyTimer = 0;
   private workerBlockedTimer = 0;
@@ -158,6 +162,7 @@ export class Game implements GameAPI {
     this.input = new Input(this.renderer.domElement);
     this.city = buildCity();
     this.scene.add(this.city.group);
+    this.weather = new Weather(this.scene);
     void upgradeParkedCars(this.city);
     this.scene.add(this.dynamicGroup);
     this.dayNight = new DayNight(this.scene, this.city.night);
@@ -292,6 +297,12 @@ export class Game implements GameAPI {
     this.audio.setEngine(false, 0);
     this.audio.setTitleMusic(true);
     this.clock.totalMinutes = Math.floor(this.clock.totalMinutes / (24 * 60)) * 24 * 60 + 19 * 60;
+  }
+
+  /** Showers are decided per event slot from the save seed (about one slot in four). */
+  isRaining(): boolean {
+    const slot = eventSlot(this.clock.day, this.clock.hour);
+    return hashString('rain' + slot + ':' + (this.state.seed ?? 0)) % 100 < 28;
   }
 
   /** Slow orbit over the city behind the title screen. */
@@ -623,7 +634,9 @@ export class Game implements GameAPI {
     if (this.running && !paused) this.tick(dt);
     if (!this.running) this.updateTitleCamera(this.uiDt);
     else if (this.cutscene.active && !paused) this.cutscene.update(this.uiDt, this.camera);
-    this.dayNight.update(this.clock, this.player.position);
+    this.weather.setRaining(this.isRaining());
+    this.weather.update(this.uiDt, this.camera.position);
+    this.dayNight.update(this.clock, this.player.position, this.weather.intensity);
     this.renderer.render(this.scene, this.camera);
     this.input.endFrame();
     this.frames++;
@@ -783,7 +796,7 @@ export class Game implements GameAPI {
 
     // heat
     const safe = this.playerInsideOwnedProperty() || !!this.hiding;
-    decayHeat(s, dt, { atSafehouse: this.playerInsideOwnedProperty(), hidden: this.playerInsideAnyInterior() || !!this.hiding });
+    decayHeat(s, dt * (this.weather.intensity > 0.5 ? 1.2 : 1), { atSafehouse: this.playerInsideOwnedProperty(), hidden: this.playerInsideAnyInterior() || !!this.hiding });
     const lvl = heatLevel(s.heat);
     if (lvl !== this.lastHeatLevel) {
       if (lvl === 'hunted' || lvl === 'wanted') this.audio.play('siren');
@@ -799,6 +812,12 @@ export class Game implements GameAPI {
     const dClub = Math.hypot(this.player.position.x - club.x, this.player.position.z - club.z);
     this.audio.update(dt, { club: Math.max(0, 1 - dClub / 45), beach: Math.max(0, Math.min(1, (this.player.position.x - 140) / 40)), night: this.clock.isNight, insideClub: this.playerInsideBuilding('club'), heat: this.state.heat });
     this.audio.setEngine(this.driving, this.vehicle ? Math.abs(this.vehicle.speed) / this.vehicle.maxSpeed : 0);
+    this.audio.setRain(this.weather.intensity * (this.playerInsideAnyInterior() || this.driving ? 0.3 : 1));
+    const raining = this.isRaining();
+    if (raining !== this.wasRaining) {
+      this.wasRaining = raining;
+      if (raining) this.toast('Rain over Sol Palma. Heat cools a little faster while it lasts.', 'info', 5000);
+    }
 
     // radio: car stereo while driving, walkman when toggled
     const wantRadio = this.driving ? this.carRadioOn : this.boomboxOn;
@@ -1023,6 +1042,7 @@ export class Game implements GameAPI {
     const l = LANDMARKS.find((x) => x.id === o.locationId) ?? LANDMARKS[0];
     const def = CUSTOMER_MAP[o.customerId];
     const npc = new CustomerNPC(def, o.id, l.x + (Math.random() - 0.5) * 2, l.z + (Math.random() - 0.5) * 2, this.city.colliders, this.city.waypoints);
+    npc.setTier(relationshipTier(this.state.customers[def.id]?.relationship ?? 0));
     this.customers.set(o.id, npc);
     this.dynamicGroup.add(npc.mesh);
     this.interaction.add({

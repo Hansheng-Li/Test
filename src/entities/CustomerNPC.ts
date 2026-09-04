@@ -13,11 +13,15 @@ export type CustomerVisualState = 'WAITING' | 'TALK' | 'REACT' | 'LEAVE' | 'DONE
  * A customer standing at a meeting spot. After the deal they play a cartoonish
  * reaction based on the product's effect tags, then wander off along the sidewalk.
  */
-let meetTex: THREE.Texture | null = null;
-/** One shared '$ MEET' texture for every customer (a fresh one per spawn leaked a texture each time). */
-function meetTexture(): THREE.Texture {
-  meetTex ??= labelTexture('$ MEET', '#7dff9a');
-  return meetTex;
+const meetTex = new Map<string, THREE.Texture>();
+/** Shared marker textures per relationship tier (a fresh one per spawn leaked a texture each time). */
+function meetTexture(tier = 'stranger'): THREE.Texture {
+  let t = meetTex.get(tier);
+  if (!t) {
+    t = labelTexture(tier === 'stranger' ? '$ MEET' : `$ MEET · ${tier.toUpperCase()}`, tier === 'friend' || tier === 'family' ? '#ffd166' : '#7dff9a');
+    meetTex.set(tier, t);
+  }
+  return t;
 }
 
 export class CustomerNPC extends NPC {
@@ -47,6 +51,12 @@ export class CustomerNPC extends NPC {
     this.marker.position.y = 4;
     this.marker.renderOrder = 998;
     this.mesh.add(this.marker);
+  }
+
+  /** Relabel the meeting marker with the customer's relationship tier. */
+  setTier(tier: string): void {
+    (this.marker.material as THREE.SpriteMaterial).map = meetTexture(tier);
+    this.marker.scale.set(tier === 'stranger' ? 5 : 7, 1, 1);
   }
 
   update(dt: number, playerX: number, playerZ: number): void {

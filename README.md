@@ -185,7 +185,9 @@ Design rules that shaped the code:
   keep running while you are tuned elsewhere and the last station is remembered.
 - CC0 sample sound effects (Kenney) for footsteps, cash, UI, doors, jingles for goals/customers/busts,
   with the original procedural synth sounds as fallback when a file is missing.
-- Accelerated day/night with neon, lit windows, lamp pool, fog and sunset tint.
+- Accelerated day/night with neon, lit windows, lamp pool, fog and sunset tint. Showers roll in about
+  one event slot in four (per-save seed): rain streaks, greyer sky and denser fog, a rain bed that is
+  muffled indoors and in the car, and heat that cools 20% faster while it lasts.
 - Skippable cutscenes: an opening flyover over Sol Palma with title cards, and a BUSTED / 6 HOURS LATER
   sequence on arrest. The title screen orbits the live city at sunset with a CC0 theme (starts on the first
   click) and shows the save at a glance; the menu has HOW TO PLAY, SETTINGS and a CREDITS page listing
@@ -208,7 +210,7 @@ Design rules that shaped the code:
 
 1. **Handler employee** moving goods between warehouse, dealer and motel, plus multiple workers and dealers.
 2. **Animated characters** (Kenney CC0 rigs) for customers, police and crew; police cruisers that patrol.
-3. **Weather** (night rain with sound) and a talk/news station that reports the day's events in full.
+3. A talk/news station that reports the day's events in full.
 4. **Co-op** (one player produces, one sells, one manages, one drives) on top of the serializable state.
 5. More interiors and richer NPC schedules.
 
