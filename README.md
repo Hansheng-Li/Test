@@ -136,7 +136,7 @@ src/
                           Inventory, Economy, Production, Customer, Order, Heat, Runner, Save, Interaction
   ui/                     DOM/CSS HUD, pager, backpack/storage, shops, prep & packaging stations, map, menu
   data/                   items & shops, product chemistry, customers, city layout
-  audio/                  WebAudio sfx (CC0 samples with synth fallbacks), ambience, 4-station radio with DJ chatter
+  audio/                  WebAudio sfx (CC0 samples with synth fallbacks), ambience, 5-station radio with DJ chatter and a news desk
 tests/                    Vitest behavioural tests for the systems
 e2e/                      Playwright smoke test
 ```
@@ -205,7 +205,9 @@ Design rules that shaped the code:
 - Drivable arcade sedan (Kenney CC0 model, box fallback) with a chase camera that orbits with the mouse
   and pulls in at walls; horn, headlights and persisted parking spot. Streets are lined with Kenney
   sedans, hatchbacks, SUVs, taxis and vans merged into a handful of draw calls.
-- GTA-style radio: three CC0 music stations plus a procedural pirate synth loop, each with its own DJ,
+- GTA-style radio: three CC0 music stations, a procedural pirate synth loop and WSOL 880, a news/talk
+  station that reads the day back to you (top story per world event, police blotter by heat, weather from
+  the rain calendar, traffic, and the outfit everybody is talking about); each music station has its own DJ,
   fake 1996 commercials for in-game businesses and topical lines (police heat, world events); stations
   keep running while you are tuned elsewhere and the last station is remembered.
 - CC0 sample sound effects (Kenney) for footsteps, cash, UI, doors, jingles for goals/customers/busts,
@@ -236,7 +238,7 @@ Design rules that shaped the code:
 
 1. **Second worker and dealer**, and a handler route that also feeds the motel stash.
 2. **Animated characters** (Kenney CC0 rigs) for customers, police and crew; a second cruiser on the beach loop.
-3. A talk/news station that reports the day's events in full.
+3. Radio commercials that rotate with the day and react to shortages.
 4. **Co-op** (one player produces, one sells, one manages, one drives) on top of the serializable state.
 5. More interiors and richer NPC schedules.
 

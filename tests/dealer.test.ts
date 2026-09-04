@@ -80,3 +80,19 @@ describe('dealer pressure + supplier delivery', () => {
     expect(s.customers['tasha'].relationship).toBe(5);
   });
 });
+
+describe('dealer replay after a long jump', () => {
+  it('does not crash once every customer has been poached', async () => {
+    const { createNewState } = await import('../src/systems/SaveSystem');
+    const { hireDealer, assignDealerCustomer, tickDealer } = await import('../src/systems/DealerSystem');
+    const s = createNewState();
+    s.cash = 5000;
+    hireDealer(s, 1000);
+    assignDealerCustomer(s, 'tasha');
+    s.dealer!.starvedRounds = 4;
+    // eight starved rounds in one go with the dice always saying "poach"
+    const r = tickDealer(s, s.clockMinutes + 90 * 8, () => 0.1);
+    expect(r.poached).toEqual(['tasha']);
+    expect(s.dealer!.customers).toEqual([]);
+  });
+});

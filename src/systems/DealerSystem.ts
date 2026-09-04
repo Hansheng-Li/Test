@@ -122,6 +122,8 @@ export function tickDealer(state: GameState, nowMinutes: number, rng: () => numb
 }
 
 function tickDealerRound(state: GameState, d: NonNullable<GameState['dealer']>, out: DealerTickResult, rng: () => number, live: boolean): void {
+  // replayed rounds can poach the last customer; the rounds after that have nobody to serve or lose
+  if (d.customers.length === 0) return;
   if (dealerStockCount(state) === 0) {
     out.starved = true;
     d.starvedRounds = (d.starvedRounds ?? 0) + 1;

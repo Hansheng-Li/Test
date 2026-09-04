@@ -220,7 +220,7 @@ export class Game implements GameAPI {
     this.applySetting('radioVolume', this.settings.radioVolume, false);
     this.applySetting('radioStation', this.settings.radioStation, false);
     this.audio.radio.onAir = (st, track, line) => this.hud.setRadio(st, track, line);
-    this.audio.radio.context = () => ({ heat: this.state.heat, night: this.clock.isNight, crewName: this.state.crewName, eventId: activeEvent(this.state)?.id ?? null, day: this.clock.day, trend: this.state.trend?.effect ?? null });
+    this.audio.radio.context = () => ({ heat: this.state.heat, night: this.clock.isNight, crewName: this.state.crewName, eventId: activeEvent(this.state)?.id ?? null, day: this.clock.day, trend: this.state.trend?.effect ?? null, raining: this.isRaining(), sales: this.state.stats.sales, arrests: this.state.stats.arrests });
     window.addEventListener('beforeunload', () => this.save());
     // the first click on the title screen is the gesture that unlocks audio: start the theme there
     this.menu.el.addEventListener('pointerdown', () => {

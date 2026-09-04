@@ -1,4 +1,5 @@
 import { SynthLoop } from './SynthLoop';
+import { composeBulletin, NewsState } from './News';
 
 export interface Track {
   file: string;
@@ -18,6 +19,8 @@ export interface Station {
   tracks: Track[];
   /** Procedural station: no files, the synth loop plays instead. */
   synth?: boolean;
+  /** Talk station: no music at all, bulletins every few seconds. */
+  talk?: boolean;
   color: string;
 }
 
@@ -30,6 +33,10 @@ export interface RadioContext {
   day: number;
   /** Today's hot effect, if any (products with it sell for a bonus). */
   trend: string | null;
+  raining: boolean;
+  /** Lifetime sales and arrests: the news desk notices a busy outfit. */
+  sales: number;
+  arrests: number;
 }
 
 /** All music is CC0 — see public/assets/LICENSES.md. Files live in public/assets/music. */
@@ -113,6 +120,16 @@ export const STATIONS: Station[] = [
     ],
     tracks: [{ file: '', title: 'Untitled Loop', artist: 'Signal Zero', dur: 90 }],
   },
+  {
+    id: 'wsol',
+    name: 'WSOL NEWSTALK',
+    freq: '880 AM',
+    dj: 'Dana Whitfield',
+    color: '#ffd166',
+    talk: true,
+    lines: [],
+    tracks: [{ file: '', title: 'NEWS · WEATHER · TRAFFIC', artist: 'talk radio', dur: 120 }],
+  },
 ];
 
 /** Fake 1996 spots for the businesses you can actually visit in the game. */
@@ -157,6 +174,7 @@ export class Radio {
   private lineIndex: number[] = STATIONS.map(() => 0);
   private adIndex = 0;
   private lastText = '';
+  private news: NewsState = { n: 0, reportedEvent: null };
   /** HUD hook: station label, track label (null while off), a transient DJ/ad line. */
   onAir: ((station: Station | null, track: string, line: string | null) => void) | null = null;
   context: (() => RadioContext) | null = null;
@@ -239,6 +257,11 @@ export class Radio {
     if (!this.playing) return;
     this.chatterTimer -= dt;
     if (this.chatterTimer <= 0) {
+      if (this.current.talk) {
+        this.chatterTimer = 11 + Math.random() * 7;
+        this.say(Math.random() < 0.2 ? this.nextAd() : this.nextBulletin());
+        return;
+      }
       this.chatterTimer = 50 + Math.random() * 40;
       this.say(Math.random() < 0.4 && !this.current.synth ? this.nextAd() : this.nextLine());
     }
@@ -277,6 +300,12 @@ export class Radio {
   private playTrack(offset: number): void {
     const st = this.current;
     const track = st.tracks[this.trackIndex];
+    if (st.talk) {
+      // news and talk: no bed, just the desk
+      if (this.el) this.el.pause();
+      this.synth.stop();
+      return;
+    }
     if (st.synth || !this.el) {
       if (this.el) this.el.pause();
       this.synth.start();
@@ -319,7 +348,12 @@ export class Radio {
   }
 
   private announce(): void {
-    this.say(this.nextLine());
+    this.say(this.current.talk ? `${this.current.dj}: WSOL 880, Sol Palma's news and talk. Here is what we know.` : this.nextLine());
+  }
+
+  private nextBulletin(): string {
+    this.lastText = 'news';
+    return `${this.current.dj}: ` + composeBulletin(this.context?.() ?? null, this.news);
   }
 
   private say(line: string): void {
