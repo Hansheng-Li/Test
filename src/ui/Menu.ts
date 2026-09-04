@@ -45,7 +45,7 @@ export class Menu {
         <b style="color:#4ff2e8">SCALE UP</b> · Pawn shop equipment → Dizzy the runner (motel) → Warehouse 7 (docks) → Marisol the worker (port) → Vince the dealer (arcade) → Teddy the handler (warehouse office, keeps Vince stocked) → the '88 sedan (Rojas).<br/>
         <b style="color:#4ff2e8">MARKERS</b> · Short on cash? Sol Palma Pawn writes markers ($300 and up): pay back +25% within 3 days or the balance grows 20% a day, the collectors take your cash and word gets to the cops.<br/>
         <b style="color:#4ff2e8">GETTING AROUND</b> · Orange bus stops (one per district, B on the map) ride you across town for $5 and 12 minutes — not while a cop is on you. The '88 sedan later.<br/>
-        <b style="color:#4ff2e8">KEYS</b> · E interact · TAB backpack · P pager · M map · N radio · B place equipment · F3 fps.
+        <b style="color:#4ff2e8">KEYS</b> · E interact · F trunk (beside the sedan; busted next to it and they pop it) · TAB backpack · P pager · M map · N radio · B place equipment · F3 fps.
       </div>
       <div class="credits">
         <b>SUNSET SYNDICATE</b> — an original game. All products, businesses, people and the city of Sol Palma are fictional.<br/><br/>

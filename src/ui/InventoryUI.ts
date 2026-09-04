@@ -18,7 +18,7 @@ export class InventoryUI extends Panel {
     const body = this.body;
     body.innerHTML = '';
     const title = this.el.querySelector('h2')!;
-    title.childNodes[0].textContent = this.storageProperty ? `BACKPACK ⇄ ${this.storageProperty.toUpperCase()} STORAGE` : 'BACKPACK';
+    title.childNodes[0].textContent = this.storageProperty ? (this.storageProperty === 'trunk' ? 'BACKPACK ⇄ SEDAN TRUNK' : `BACKPACK ⇄ ${this.storageProperty.toUpperCase()} STORAGE`) : 'BACKPACK';
     const wrap = document.createElement('div');
     wrap.style.display = 'grid';
     wrap.style.gridTemplateColumns = this.storageProperty ? '1fr 1fr' : '1fr';

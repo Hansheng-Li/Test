@@ -58,6 +58,15 @@ export interface ArrestResult {
  * Getting caught: confiscate contraband, fine proportional to cash (never below 0),
  * raise suspicion, drop heat, advance the clock. Never resets the game.
  */
+/** Busted beside (or in) the sedan: the officers pop the trunk and take the contraband. Returns units taken. */
+export function searchTrunk(state: GameState): number {
+  const trunk = state.storage.trunk ?? [];
+  let taken = 0;
+  for (const s of trunk) if (s.id.startsWith('pkg:') || s.id.startsWith('prod:')) taken += s.qty;
+  state.storage.trunk = trunk.filter((s) => !s.id.startsWith('pkg:') && !s.id.startsWith('prod:'));
+  return taken;
+}
+
 export function applyArrest(state: GameState): ArrestResult {
   const confiscated = removeAllOfCategory(state, ['product', 'packaged_product']);
   const fine = Math.min(state.cash, Math.max(25, Math.round(state.cash * 0.15)));

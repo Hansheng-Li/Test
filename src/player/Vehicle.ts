@@ -76,6 +76,10 @@ export class Vehicle {
     for (const m of this.paintMats) m.color.set(hex);
   }
 
+  distanceTo(x: number, z: number): number {
+    return Math.hypot(this.position.x - x, this.position.z - z);
+  }
+
   setNight(night: boolean): void {
     this.night = night;
     this.headlights.emissiveIntensity = night ? 1.5 : 0;

@@ -30,7 +30,7 @@ import { addItem, countItem, removeItem, resolveItem, depositToStorage, withdraw
 import { buyFromShop, buyDelivered, spendCash, PurchaseResult } from '../systems/EconomySystem';
 import { executePrep, executePackage, nameRecipe, recipeDisplayName, PrepPlan, PrepResult, PackageResult } from '../systems/ProductionSystem';
 import { generateOrder, acceptOrder, declineOrder, activeOrders, pendingOrders, completeSale, expireOrders, findFulfillingItem, describeRequest, counterOffer, rollTrend, LATE_GRACE_MINUTES } from '../systems/OrderSystem';
-import { decayHeat, witnessedDeal, applyArrest, addHeat, heatLevel } from '../systems/HeatSystem';
+import { decayHeat, witnessedDeal, applyArrest, addHeat, heatLevel, searchTrunk } from '../systems/HeatSystem';
 import { hireRunner, assignRunner, tickRunner, runnerPickupProperty } from '../systems/RunnerSystem';
 import { hireWorker, assignWorkerRecipe, tickWorker } from '../systems/WorkerSystem';
 import { hireDealer, giveDealerStock, takeDealerStock, assignDealerCustomer, unassignDealerCustomer, collectDealerCash, tickDealer, dealerStockCount } from '../systems/DealerSystem';
@@ -1887,7 +1887,7 @@ export class Game implements GameAPI {
       position: this.vehicle.position,
       radius: 4,
       aimY: 0.8,
-      prompt: () => (this.driving ? null : '[E] ENTER CAR'),
+      prompt: () => (this.driving ? null : '[E] ENTER CAR · [F] TRUNK'),
       onInteract: () => this.enterCar(),
     });
   }
@@ -1976,6 +1976,14 @@ export class Game implements GameAPI {
     for (const p of this.police) if (p.loseTrack()) called++;
     this.toast(`Rojas sprayed the sedan ${r.name}. ${r.heatDropped ? `Heat -${r.heatDropped}. ` : ''}${called ? 'The cops are looking for the old colour.' : 'Looks new.'}`, 'cash', 6000);
     this.save();
+  }
+
+  /** F beside the parked sedan: the trunk is a 24-unit stash that travels with you. */
+  private openTrunk(): void {
+    if (!this.vehicle || this.driving || this.hiding || this.arrested || this.cutscene.active || this.openPanelId) return;
+    if (this.vehicle.distanceTo(this.player.position.x, this.player.position.z) > 4.5) return;
+    this.inventoryUI.storageProperty = 'trunk';
+    this.openPanel('inventory-panel');
   }
 
   private enterCar(): void {
@@ -2166,6 +2174,9 @@ export class Game implements GameAPI {
       this.hud.flash('BUSTED', '#7fbfff');
     }
     const r = applyArrest(this.state);
+    // busted in or beside the sedan: they pop the trunk too
+    const trunkTaken = this.vehicle && this.vehicle.distanceTo(this.player.position.x, this.player.position.z) < 6 ? searchTrunk(this.state) : 0;
+    if (trunkTaken > 0) this.toast(`They popped the trunk: ${trunkTaken} units gone.`, 'warn', 6000);
     this.clock.totalMinutes = this.state.clockMinutes;
     const items = r.confiscated.map((c) => `${c.qty}x ${resolveItem(this.state, c.id).name}`).join(', ');
     const p = this.player.position;
@@ -2572,6 +2583,9 @@ export class Game implements GameAPI {
       }
       case 'KeyN':
         this.cycleRadio();
+        break;
+      case 'KeyF':
+        this.openTrunk();
         break;
       case 'Escape':
         if (this.placement) this.cancelPlacement();

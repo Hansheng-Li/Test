@@ -182,6 +182,8 @@ Design rules that shaped the code:
   milestone.
 - Sol Palma Transit: a bus stop per district (marked B on the map) rides you across town for $5 and
   twelve minutes behind a fade, unless a cop is on your heels.
+- The sedan has a trunk: press F beside the parked car for a 24-unit stash that travels with you. Get
+  busted in or next to the car and the officers pop the trunk too.
 - Teddy the handler (Warehouse 7 office, needs Vince): every hour he carries up to 20 packaged units from
   warehouse storage to Vince's corner, so Marisol → Teddy → Vince runs while you work the street. One trip
   in twenty meets a patrol and the bag is lost. The cash pickup from Vince stays yours.

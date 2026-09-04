@@ -135,7 +135,11 @@ export function storageRemove(state: GameState, property: string, id: string, qt
 }
 
 /** Capacity in units for a property's storage (grows with shelves). */
+/** The sedan's trunk: a stash on wheels, searched if you are busted next to it. */
+export const TRUNK_CAPACITY = 24;
+
 export function storageCapacity(state: GameState, property: string): number {
+  if (property === 'trunk') return TRUNK_CAPACITY;
   const base = property === 'warehouse' ? 200 : property === 'motel' ? 60 : 40;
   const shelves = property === 'warehouse' ? state.placedStations.filter((p) => p.kind === 'storage').length : 0;
   return base + shelves * 60;
