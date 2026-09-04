@@ -1,5 +1,5 @@
 import { Panel } from './Panel';
-import { GameAPI } from './UIContext';
+import { GameAPI, esc } from './UIContext';
 import { pendingOrders, activeOrders, describeRequest, findFulfillingItem } from '../systems/OrderSystem';
 import { storageItemForOrder, runnerBusy } from '../systems/RunnerSystem';
 import { CUSTOMER_MAP, PAGER_NOTES } from '../data/customers';
@@ -100,7 +100,7 @@ export class PagerUI extends Panel {
       const c = CUSTOMER_MAP[o.customerId];
       const have = findFulfillingItem(st, o);
       const stock = storageItemForOrder(st, o);
-      const request = describeRequest(st, o);
+      const request = esc(describeRequest(st, o));
       card.innerHTML = `<b>${c.name}</b> · ${o.qty}x ${request} · $${o.price}<br/>` +
         `MEET: ${landmarkName(o.locationId)} · WINDOW ${GameClock.formatMinutes(o.windowStart)}-${GameClock.formatMinutes(o.windowEnd)}<br/>` +
         (o.status === 'runner'

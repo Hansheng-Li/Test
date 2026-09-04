@@ -2106,7 +2106,7 @@ export class Game implements GameAPI {
   }
 
   setCrewName(name: string): void {
-    const clean = name.replace(/[<>]/g, '').trim().slice(0, 24).toUpperCase();
+    const clean = name.replace(/[<>&"'`]/g, '').trim().slice(0, 24).toUpperCase();
     if (!clean) return;
     this.state.crewName = clean;
     this.audio.play('jingle_property');

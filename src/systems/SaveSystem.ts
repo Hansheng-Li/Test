@@ -134,7 +134,9 @@ export function deserialize(json: string): GameState | null {
   if (state.worker && state.worker.recipeKey && !state.recipes[state.worker.recipeKey]) state.worker.recipeKey = null;
   const rv = r.vehicle;
   state.vehicle = rv && typeof rv === 'object' && rv.owned ? { owned: true, x: num(rv.x, -70), z: num(rv.z, -32), yaw: num(rv.yaw, 0) } : null;
-  state.crewName = typeof r.crewName === 'string' ? r.crewName.slice(0, 24) : '';
+  const cleanName = (v: unknown): string => (typeof v === 'string' ? v.replace(/[<>&"'`]/g, '').slice(0, 24) : '');
+  state.crewName = cleanName(r.crewName);
+  for (const rec of Object.values(state.recipes)) if (rec.customName !== undefined) rec.customName = cleanName(rec.customName) || undefined;
   state.seed = Math.floor(num(r.seed, 0));
   state.trend = r.trend && typeof r.trend === 'object' && ALL_EFFECTS.includes(r.trend.effect) && isFiniteNum(r.trend.day) ? r.trend : null;
   state.event = r.event && typeof r.event === 'object' && typeof r.event.id === 'string' && isFiniteNum(r.event.day) ? r.event : null;

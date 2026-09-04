@@ -115,7 +115,7 @@ export function executePackage(state: GameState, recipeKey: string, qty: number)
 export function nameRecipe(state: GameState, recipeKey: string, name: string): boolean {
   const r = state.recipes[recipeKey];
   if (!r) return false;
-  const clean = name.trim().slice(0, 24).toUpperCase();
+  const clean = name.replace(/[<>&"'`]/g, '').trim().slice(0, 24).toUpperCase();
   if (!clean) return false;
   r.customName = clean;
   return true;

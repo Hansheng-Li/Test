@@ -1,5 +1,5 @@
 import { Panel } from './Panel';
-import { GameAPI } from './UIContext';
+import { GameAPI, esc } from './UIContext';
 import { resolveItem, countItem, looseProductsInInventory } from '../systems/InventorySystem';
 import { previewPrep, prepDuration, packagingPerUnitSeconds, recipeDisplayName } from '../systems/ProductionSystem';
 import { MODIFIER_IDS, BASE_SUPPLY_IDS } from '../data/items';
@@ -44,7 +44,7 @@ export class PrepUI extends Panel {
     body.innerHTML = '';
     if (this.pendingName) {
       const key = this.pendingName;
-      body.innerHTML = `<h3>NEW PRODUCT CREATED</h3><div>${recipeDisplayName(st, key)} — <span class="desc" style="color:#aaa">${st.recipes[key]?.effects.join(' · ')}</span></div><p>Give it a street name. It will show up on pagers, in your backpack and in sale messages.</p>`;
+      body.innerHTML = `<h3>NEW PRODUCT CREATED</h3><div>${esc(recipeDisplayName(st, key))} — <span class="desc" style="color:#aaa">${st.recipes[key]?.effects.join(' · ')}</span></div><p>Give it a street name. It will show up on pagers, in your backpack and in sale messages.</p>`;
       const inp = document.createElement('input');
       inp.type = 'text';
       inp.maxLength = 24;
@@ -126,7 +126,7 @@ export class PrepUI extends Panel {
         const known = st.recipes[r.key];
         const p = document.createElement('div');
         p.style.marginTop = '8px';
-        p.innerHTML = `RESULT: <b style="color:#ff8fd8">${known?.customName ?? r.defaultName}</b> ${r.effects.map((e) => `<span class="tag effect">${e}</span>`).join('')} <span class="price">$${r.value}/unit</span>` +
+        p.innerHTML = `RESULT: <b style="color:#ff8fd8">${esc(known?.customName ?? r.defaultName)}</b> ${r.effects.map((e) => `<span class="tag effect">${e}</span>`).join('')} <span class="price">$${r.value}/unit</span>` +
           (known ? '' : ' <span class="tag" style="background:#3a3a1a;color:#ffd166">NEW RECIPE</span>') +
           `<div class="desc" style="color:#aaa">Takes ${prepDuration(st)}s${st.upgrades.includes('eq_mixer') ? ' · Turbo Mixer: +1 bonus unit' : ''}.</div>`;
         sec3.appendChild(p);
@@ -149,7 +149,7 @@ export class PrepUI extends Panel {
       if (w.recipeKey) {
         const n = workerNeeds(st, w.property, w.recipeKey);
         const missing = n ? [!n.hasBase ? 'base supply' : '', !n.hasMods ? 'modifiers' : '', !n.hasBags ? 'baggies (will output loose product)' : ''].filter(Boolean) : [];
-        info.innerHTML = `Making <b style="color:#ff8fd8">${recipeDisplayName(st, w.recipeKey)}</b> from ${w.property} storage · ${w.produced} units so far · progress ${Math.round(w.progress * 100)}%` + (missing.length ? `<br/><span style="color:#ffb3c1">Storage is missing: ${missing.join(', ')}</span>` : '');
+        info.innerHTML = `Making <b style="color:#ff8fd8">${esc(recipeDisplayName(st, w.recipeKey))}</b> from ${w.property} storage · ${w.produced} units so far · progress ${Math.round(w.progress * 100)}%` + (missing.length ? `<br/><span style="color:#ffb3c1">Storage is missing: ${missing.join(', ')}</span>` : '');
       } else info.textContent = 'Not assigned. Pick a recipe below; Marisol pulls supplies from storage and puts packaged product back.';
       sec4.appendChild(info);
       const rowW = document.createElement('div');

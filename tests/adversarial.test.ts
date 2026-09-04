@@ -108,3 +108,16 @@ describe('adversarial: money and state cannot be created by repeating calls', ()
     expect(s.orders.filter((o) => o.status === 'accepted')).toHaveLength(5);
   });
 });
+
+describe('adversarial: typed names cannot carry markup', () => {
+  it('nameRecipe strips markup characters and esc() neutralises what a hostile save carries', async () => {
+    const { nameRecipe } = await import('../src/systems/ProductionSystem');
+    const { esc } = await import('../src/ui/UIContext');
+    const s = createNewState();
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    expect(nameRecipe(s, 'SUNSET', '<img src=x onerror=alert(1)>')).toBe(true);
+    expect(s.recipes['SUNSET'].customName).not.toMatch(/[<>&"'`]/);
+    expect(nameRecipe(s, 'SUNSET', '<>')).toBe(false);
+    expect(esc('<b>&"x')).toBe('&lt;b&gt;&amp;&quot;x');
+  });
+});

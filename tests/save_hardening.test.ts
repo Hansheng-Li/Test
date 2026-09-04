@@ -69,3 +69,11 @@ describe('save hardening', () => {
     expect(s.runner!.queue).toEqual([9]);
   });
 });
+
+describe('save hardening: names', () => {
+  it('strips markup from crew and product names carried by a save', () => {
+    const s = deserialize(JSON.stringify({ cash: 1, inventory: [], crewName: '<img src=x>CREW', recipes: { SUNSET: { key: 'SUNSET', base: 'SUNSET', mods: [], effects: ['ENERGY'], value: 24, customName: '<b>X</b>' } } }))!;
+    expect(s.crewName).toBe('img src=xCREW');
+    expect(s.recipes['SUNSET'].customName).toBe('bX/b');
+  });
+});

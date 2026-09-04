@@ -1,5 +1,5 @@
 import { Panel } from './Panel';
-import { GameAPI } from './UIContext';
+import { GameAPI, esc } from './UIContext';
 import { resolveItem, packagedInInventory } from '../systems/InventorySystem';
 import { dealerStockCount } from '../systems/DealerSystem';
 import { CUSTOMERS } from '../data/customers';
@@ -35,7 +35,7 @@ export class DealerUI extends Panel {
     for (const s of d.stock) {
       const row = document.createElement('div');
       row.className = 'row';
-      row.innerHTML = `<span class="name"><b>${resolveItem(st, s.id).name}</b> x${s.qty}</span>`;
+      row.innerHTML = `<span class="name"><b>${esc(resolveItem(st, s.id).name)}</b> x${s.qty}</span>`;
       row.appendChild(this.button('TAKE BACK 1', () => { this.api.dealerTake(s.id, 1); this.render(); }));
       row.appendChild(this.button('TAKE ALL', () => { this.api.dealerTake(s.id, s.qty); this.render(); }));
       stockSec.appendChild(row);
@@ -46,7 +46,7 @@ export class DealerUI extends Panel {
       for (const p of packs) {
         const row = document.createElement('div');
         row.className = 'row';
-        row.innerHTML = `<span class="name"><b>${resolveItem(st, p.id).name}</b> x${p.qty}</span>`;
+        row.innerHTML = `<span class="name"><b>${esc(resolveItem(st, p.id).name)}</b> x${p.qty}</span>`;
         row.appendChild(this.button('GIVE 1', () => { this.api.dealerGive(p.id, 1); this.render(); }, 'cyan'));
         row.appendChild(this.button('GIVE ALL', () => { this.api.dealerGive(p.id, p.qty); this.render(); }, 'cyan'));
         stockSec.appendChild(row);

@@ -3,6 +3,11 @@ import { PurchaseResult } from '../systems/EconomySystem';
 import { PrepPlan, PrepResult, PackageResult } from '../systems/ProductionSystem';
 import { SfxName } from '../audio/Audio';
 
+/** Escape player-typed text (product/crew names) before it goes into innerHTML. */
+export function esc(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 export type ToastKind = 'info' | 'cash' | 'warn' | 'pager';
 
 /** What UI panels are allowed to ask the game to do. Implemented by Game. */
