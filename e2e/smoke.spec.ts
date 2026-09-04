@@ -10,6 +10,10 @@ test('game loads, HUD appears, no startup errors', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#menu h1')).toHaveText('SUNSET SYNDICATE');
   await page.click('#menu button:has-text("NEW GAME")');
+  // the opening flyover plays; any key skips it
+  await expect(page.locator('#cutscene')).toHaveClass(/on/);
+  await page.keyboard.press('Space');
+  await expect(page.locator('#cutscene')).not.toHaveClass(/on/);
   await expect(page.locator('#hud-cash')).toBeVisible();
   await expect(page.locator('#hud-cash .val')).toHaveText('$80');
   await expect(page.locator('#hud-objective .text')).toContainText('STARTER BOX');

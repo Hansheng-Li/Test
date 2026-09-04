@@ -180,6 +180,9 @@ Design rules that shaped the code:
 - CC0 sample sound effects (Kenney) for footsteps, cash, UI, doors, jingles for goals/customers/busts,
   with the original procedural synth sounds as fallback when a file is missing.
 - Accelerated day/night with neon, lit windows, lamp pool, fog and sunset tint.
+- Skippable cutscenes: an opening flyover over Sol Palma with title cards, and a BUSTED / 6 HOURS LATER
+  sequence on arrest. The title screen orbits the live city at sunset; the menu has HOW TO PLAY, SETTINGS
+  and a CREDITS page listing every CC0 asset.
 - localStorage save/load with validation and repair of partial saves.
 - 56 Vitest tests covering behavioural contracts + Playwright smoke and core-loop tests.
 

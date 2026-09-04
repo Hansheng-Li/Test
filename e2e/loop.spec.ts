@@ -40,6 +40,10 @@ test('a new player can complete the first sale', async ({ page }) => {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
   await page.click('#menu button:has-text("NEW GAME")');
+  // the opening flyover plays; any key skips it
+  await expect(page.locator('#cutscene')).toHaveClass(/on/);
+  await page.keyboard.press('Space');
+  await expect(page.locator('#cutscene')).not.toHaveClass(/on/);
   await page.evaluate(() => { const g = (window as unknown as { game: G }).game; g.input.locked = true; });
   await frames(page, 3);
 

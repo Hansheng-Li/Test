@@ -3,6 +3,7 @@ import { Input } from '../core/Input';
 import { loadSettings, saveSettings, Settings } from '../core/Settings';
 import { STATIONS } from '../audio/Radio';
 import { loadModel, instanceModel, upgradeParkedCars, CAR_SCALE } from '../world/Models';
+import { Cutscene, Shot } from './Cutscene';
 import { GameClock } from '../core/Time';
 import { PlayerController } from '../player/PlayerController';
 import { buildCity, CityResult } from '../world/City';
@@ -105,6 +106,8 @@ export class Game implements GameAPI {
   private carHitTimer = 0;
   private carEye = new THREE.Vector3();
   private carLook = new THREE.Vector3();
+  cutscene: Cutscene;
+  private titleAngle = 0;
   private workerToastTimer = 0;
   private workerBlockedTimer = 0;
   dancers: Civilian[] = [];
@@ -166,8 +169,10 @@ export class Game implements GameAPI {
     this.dealerUI = new DealerUI(root, this);
     this.ledgerUI = new LedgerUI(root, this);
     for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI, this.dealerUI, this.ledgerUI]) this.panels[p.id] = p;
+    this.cutscene = new Cutscene(root);
     this.menu = new Menu(root, {
-      newGame: () => this.startNewGame(),
+      newGame: () => this.startNewGame(true),
+      quit: () => this.quitToTitle(),
       continueGame: () => this.continueGame(),
       resetSave: () => clearSave(localStorage),
       resume: () => this.resume(),
@@ -216,7 +221,7 @@ export class Game implements GameAPI {
     this.renderer.setAnimationLoop(() => this.frame());
   }
 
-  startNewGame(): void {
+  startNewGame(intro = false): void {
     this.state = createNewState();
     this.applyStateToWorld();
     this.orderTimer = 40;
@@ -226,6 +231,43 @@ export class Game implements GameAPI {
     ];
     this.tipTimer = 0.5;
     this.beginPlay();
+    if (intro) this.playIntro();
+  }
+
+  /** Opening flyover: ocean → skyline → the back room. Any key skips it. */
+  private playIntro(): void {
+    const shots: Shot[] = [
+      { from: [260, 70, 120], to: [200, 45, 40], lookFrom: [40, 0, 0], lookTo: [60, 4, 0], dur: 6, text: 'SOL PALMA, FLORIDA', sub: '1996' },
+      { from: [175, 14, -50], to: [150, 9, 30], lookFrom: [135, 6, 5], lookTo: [110, 4, 20], dur: 5.5, text: 'NEON, SUNSCREEN AND BAD DECISIONS', sub: 'a city that never checks ID' },
+      { from: [30, 26, 60], to: [-2, 5, 22], lookFrom: [-21, 2, 14], dur: 6, text: 'YOU OWE SAL $2,000', sub: 'you have $80, a pager and a back room' },
+      { from: [-2, 5, 22], to: [-2, 5, 22], lookFrom: [-21, 2, 14], dur: 1.6, fade: 1, text: 'SUNSET SYNDICATE', sub: '' },
+    ];
+    this.hud.setVisible(false);
+    this.audio.play('jingle_intro');
+    this.cutscene.play(shots, () => {
+      this.hud.setVisible(true);
+      this.input.requestLock();
+    });
+  }
+
+  quitToTitle(): void {
+    this.running = false;
+    this.cutscene.skip();
+    this.arrested = false;
+    this.hud.arrestMode = false;
+    this.hud.setVisible(false);
+    if (this.audio.radio.playing) this.audio.radio.stop();
+    this.clock.totalMinutes = Math.floor(this.clock.totalMinutes / (24 * 60)) * 24 * 60 + 19 * 60;
+  }
+
+  /** Slow orbit over the city behind the title screen. */
+  private updateTitleCamera(dt: number): void {
+    this.titleAngle += dt * 0.06;
+    const cx = 40;
+    const cz = -10;
+    const r = 150;
+    this.camera.position.set(cx + Math.cos(this.titleAngle) * r, 42, cz + Math.sin(this.titleAngle) * r);
+    this.camera.lookAt(cx, 6, cz);
   }
 
   continueGame(): void {
@@ -332,6 +374,8 @@ export class Game implements GameAPI {
     this.hiding = null;
     this.hud.hiddenMode = false;
     this.hud.arrestMode = false;
+    this.arrested = false;
+    this.cutscene.skip();
     this.syncVehicle();
     // placed stations
     const stale: import('../physics/Colliders').AABB[] = [];
@@ -536,6 +580,8 @@ export class Game implements GameAPI {
     this.last = now;
     const paused = this.menu.visible;
     if (this.running && !paused) this.tick(dt);
+    if (!this.running) this.updateTitleCamera(this.uiDt);
+    else if (this.cutscene.active && !paused) this.cutscene.update(this.uiDt, this.camera);
     this.dayNight.update(this.clock, this.player.position);
     this.renderer.render(this.scene, this.camera);
     this.input.endFrame();
@@ -558,7 +604,8 @@ export class Game implements GameAPI {
     this.clock.tick(dt);
     s.clockMinutes = this.clock.totalMinutes;
     s.stats.playSeconds += dt;
-    if (this.driving && this.vehicle) this.updateDriving(dt, uiOpen);
+    if (this.cutscene.active) this.input.consumeMouse();
+    else if (this.driving && this.vehicle) this.updateDriving(dt, uiOpen);
     else {
       this.player.update(dt);
       if (this.player.stepped && !this.hiding) this.audio.play('step');
@@ -568,7 +615,7 @@ export class Game implements GameAPI {
     if (this.arrested) this.updateArrest(dt);
 
     // interaction
-    const target = this.driving || this.hiding ? null : this.interaction.update(this.camera, this.camera.position);
+    const target = this.driving || this.hiding || this.cutscene.active ? null : this.interaction.update(this.camera, this.camera.position);
     this.hud.setPrompt(uiOpen || this.arrested ? null : this.hiding ? '[E] CLIMB OUT' : this.driving ? (Math.abs(this.vehicle!.speed) < 1 ? '[E] GET OUT · SPACE HORN · SHIFT BRAKE' : null) : target ? target.prompt() : this.placement ? '[CLICK] PLACE · [R] ROTATE · [ESC] CANCEL' : null);
     if (this.hiding) this.updateHiding(dt);
     if (!uiOpen && !this.arrested && this.input.wasPressed('KeyE') && this.input.locked) {
@@ -1813,13 +1860,24 @@ export class Game implements GameAPI {
       this.player.teleport(spot.x, 0.3, spot.z, this.vehicle.cameraYaw);
     }
     this.arrested = true;
-    this.arrestTimer = 3.2;
+    this.arrestTimer = 6.2;
     this.audio.play('jingle_bust');
     this.hud.arrestMode = true;
-    this.hud.flash('BUSTED', '#7fbfff');
+    this.hud.setVisible(false);
     const r = applyArrest(this.state);
     this.clock.totalMinutes = this.state.clockMinutes;
     const items = r.confiscated.map((c) => `${c.qty}x ${resolveItem(this.state, c.id).name}`).join(', ');
+    const p = this.player.position;
+    const eye: [number, number, number] = [p.x, p.y + 1.6, p.z];
+    this.cutscene.play(
+      [
+        { from: eye, to: [p.x + 5, p.y + 9, p.z + 7], lookFrom: [p.x, p.y + 1, p.z], dur: 3.6, text: 'BUSTED', sub: items ? `confiscated: ${items} · fine $${r.fine}` : `fine $${r.fine}` },
+        { from: [p.x + 5, p.y + 9, p.z + 7], to: [p.x + 6, p.y + 10, p.z + 8], lookFrom: [p.x, p.y + 1, p.z], dur: 2.6, fade: 1, text: '6 HOURS LATER', sub: 'Sol Palma County Jail' },
+      ],
+      () => {
+        if (this.arrested) this.arrestTimer = Math.min(this.arrestTimer, 0.01);
+      },
+    );
     this.toast(`BUSTED. ${items ? 'Confiscated: ' + items + '. ' : ''}Fine: $${r.fine}. You lost 6 hours in a holding cell.`, 'warn', 9000);
     for (const o of this.state.orders) if (o.status === 'accepted' || o.status === 'failed' || o.status === 'expired') this.despawnCustomer(o.id);
     if (this.openPanelId) this.closePanel();
@@ -1831,6 +1889,8 @@ export class Game implements GameAPI {
     if (this.arrestTimer <= 0) {
       this.arrested = false;
       this.hud.arrestMode = false;
+      this.hud.setVisible(true);
+      this.cutscene.skip();
       // released in front of the police station
       this.player.teleport(70, 0.3, -24, Math.PI);
       for (const p of this.police) p.pstate = 'PATROL';
@@ -2021,6 +2081,11 @@ export class Game implements GameAPI {
 
   private onKey(e: KeyboardEvent): void {
     if (!this.running) return;
+    if (this.cutscene.active && !this.menu.visible) {
+      if (e.code !== 'Escape') this.cutscene.skip();
+      else this.pause();
+      return;
+    }
     if (this.menu.visible) {
       if (e.code === 'Escape' && this.menu.mode === 'pause') this.resume();
       return;

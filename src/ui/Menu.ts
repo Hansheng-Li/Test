@@ -5,7 +5,7 @@ export class Menu {
 
   constructor(
     parent: HTMLElement,
-    private actions: { newGame: () => void; continueGame: () => void; resetSave: () => void; resume: () => void; save: () => void; hasSave: () => boolean; getSettings: () => { sensitivity: number; masterVolume: number; radioVolume: number }; setSetting: (key: 'sensitivity' | 'masterVolume' | 'radioVolume', value: number) => void },
+    private actions: { newGame: () => void; continueGame: () => void; resetSave: () => void; resume: () => void; save: () => void; quit: () => void; hasSave: () => boolean; getSettings: () => { sensitivity: number; masterVolume: number; radioVolume: number }; setSetting: (key: 'sensitivity' | 'masterVolume' | 'radioVolume', value: number) => void },
   ) {
     this.el = document.createElement('div');
     this.el.id = 'menu';
@@ -42,6 +42,14 @@ export class Menu {
         <b style="color:#4ff2e8">HEAT</b> · Cops who see a deal raise it. Break line of sight, go home, or rest. Clean hands survive a stop-and-search; contraband does not. Sprint has stamina — you cannot outrun a chase forever. Dumpsters in the alleys are hiding spots (E).<br/>
         <b style="color:#4ff2e8">SCALE UP</b> · Pawn shop equipment → Dizzy the runner (motel) → Warehouse 7 (docks) → Marisol the worker (port) → Vince the dealer (arcade) → the '88 sedan (Rojas).<br/>
         <b style="color:#4ff2e8">KEYS</b> · E interact · TAB backpack · P pager · M map · N walkman · B place equipment · F3 fps.
+      </div>
+      <div class="credits">
+        <b>SUNSET SYNDICATE</b> — an original game. All products, businesses, people and the city of Sol Palma are fictional.<br/><br/>
+        <b>THIRD-PARTY ASSETS (all CC0 1.0 / public domain, used with thanks)</b><br/>
+        Sound effects, UI sounds, music jingles and car models: <b>Kenney</b> (kenney.nl) — Impact Sounds, RPG Audio, Interface Sounds, Casino Audio, Music Jingles, Car Kit.<br/>
+        Radio music: <b>HoliznaCC0</b> — Back In The 80s, Night Driving, Retro Synths, City Lights, Night Life, Make Funk · <b>Komiku</b> — Sunset On The Beach, Beach · <b>Loyalty Freak Music</b> — Chillin' At The Club.<br/>
+        SIGNAL ZERO and every other sound not listed above is synthesised in-game.<br/><br/>
+        Full per-file table: public/assets/LICENSES.md in the repository.
       </div>
       <div class="controls">WASD move · MOUSE look · SHIFT sprint · SPACE jump<br/>E interact · TAB inventory · P pager · Y/X accept/decline page · M map · N walkman · 1-8 select item · ESC pause<br/><br/><span style="color:#ff9a3c">All products in this game are fictional. Click to capture the mouse.</span></div>
       <div class="stripe bottom"></div>`;
@@ -90,12 +98,25 @@ export class Menu {
       if (hasSave) add('CONTINUE', this.actions.continueGame, 'big primary');
       add('NEW GAME', this.actions.newGame, hasSave ? 'big' : 'big primary');
       if (hasSave) add('RESET SAVE', () => { if (confirm('Delete your save?')) { this.actions.resetSave(); this.render(); } }, 'big');
+      add('HOW TO PLAY', () => this.toggle('.howto'), 'big');
+      add('SETTINGS', () => this.toggle('.settings'), 'big');
+      add('CREDITS', () => this.toggle('.credits'), 'big');
     } else {
       add('RESUME', this.actions.resume, 'big primary');
-      add('HOW TO PLAY', () => { const h = this.el.querySelector('.howto') as HTMLElement; h.style.display = h.style.display === 'none' ? 'block' : 'none'; }, 'big');
-      add('SETTINGS', () => { const h = this.el.querySelector('.settings') as HTMLElement; h.style.display = h.style.display === 'none' ? 'block' : 'none'; }, 'big');
+      add('HOW TO PLAY', () => this.toggle('.howto'), 'big');
+      add('SETTINGS', () => this.toggle('.settings'), 'big');
+      add('CREDITS', () => this.toggle('.credits'), 'big');
       add('SAVE GAME', () => { this.actions.save(); }, 'big');
-      add('QUIT TO TITLE', () => { this.actions.save(); this.show('title'); }, 'big');
+      add('QUIT TO TITLE', () => { this.actions.save(); this.actions.quit(); this.show('title'); }, 'big');
+    }
+  }
+
+  /** Show one of the fold-out panels, hiding the others. */
+  private toggle(sel: string): void {
+    for (const other of ['.howto', '.settings', '.credits']) {
+      const el = this.el.querySelector(other) as HTMLElement;
+      if (other === sel) el.style.display = el.style.display === 'none' || !el.style.display ? 'block' : 'none';
+      else el.style.display = 'none';
     }
   }
 }
