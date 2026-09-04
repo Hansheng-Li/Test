@@ -1,6 +1,6 @@
 import { Panel } from './Panel';
 import { GameAPI } from './UIContext';
-import { BUILDINGS, LANDMARKS, ROADS_X, ROADS_Z, MAP_MIN_X, MAP_MAX_X, MAP_MIN_Z, MAP_MAX_Z, OCEAN_X, CANAL_X, CANAL_Z, SAFEHOUSE_DOOR, SUPPLIER_SPOT, DEALER_CONTACT_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT, PROPERTY_ANCHORS } from '../data/city';
+import { PAYPHONES, BUILDINGS, LANDMARKS, ROADS_X, ROADS_Z, MAP_MIN_X, MAP_MAX_X, MAP_MIN_Z, MAP_MAX_Z, OCEAN_X, CANAL_X, CANAL_Z, SAFEHOUSE_DOOR, SUPPLIER_SPOT, DEALER_CONTACT_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT, PROPERTY_ANCHORS } from '../data/city';
 import { activeOrders } from '../systems/OrderSystem';
 import { CUSTOMER_MAP } from '../data/customers';
 
@@ -60,6 +60,8 @@ export class MapUI extends Panel {
     const st = this.api.state;
     const orders = activeOrders(st);
     g.font = `bold ${6 * s}px Arial`;
+    g.fillStyle = '#1e6fd9';
+    for (const p of PAYPHONES) g.fillRect(this.px(p.x) - 2 * s, this.pz(p.z) - 2 * s, 4 * s, 4 * s);
     for (const l of LANDMARKS) {
       const o = orders.find((x) => x.locationId === l.id);
       g.beginPath();
@@ -108,9 +110,9 @@ export class MapUI extends Panel {
     g.fillText('YOU', this.px(p.x) + 7 * s, this.pz(p.z) - 6);
     // legend
     g.fillStyle = 'rgba(255,255,255,0.75)';
-    g.fillRect(8, this.canvas.height - 26 * s, 260 * s, 22 * s);
+    g.fillRect(8, this.canvas.height - 26 * s, 300 * s, 22 * s);
     g.fillStyle = '#222';
     g.font = `${6 * s}px Arial`;
-    g.fillText('● RED: you   ● PINK: customer waiting   ● TEAL: runner   ● YELLOW: shops   ● GREEN: your property', 14, this.canvas.height - 12 * s);
+    g.fillText('● RED: you   ● PINK: customer waiting   ● TEAL: runner   ● YELLOW: shops   ● GREEN: your property   ■ BLUE: payphone', 14, this.canvas.height - 12 * s);
   }
 }

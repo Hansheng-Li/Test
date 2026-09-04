@@ -58,6 +58,11 @@ const CIVILIAN_COLORS = ['#e91e63', '#9c27b0', '#3f51b5', '#03a9f4', '#009688', 
 const SKINS = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac'];
 const PANTS = ['#2c3e50', '#37474f', '#5d4037', '#1a237e', '#455a64', '#c9b79c'];
 
+/** Bigger deals get a bigger SOLD card: $35 -> 1.0x, $150 -> 1.25x, $600 -> 1.5x (capped). */
+function flashScale(earned: number): number {
+  return Math.min(1.7, 0.7 + Math.log10(Math.max(10, earned)) * 0.3);
+}
+
 export class Game implements GameAPI {
   renderer: THREE.WebGLRenderer;
   scene = new THREE.Scene();
@@ -109,6 +114,7 @@ export class Game implements GameAPI {
   cutscene: Cutscene;
   private titleAngle = 0;
   private workerToastTimer = 0;
+  private dealerPriceyTimer = 0;
   private workerBlockedTimer = 0;
   dancers: Civilian[] = [];
   nightCrowd: Civilian[] = [];
@@ -677,11 +683,13 @@ export class Game implements GameAPI {
     // orders
     this.orderTimer -= dt;
     if (this.orderTimer <= 0) this.tryGenerateOrder();
+    const wasAccepted = new Set(s.orders.filter((o) => o.status === 'accepted').map((o) => o.id));
     const expired = expireOrders(s, this.clock.totalMinutes);
     for (const o of expired) {
       const c = CUSTOMER_MAP[o.customerId];
       this.despawnCustomer(o.id);
-      if (o.status === 'expired' && s.customers[o.customerId]) {
+      // ignoring a page is free (declining is); standing up a customer you accepted is not
+      if (o.status === 'expired' && wasAccepted.has(o.id) && s.customers[o.customerId]) {
         s.customers[o.customerId].relationship = Math.max(0, s.customers[o.customerId].relationship - 2);
         this.toast(`${c.name.split(' ')[0]} got tired of waiting. Order expired.`, 'warn');
       }
@@ -690,6 +698,14 @@ export class Game implements GameAPI {
 
     // runner
     const rr = tickRunner(s, dt);
+    if (rr.mishap) {
+      const c = CUSTOMER_MAP[rr.mishap.order.customerId];
+      this.audio.play('siren');
+      this.hud.flash('DELIVERY LOST', '#ff6b6b');
+      this.toast(`Dizzy got stopped on the way to ${c.name.split(' ')[0]}. Product gone, order lost, HEAT +10. Some runs you walk yourself.`, 'warn', 8000);
+      this.despawnCustomer(rr.mishap.order.id);
+      this.save();
+    }
     if (rr.completed) {
       const c = CUSTOMER_MAP[rr.completed.order.customerId];
       this.audio.play('cash');
@@ -716,6 +732,13 @@ export class Game implements GameAPI {
     // dealer
     const dr = tickDealer(s, this.clock.totalMinutes);
     for (const sale of dr.sales) this.toast(`Vince sold ${sale.qty}x ${recipeDisplayName(s, sale.itemKey)} to ${CUSTOMER_MAP[sale.customerId].name.split(' ')[0]} (+$${sale.earned} held).`, 'info', 3000);
+    if (dr.tooPricey?.length && dr.sales.length === 0) {
+      this.dealerPriceyTimer -= 1;
+      if (this.dealerPriceyTimer <= 0) {
+        this.dealerPriceyTimer = 6;
+        this.toast(`Vince: "${CUSTOMER_MAP[dr.tooPricey[0]].name.split(' ')[0]} can't afford what you gave me. Corner people carry $75, not $200 — hand me something plain too."`, 'warn', 7000);
+      }
+    }
     if (dr.hassled) {
       this.audio.play('siren');
       this.toast(`Cops shook Vince down: ${dr.hassled.lost} units lost, HEAT +8.`, 'warn', 6000);
@@ -1111,6 +1134,7 @@ export class Game implements GameAPI {
       this.save();
       return;
     }
+    const tierBeforeStreet = relationshipTier(s.customers[def.id].relationship);
     const r = streetSale(s, def.id, this.clock.totalMinutes);
     if (!r.ok) {
       // small talk: sometimes they point you at a friend you have not met yet
@@ -1124,13 +1148,14 @@ export class Game implements GameAPI {
         this.toast(`${first}: "${tip}"`, 'info', 6000);
         return;
       }
-      const hint = r.reason === 'cooldown' ? `"I'm good for now. Page you later."` : r.reason === 'dealer' ? `"Vince takes care of me now. Nice guy. Weird sunglasses."` : r.reason === 'bored' ? `"Same stuff again? Surprise me next time."` : `"I like ${def.prefBase} with ${def.prefEffects.join(' or ')}. Got anything?"`;
+      const hint = r.reason === 'cooldown' ? `"I'm good for now. Page you later."` : r.reason === 'too_pricey' ? `"That is way over what I've got on me. Got anything plain?"` : r.reason === 'dealer' ? `"Vince takes care of me now. Nice guy. Weird sunglasses."` : r.reason === 'bored' ? `"Same stuff again? Surprise me next time."` : `"I like ${def.prefBase} with ${def.prefEffects.join(' or ')}. Got anything?"`;
       w.say(hint.replace(/"/g, ''), '#ffd166', 3);
       this.toast(`${first}: ${hint}`, 'info', 4000);
       return;
     }
     this.audio.play('cash');
-    this.hud.flash(r.wonBack ? `WON BACK FROM SAL  +$${r.earned}` : `STREET DEAL  +$${r.earned}`);
+    this.hud.flash(r.wonBack ? `WON BACK FROM SAL  +$${r.earned}` : `STREET DEAL  +$${r.earned}`, '#7dff9a', flashScale(r.earned!));
+    this.announceTier(def.id, tierBeforeStreet);
     if (r.wonBack) this.toast(`${def.name.split(' ')[0]} is back with you. Sal's crew can keep walking.`, 'cash', 5000);
     const name = recipeDisplayName(s, r.itemKey!);
     this.toast(`+$${r.earned} · Street deal: ${r.qty}x ${name} to ${def.name}${r.trendHit ? ' · TREND BONUS +25%' : ''}`, 'cash');
@@ -1171,14 +1196,16 @@ export class Game implements GameAPI {
       this.toast(`${def.name.split(' ')[0]}: "${def.lines.greet}" — bring ${order.qty}x ${describeRequest(s, order)}.`);
       return;
     }
+    const tierBefore = relationshipTier(s.customers[order.customerId].relationship);
     const r = completeSale(s, order.id, this.clock.totalMinutes);
     if (!r.ok) return;
     this.audio.play('cash');
-    this.hud.flash(r.wonBack ? `WON BACK FROM SAL  +$${r.earned}` : `SOLD  +$${r.earned}`);
+    this.hud.flash(r.wonBack ? `WON BACK FROM SAL  +$${r.earned}` : `SOLD  +$${r.earned}`, '#7dff9a', flashScale(r.earned!));
     const name = recipeDisplayName(s, r.itemKey!);
     this.toast(`+$${r.earned} · Sold ${order.qty}x ${name} to ${def.name}${r.onTime ? '' : ' (late, 30% off)'}${r.trendHit ? ' · TREND BONUS +25%' : ''}`, 'cash');
     const rel = s.customers[def.id];
     this.toast(`${def.name.split(' ')[0]} relationship ${rel.relationship} (${relationshipTier(rel.relationship)})`, 'info', 2500);
+    this.announceTier(def.id, tierBefore);
     for (const id of r.unlocked ?? []) this.announceUnlock(id);
     // ---- streamer moments
     const parsed = parseRecipeKey(r.itemKey!);
@@ -1290,7 +1317,7 @@ export class Game implements GameAPI {
     const r = assignRunner(this.state, id);
     if (!r.ok) {
       this.audio.play('error');
-      this.toast(r.reason === 'no_stock' ? 'Runner needs the packaged product in your STORAGE first.' : r.reason === 'busy' ? 'Dizzy is already on a run.' : 'Cannot send the runner.', 'warn');
+      this.toast(r.reason === 'no_stock' ? 'Runner needs the packaged product in your STORAGE first.' : r.reason === 'busy' ? 'Dizzy is already on a run.' : r.reason === 'queue_full' ? 'Dizzy already has two runs lined up. This one you walk yourself.' : 'Cannot send the runner.', 'warn');
       return;
     }
     const o = this.state.orders.find((x) => x.id === id)!;
@@ -2129,6 +2156,21 @@ export class Game implements GameAPI {
       const sp = sign.position;
       this.playShots([{ from: [sp.x + 18, 3, sp.z + 14], to: [sp.x + 9, 4.2, sp.z + 3], lookFrom: [sp.x, sp.y, sp.z], dur: 4.5, text: clean, sub: 'WAREHOUSE 7 · SOL PALMA' }]);
     }
+  }
+
+  /** A relationship tier changed hands: say so big, because it changes order sizes and haggling. */
+  private announceTier(customerId: string, before: ReturnType<typeof relationshipTier>): void {
+    const cs = this.state.customers[customerId];
+    if (!cs) return;
+    const after = relationshipTier(cs.relationship);
+    if (after === before) return;
+    const first = CUSTOMER_MAP[customerId].name.split(' ')[0].toUpperCase();
+    const perk = after === 'regular' ? 'orders +1 · haggles easier' : after === 'friend' ? 'orders +2 · double effects' : after === 'family' ? 'top prices' : 'effect requests begin';
+    setTimeout(() => {
+      this.audio.play('jingle_customer');
+      this.hud.flash(`${first} IS NOW ${after === 'acquaintance' ? 'AN' : 'A'} ${after.toUpperCase()}`, '#ffd166');
+      this.toast(`${CUSTOMER_MAP[customerId].name} is now a ${after}: ${perk}.`, 'cash', 6000);
+    }, 1700);
   }
 
   /** Run an in-game cutscene: closes panels, hides the HUD and hands control back afterwards. */

@@ -53,6 +53,14 @@ export function recordFailedDeal(state: GameState, customerId: string): void {
   cs.relationship = Math.max(0, cs.relationship - 4);
 }
 
+/** What a customer will spend in one go (dealer round / street deal). Grows with relationship; generous people carry more. */
+export function spendingLimit(state: GameState, customerId: string): number {
+  const def = CUSTOMER_MAP[customerId];
+  const rel = customerState(state, customerId).relationship;
+  const base = 75 + 6 * rel;
+  return Math.round(def && def.generosity >= 0.7 ? base * 1.5 : base);
+}
+
 export function unlockedCustomers(state: GameState): CustomerDef[] {
   return CUSTOMERS.filter((c) => customerState(state, c.id).unlocked);
 }

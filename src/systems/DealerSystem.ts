@@ -2,7 +2,7 @@ import { GameState } from '../game/GameState';
 import { DEALER_MAX_CUSTOMERS, DEALER_MAX_STOCK, DEALER_PRICE_FACTOR } from '../data/items';
 import { computeRecipe, parseRecipeKey } from '../data/products';
 import { countItem, removeItem, addItem, spaceFor } from './InventorySystem';
-import { customerState, customerDef } from './CustomerSystem';
+import { customerState, customerDef, spendingLimit } from './CustomerSystem';
 import { offeredUnitPrice } from './OrderSystem';
 import { addCash } from './EconomySystem';
 
@@ -86,6 +86,8 @@ export interface DealerTickResult {
   starved?: boolean;
   /** A customer got tired of an empty corner and left for a rival crew. */
   poached?: string;
+  /** Customers who could not afford anything on the corner this round. */
+  tooPricey?: string[];
 }
 
 /**
@@ -125,11 +127,23 @@ function tickDealerRound(state: GameState, d: NonNullable<GameState['dealer']>, 
     if (rng() > 0.5) continue;
     if (dealerStockCount(state) === 0) break;
     const def = customerDef(cid);
-    const item = d.stock.find((s) => parseRecipeKey(s.id.slice(4))?.base === def.prefBase) ?? d.stock[0];
-    const qty = Math.min(item.qty, rng() < 0.5 ? 2 : 1);
-    const parsed = parseRecipeKey(item.id.slice(4))!;
-    const recipe = computeRecipe(parsed.base, parsed.mods);
-    const unit = Math.round(offeredUnitPrice(state, def, recipe.value) * DEALER_PRICE_FACTOR);
+    // favourite base first, then whatever is cheapest; a customer only buys what fits their wallet
+    const budget = spendingLimit(state, cid);
+    const priced = d.stock.map((st) => {
+      const parsed = parseRecipeKey(st.id.slice(4))!;
+      const unit = Math.round(offeredUnitPrice(state, def, computeRecipe(parsed.base, parsed.mods).value) * DEALER_PRICE_FACTOR);
+      return { st, parsed, unit };
+    });
+    priced.sort((a, b) => (a.parsed.base === def.prefBase ? 0 : 1) - (b.parsed.base === def.prefBase ? 0 : 1) || a.unit - b.unit);
+    const pick = priced.find((p) => p.unit <= budget);
+    if (!pick) {
+      (out.tooPricey ??= []).push(cid);
+      continue;
+    }
+    const item = pick.st;
+    const parsed = pick.parsed;
+    const unit = pick.unit;
+    const qty = Math.min(item.qty, rng() < 0.5 ? 2 : 1, Math.max(1, Math.floor(budget / unit)));
     const earned = unit * qty;
     item.qty -= qty;
     if (item.qty <= 0) d.stock.splice(d.stock.indexOf(item), 1);

@@ -5,7 +5,7 @@ import { hashString } from '../utils/math';
 import { orderPriceMultiplier, rivalTarget, winBackFromRival } from './EventSystem';
 import { dealerHandles } from './DealerSystem';
 import { LANDMARKS } from '../data/city';
-import { customerState, relationshipTier, unlockedCustomers, recordSuccessfulDeal, customerDef } from './CustomerSystem';
+import { customerState, relationshipTier, unlockedCustomers, recordSuccessfulDeal, customerDef, spendingLimit } from './CustomerSystem';
 import { countItem, removeItem, packagedInInventory } from './InventorySystem';
 import { addCash } from './EconomySystem';
 import { recipeDisplayName } from './ProductionSystem';
@@ -85,8 +85,8 @@ export function generateOrder(state: GameState, opts: OrderGenOptions): Order | 
       base = r.base;
       effects = [...r.effects];
     } else if (roll < 0.75) {
-      // ask for a preferred effect on top of the base
-      const e = c.prefEffects[Math.floor(rng() * c.prefEffects.length)];
+      // ask for a preferred effect on top of the base; today's hot effect is on everyone's lips
+      const e = state.trend && rng() < 0.4 ? state.trend.effect : c.prefEffects[Math.floor(rng() * c.prefEffects.length)];
       effects = [e];
       if (tier === 'friend' || tier === 'family') {
         const e2 = c.prefEffects.find((x) => x !== e);
@@ -220,7 +220,8 @@ export function counterOffer(state: GameState, orderId: number, markup: number, 
   const c = customerDef(o.customerId);
   const rel = customerState(state, o.customerId).relationship;
   const tierBonus = { stranger: 0, acquaintance: 0.04, regular: 0.08, friend: 0.12, family: 0.18 }[relationshipTier(rel)];
-  const tolerance = 0.06 + c.generosity * 0.3 + tierBonus;
+  // mood noise so the tags are a read, not a lookup table (still +-8% of the price)
+  const tolerance = 0.06 + c.generosity * 0.3 + tierBonus + (rng() - 0.5) * 0.16;
   o.haggled = true;
   const asked = Math.round(o.price * (1 + markup));
   if (markup <= tolerance) {
@@ -232,7 +233,7 @@ export function counterOffer(state: GameState, orderId: number, markup: number, 
     return { outcome: 'countered', price: o.price, line: pick(rng, [`Best I can do is $${o.price}. Take it or leave it.`, `$${o.price}. Final. My rent is due.`]) };
   }
   o.status = 'declined';
-  customerState(state, o.customerId).relationship = Math.max(0, rel - 1);
+  customerState(state, o.customerId).relationship = Math.max(0, rel - 2);
   return { outcome: 'refused', price: o.price, line: c.lines.complaint };
 }
 
@@ -337,7 +338,7 @@ export function packagedCountFor(state: GameState, key: string): number {
 
 export interface StreetSaleResult {
   ok: boolean;
-  reason?: 'locked' | 'cooldown' | 'no_item' | 'bored' | 'dealer';
+  reason?: 'locked' | 'cooldown' | 'no_item' | 'bored' | 'dealer' | 'too_pricey';
   earned?: number;
   qty?: number;
   itemKey?: string;
@@ -366,7 +367,7 @@ export function streetUnitPrice(state: GameState, customerId: string, key: strin
 }
 
 /** Dry run of the street-sale gates; the prompt and the sale itself both use this so they never disagree. */
-export function canStreetSell(state: GameState, customerId: string, now: number): { ok: true; item: { id: string; key: string; qty: number } } | { ok: false; reason: 'locked' | 'cooldown' | 'no_item' | 'bored' | 'dealer' } {
+export function canStreetSell(state: GameState, customerId: string, now: number): { ok: true; item: { id: string; key: string; qty: number } } | { ok: false; reason: 'locked' | 'cooldown' | 'no_item' | 'bored' | 'dealer' | 'too_pricey' } {
   const cs = customerState(state, customerId);
   if (!cs.unlocked) return { ok: false, reason: 'locked' };
   if (dealerHandles(state, customerId)) return { ok: false, reason: 'dealer' };
@@ -374,6 +375,7 @@ export function canStreetSell(state: GameState, customerId: string, now: number)
   const item = streetSaleCandidate(state, customerId);
   if (!item) return { ok: false, reason: 'no_item' };
   if (isBored(state, customerId) && cs.lastRecipe === item.key) return { ok: false, reason: 'bored' };
+  if (streetUnitPrice(state, customerId, item.key) > spendingLimit(state, customerId)) return { ok: false, reason: 'too_pricey' };
   return { ok: true, item };
 }
 
@@ -386,8 +388,8 @@ export function streetSale(state: GameState, customerId: string, now: number, rn
   const gate = canStreetSell(state, customerId, now);
   if (!gate.ok) return { ok: false, reason: gate.reason };
   const item = gate.item;
-  const qty = Math.min(item.qty, 1 + (rng() < 0.5 ? 1 : 0));
   const unit = streetUnitPrice(state, customerId, item.key);
+  const qty = Math.min(item.qty, 1 + (rng() < 0.5 ? 1 : 0), Math.max(1, Math.floor(spendingLimit(state, customerId) / unit)));
   const parsed = parseRecipeKey(item.key)!;
   const recipe = computeRecipe(parsed.base, parsed.mods);
   const trendHit = !!state.trend && recipe.effects.includes(state.trend.effect);

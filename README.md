@@ -102,7 +102,7 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
   paging you — he sells on his corner and holds the cash until you collect it (and sometimes gets shaken
   down by the cops; leave him without stock for too long and a rival crew poaches his customers). Dizzy
   takes a queue of deliveries; once you own the warehouse Rico delivers supplies there for a 20 % fee. Supplies in, dealer out — the loop you used to do by hand now runs itself.
-* **Legit front**: buy the Lucky Laundromat ($3,000) — clean income every morning and your long-term
+* **Legit front**: buy the Lucky Laundromat ($2,200) — clean income every morning and your long-term
   suspicion cools down 12 points a day.
 * **Second stash**: rent Room 6 at the Ocean View Motel ($1,200) for beach-side storage and a bed.
 * **Wheels**: the '88 sedan at Rojas Auto Repair ($900) crosses town in seconds, honks pedestrians out

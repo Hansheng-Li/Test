@@ -138,3 +138,24 @@ describe('adversarial: time jumps', () => {
     expect(tickDealer(s, start + 12 * 60 + 10, () => 0.1).sales.length).toBe(0);
   });
 });
+
+describe('design: customer wallets', () => {
+  it('a corner customer cannot afford top-shelf product until the relationship is there', () => {
+    const s = createNewState();
+    s.cash = 5000;
+    hireDealer(s, 1000);
+    const rich = computeRecipe('NEON', ['mod_sparks', 'mod_glow', 'mod_solar']);
+    s.recipes[rich.key] = { ...rich };
+    addItem(s, 'pkg:' + rich.key, 10);
+    giveDealerStock(s, 'pkg:' + rich.key, 10);
+    assignDealerCustomer(s, 'tasha');
+    const start = s.dealer!.lastTickMinute;
+    const r0 = tickDealer(s, start + 100, () => 0.1);
+    expect(r0.sales).toEqual([]);
+    expect(r0.tooPricey).toEqual(['tasha']);
+    s.customers.tasha.relationship = 40;
+    const r1 = tickDealer(s, start + 200, () => 0.1);
+    expect(r1.sales.length).toBe(1);
+    expect(r1.sales[0].qty).toBe(1);
+  });
+});

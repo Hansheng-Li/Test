@@ -9,6 +9,10 @@ import { recordSuccessfulDeal } from './CustomerSystem';
 
 export const RUNNER_SPEED = 4.5; // m/s along the trip estimate
 
+export const RUNNER_QUEUE_MAX = 2;
+/** Chance a delivery goes wrong on arrival (a stop-and-search, a no-show): product and payment lost. */
+export const RUNNER_MISHAP_CHANCE = 0.05;
+
 export function hireRunner(state: GameState, price: number): boolean {
   if (state.runner?.hired) return false;
   if (state.cash < price) return false;
@@ -31,7 +35,7 @@ export function storageItemForOrder(state: GameState, order: Order): { property:
 
 export interface AssignResult {
   ok: boolean;
-  reason?: 'no_runner' | 'busy' | 'no_stock' | 'bad_order';
+  reason?: 'no_runner' | 'busy' | 'no_stock' | 'bad_order' | 'queue_full';
   property?: string;
   key?: string;
   queued?: boolean;
@@ -47,6 +51,7 @@ export function assignRunner(state: GameState, orderId: number): AssignResult {
   if (!o || o.status !== 'accepted') return { ok: false, reason: 'bad_order' };
   const stock = storageItemForOrder(state, o);
   if (!stock) return { ok: false, reason: 'no_stock' };
+  if (state.runner.activeOrderId !== null && (state.runner.queue ?? []).length >= RUNNER_QUEUE_MAX) return { ok: false, reason: 'queue_full' };
   storageRemove(state, stock.property, stock.id, o.qty);
   o.status = 'runner';
   o.runnerProgress = 0;
@@ -93,6 +98,8 @@ export function runnerTripSeconds(property: string, locationId: string): number 
 
 export interface RunnerTickResult {
   completed?: { order: Order; earned: number; cut: number; unlocked: string[] };
+  /** The delivery went wrong: order failed, product gone, a little heat. */
+  mishap?: { order: Order };
   problem?: string;
 }
 
@@ -115,6 +122,12 @@ export function tickRunner(state: GameState, dtSeconds: number, rng: () => numbe
   const total = runnerTripSeconds(runnerPickupProperty(state, o.runnerFrom), o.locationId);
   o.runnerProgress = (o.runnerProgress ?? 0) + dtSeconds / total;
   if (o.runnerProgress < 1) return {};
+  if (rng() < RUNNER_MISHAP_CHANCE) {
+    o.status = 'failed';
+    r.activeOrderId = null;
+    state.heat = Math.min(100, state.heat + 10);
+    return { mishap: { order: o } };
+  }
   // delivered
   const earned = o.price;
   const cut = Math.round(earned * RUNNER_CUT);

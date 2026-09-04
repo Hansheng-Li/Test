@@ -86,8 +86,14 @@ export class PagerUI extends Panel {
       const actions = document.createElement('div');
       actions.className = 'actions';
       actions.appendChild(this.button('ACCEPT', () => { this.api.acceptOrder(o.id); this.render(); }, 'primary'));
-      if (!o.haggled) {
+      if (!o.haggled && st.stats.sales >= 2) {
         for (const m of [0.1, 0.2, 0.35]) actions.appendChild(this.button(`ASK +${Math.round(m * 100)}% ($${Math.round(o.price * (1 + m))})`, () => { this.api.haggle(o.id, m); this.render(); }, 'cyan'));
+      } else if (!o.haggled) {
+        const hint = document.createElement('span');
+        hint.className = 'desc';
+        hint.style.fontSize = '11px';
+        hint.textContent = 'haggling unlocks after 2 sales';
+        actions.appendChild(hint);
       }
       actions.appendChild(this.button('DECLINE', () => { this.api.declineOrder(o.id); this.render(); }));
       card.appendChild(actions);
