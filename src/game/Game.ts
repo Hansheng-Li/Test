@@ -803,7 +803,12 @@ export class Game implements GameAPI {
     }
 
     // hotbar selection
-    for (let i = 0; i < 8; i++) if (this.input.wasPressed('Digit' + (i + 1)) && !uiOpen) this.hud.selectedSlot = i;
+    for (let i = 0; i < 8; i++) {
+      if (this.input.wasPressed('Digit' + (i + 1)) && !uiOpen && this.hud.selectedSlot !== i) {
+        this.hud.selectedSlot = i;
+        this.audio.play('tick');
+      }
+    }
 
     // placement ghost
     if (this.placement) this.updatePlacement();
@@ -823,6 +828,7 @@ export class Game implements GameAPI {
         s.stats.lastDay = day;
         s.stats.earnedAtDayStart = s.stats.earned;
         s.stats.salesAtDayStart = s.stats.sales;
+        this.hud.flash(`DAY ${day}`, '#4ff2e8');
         if (sales > 0 || earned > 0) this.toast(`NEW DAY ${day}: yesterday you made $${earned} from ${sales} sales.`, 'pager', 7000);
         if (s.properties.includes('laundromat')) {
           s.cash += FRONT_DAILY_INCOME;
@@ -2068,10 +2074,24 @@ export class Game implements GameAPI {
     const clean = name.replace(/[<>]/g, '').trim().slice(0, 24).toUpperCase();
     if (!clean) return;
     this.state.crewName = clean;
-    this.audio.play('unlock');
+    this.audio.play('jingle_property');
     this.toast(`Your operation is now known as ${clean}.${this.state.properties.includes('warehouse') ? ' The sign on Warehouse 7 is lit.' : ''}`, 'cash', 5000);
     this.refreshCrewSign();
     this.save();
+    // the neon goes up: a short establishing shot of the sign (only once the warehouse is yours)
+    const sign = this.city.objects.find((x) => x.kind === 'crew_sign');
+    if (sign && this.state.properties.includes('warehouse')) {
+      if (this.openPanelId) this.closePanel();
+      const sp = sign.position;
+      this.hud.setVisible(false);
+      this.cutscene.play(
+        [{ from: [sp.x + 18, 3, sp.z + 14], to: [sp.x + 9, 4.2, sp.z + 3], lookFrom: [sp.x, sp.y, sp.z], dur: 4.5, text: clean, sub: 'WAREHOUSE 7 · SOL PALMA' }],
+        () => {
+          this.hud.setVisible(true);
+          this.input.requestLock();
+        },
+      );
+    }
   }
 
   private refreshCrewSign(): void {
