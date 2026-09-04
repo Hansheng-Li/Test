@@ -310,11 +310,14 @@ export function completeSale(state: GameState, orderId: number, now: number): Sa
   return { ok: true, earned, itemKey: item.key, onTime, unlocked, matchedPreference, trendHit, wonBack };
 }
 
+/** An accepted customer waits this long past the window (paying 30% less) before walking. */
+export const LATE_GRACE_MINUTES = 30;
+
 /** Expire stale orders; returns the ones that just expired. */
 export function expireOrders(state: GameState, now: number): Order[] {
   const expired: Order[] = [];
   for (const o of state.orders) {
-    if ((o.status === 'pending' || o.status === 'accepted') && now > o.windowEnd + (o.status === 'pending' ? -60 : 0)) {
+    if ((o.status === 'pending' || o.status === 'accepted') && now > o.windowEnd + (o.status === 'pending' ? -60 : LATE_GRACE_MINUTES)) {
       o.expiredFrom = o.status;
       o.status = 'expired';
       expired.push(o);

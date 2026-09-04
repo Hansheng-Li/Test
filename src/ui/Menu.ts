@@ -39,8 +39,8 @@ export class Menu {
       <div class="settings" style="display:none;min-width:360px;font-size:13px;color:#ddd;background:rgba(0,0,0,0.4);padding:12px 16px;border-radius:6px;border:1px solid #444"></div>
       <div class="howto" style="display:none;max-width:640px;font-size:13px;line-height:1.5;color:#ddd;background:rgba(0,0,0,0.4);padding:12px 16px;border-radius:6px;border:1px solid #444">
         <b style="color:#4ff2e8">THE LOOP</b> · Pager beeps → accept → buy supplies from Rico (docks) → PREP TABLE → PACKAGING → walk to the meeting spot → E to sell.<br/>
-        <b style="color:#4ff2e8">CUSTOMERS</b> · They walk around their home zone. Offer locked ones a free sample; sell to unlocked ones on the street. Better relationship = bigger orders, friends unlock.<br/>
-        <b style="color:#4ff2e8">PRODUCTS</b> · Base + up to 3 modifiers (order matters). Name your products. Watch the daily hot effect (+25%).<br/>
+        <b style="color:#4ff2e8">CUSTOMERS</b> · They walk around their home zone and carry limited cash (more as you get closer). Miss the window and they wait 30 min at 30% off, then leave. Offer locked ones a free sample; sell to unlocked ones on the street. Better relationship = bigger orders, friends unlock.<br/>
+        <b style="color:#4ff2e8">PRODUCTS</b> · Base + up to 3 modifiers (order matters). Name your products. Customers ask for the daily hot effect (+25%). Haggling (one try per order) unlocks after your second sale. News breaks twice a day.<br/>
         <b style="color:#4ff2e8">HEAT</b> · Cops who see a deal raise it. Break line of sight, go home, or rest. Clean hands survive a stop-and-search; contraband does not. Sprint has stamina — you cannot outrun a chase forever. Dumpsters in the alleys are hiding spots (E) — but only once the cop has lost sight of you.<br/>
         <b style="color:#4ff2e8">SCALE UP</b> · Pawn shop equipment → Dizzy the runner (motel) → Warehouse 7 (docks) → Marisol the worker (port) → Vince the dealer (arcade) → the '88 sedan (Rojas).<br/>
         <b style="color:#4ff2e8">KEYS</b> · E interact · TAB backpack · P pager · M map · N radio · B place equipment · F3 fps.

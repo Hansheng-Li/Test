@@ -73,8 +73,17 @@ describe('orders + customers', () => {
     const o = generateOrder(s, { now: s.clockMinutes, customerId: 'moe', simple: true, rng: seq([0.1]) })!;
     acceptOrder(s, o.id);
     expect(expireOrders(s, o.windowEnd - 1)).toHaveLength(0);
-    expect(expireOrders(s, o.windowEnd + 1)).toHaveLength(1);
-    expect(o.status).toBe('expired');
+    // a little late is still a sale, at 30% off; after the grace the customer walks
+    expect(expireOrders(s, o.windowEnd + 1)).toHaveLength(0);
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    addItem(s, 'pkg:SUNSET', o.qty);
+    const late = completeSale(s, o.id, o.windowEnd + 1);
+    expect(late.ok && !late.onTime).toBe(true);
+    expect(late.earned).toBe(Math.round(o.price * 0.7));
+    const o2 = generateOrder(s, { now: s.clockMinutes + 100, customerId: 'tasha', simple: true, rng: seq([0.1]) })!;
+    acceptOrder(s, o2.id);
+    expect(expireOrders(s, o2.windowEnd + 31)).toHaveLength(1);
+    expect(o2.status).toBe('expired');
   });
 });
 
