@@ -48,6 +48,7 @@ export class HUD {
       <div id="pager-notify"><div class="screen"></div><div class="hint">[Y] ACCEPT · [X] DECLINE · [P] PAGER</div></div>
       <div id="compass"><span class="arrow"></span><span class="label"></span></div>
       <div id="flash"></div>
+      <div id="radio"><div class="st"></div><div class="tr"></div><div class="dj"></div></div>
       <div id="vignette"></div>
       <div id="clickhint" style="display:none;position:absolute;left:50%;top:62%;transform:translateX(-50%);background:var(--panel);border:2px solid var(--cyan);padding:10px 18px;border-radius:6px;font-size:16px;letter-spacing:1px">CLICK TO CAPTURE THE MOUSE</div>`;
     parent.appendChild(this.root);
@@ -144,6 +145,10 @@ export class HUD {
       this.pagerTimer -= dt;
       if (this.pagerTimer <= 0) this.pagerEl.classList.remove('on');
     }
+    if (this.radioTimer > 0) {
+      this.radioTimer -= dt;
+      if (this.radioTimer <= 0) (this.root.querySelector('#radio .dj') as HTMLElement).classList.remove('show');
+    }
   }
 
   /** Direction + distance to the current target; angle is relative to the view (0 = straight ahead). */
@@ -156,6 +161,28 @@ export class HUD {
     el.style.display = 'flex';
     (el.querySelector('.arrow') as HTMLElement).style.transform = `rotate(${(angleRad * 180) / Math.PI}deg)`;
     (el.querySelector('.label') as HTMLElement).textContent = `${label} · ${Math.round(meters)}m`;
+  }
+
+  private radioTimer = 0;
+
+  /** Radio readout: station + track stay while it is on, the DJ line fades after a few seconds. */
+  setRadio(station: { name: string; freq: string; dj: string; color: string } | null, track: string, line: string | null): void {
+    const el = this.root.querySelector('#radio') as HTMLElement;
+    if (!station) {
+      el.classList.remove('on');
+      return;
+    }
+    el.classList.add('on');
+    el.style.borderColor = station.color;
+    (el.querySelector('.st') as HTMLElement).textContent = `${station.name} ${station.freq}`;
+    (el.querySelector('.st') as HTMLElement).style.color = station.color;
+    (el.querySelector('.tr') as HTMLElement).textContent = '♪ ' + track;
+    const dj = el.querySelector('.dj') as HTMLElement;
+    if (line) {
+      dj.textContent = line;
+      dj.classList.add('show');
+      this.radioTimer = 9;
+    }
   }
 
   /** Big centre-screen text for viewer-readable moments: SOLD +$68, BUSTED, NEW PROPERTY. */

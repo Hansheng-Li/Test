@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Input } from '../core/Input';
 import { loadSettings, saveSettings, Settings } from '../core/Settings';
+import { STATIONS } from '../audio/Radio';
 import { GameClock } from '../core/Time';
 import { PlayerController } from '../player/PlayerController';
 import { buildCity, CityResult } from '../world/City';
@@ -93,6 +94,8 @@ export class Game implements GameAPI {
   workerFigure: THREE.Group | null = null;
   vehicle: Vehicle | null = null;
   boomboxOn = false;
+  /** Car stereo stays on between rides unless you switch it off. */
+  carRadioOn = true;
   settings: Settings = loadSettings();
   driving = false;
   /** Hiding inside a dumpster: invisible to police, cannot move. */
@@ -173,6 +176,9 @@ export class Game implements GameAPI {
     this.applySetting('sensitivity', this.settings.sensitivity, false);
     this.applySetting('masterVolume', this.settings.masterVolume, false);
     this.applySetting('radioVolume', this.settings.radioVolume, false);
+    this.applySetting('radioStation', this.settings.radioStation, false);
+    this.audio.radio.onAir = (st, track, line) => this.hud.setRadio(st, track, line);
+    this.audio.radio.context = () => ({ heat: this.state.heat, night: this.clock.isNight, crewName: this.state.crewName, eventId: activeEvent(this.state)?.id ?? null, day: this.clock.day });
     window.addEventListener('beforeunload', () => this.save());
     this.hud.setVisible(false);
     this.debugEl = document.createElement('div');
@@ -247,12 +253,42 @@ export class Game implements GameAPI {
     if (key === 'sensitivity') this.player.sensitivity = 0.0022 * value;
     if (key === 'masterVolume') this.audio.setMasterVolume(value);
     if (key === 'radioVolume') this.audio.radio.setVolume(value);
+    if (key === 'radioStation') this.audio.radio.tune(value);
     if (!persist) return;
     if (this.settingsSaveTimer !== null) clearTimeout(this.settingsSaveTimer);
     this.settingsSaveTimer = window.setTimeout(() => {
       this.settingsSaveTimer = null;
       saveSettings(this.settings);
     }, 300);
+  }
+
+  /** N: off → station 1 → … → last station → off. Works for the walkman on foot and the car stereo. */
+  cycleRadio(): void {
+    this.audio.init();
+    const radio = this.audio.radio;
+    const on = this.driving ? this.carRadioOn : this.boomboxOn;
+    let nowOn: boolean;
+    if (!on) {
+      nowOn = true;
+      radio.tune(this.settings.radioStation);
+    } else if (radio.station >= STATIONS.length - 1) {
+      nowOn = false;
+    } else {
+      nowOn = true;
+      radio.next();
+      this.applySetting('radioStation', radio.station);
+    }
+    if (this.driving) this.carRadioOn = nowOn;
+    else this.boomboxOn = nowOn;
+    this.audio.play('switch');
+    if (!nowOn) {
+      radio.stop();
+      this.toast(this.driving ? 'Car stereo OFF' : 'Walkman OFF');
+    } else {
+      radio.start();
+      const st = radio.current;
+      this.toast(`${this.driving ? 'Car stereo' : 'Walkman'} · ${st.name} ${st.freq} (N: next station)`);
+    }
   }
 
   pause(): void {
@@ -654,10 +690,13 @@ export class Game implements GameAPI {
     this.audio.update(dt, { club: Math.max(0, 1 - dClub / 45), beach: Math.max(0, Math.min(1, (this.player.position.x - 140) / 40)), night: this.clock.isNight });
 
     // radio: car stereo while driving, walkman when toggled
-    const wantRadio = this.driving || this.boomboxOn;
+    const wantRadio = this.driving ? this.carRadioOn : this.boomboxOn;
     if (wantRadio && !this.audio.radio.playing) this.audio.radio.start();
     if (!wantRadio && this.audio.radio.playing) this.audio.radio.stop();
-    if (this.audio.radio.playing) this.audio.radio.setLevel(this.driving ? 1 : 0.7);
+    if (this.audio.radio.playing) {
+      this.audio.radio.setLevel(this.driving ? 1 : 0.7);
+      this.audio.radio.update(this.uiDt);
+    }
     // dancers + beach night crowd only at night
     const night = this.clock.isNight;
     for (const c of this.nightCrowd) {
@@ -695,7 +734,7 @@ export class Game implements GameAPI {
     if (this.milestoneTimer <= 0) {
       this.milestoneTimer = 2;
       for (const m of checkMilestones(s)) {
-        this.audio.play('unlock');
+        this.audio.play('jingle_goal');
         this.toast(`GOAL: ${m.title} — +$${m.reward}. (${m.hint})`, 'cash', 6000);
       }
       const day = this.clock.day;
@@ -836,7 +875,7 @@ export class Game implements GameAPI {
     if (!acceptOrder(this.state, id)) return;
     const o = this.state.orders.find((x) => x.id === id)!;
     this.spawnCustomerFor(o);
-    this.audio.play('click');
+    this.audio.play('confirm');
     this.toast(`Accepted. Meet ${CUSTOMER_MAP[o.customerId].name.split(' ')[0]} at ${landmarkName(o.locationId)}.`);
   }
 
@@ -974,7 +1013,7 @@ export class Game implements GameAPI {
       if (!r.ok) return;
       w.say(r.line!, r.unlocked ? '#7dff9a' : '#ffd166', 4);
       if (r.unlocked) {
-        this.audio.play('unlock');
+        this.audio.play('jingle_customer');
         this.toast(`NEW CUSTOMER: ${def.name} liked the sample${r.matched ? '' : ' (eventually)'}. They will start paging you.`, 'pager', 6000);
         w.setUnlocked(true);
         const eff = r.matched ? def.prefEffects[0] : null;
@@ -1122,7 +1161,7 @@ export class Game implements GameAPI {
   private announceUnlock(id: string): void {
     const c = CUSTOMER_MAP[id];
     if (!c) return;
-    this.audio.play('unlock');
+    this.audio.play('jingle_customer');
     this.toast(`NEW CUSTOMER: ${c.name} (${c.personality}) heard about you from ${CUSTOMER_MAP[c.introducedBy ?? '']?.name.split(' ')[0] ?? 'a friend'}.`, 'pager', 6000);
   }
 
@@ -1147,12 +1186,14 @@ export class Game implements GameAPI {
     this.expectUnlock = true;
     this.input.releaseLock();
     this.panels[id].open();
+    this.audio.play('open');
   }
 
   closePanel(): void {
     if (!this.openPanelId) return;
     this.panels[this.openPanelId].close();
     this.openPanelId = null;
+    this.audio.play('close');
     this.inventoryUI.storageProperty = null;
     this.input.uiCaptured = false;
     this.input.requestLock();
@@ -1264,7 +1305,7 @@ export class Game implements GameAPI {
   dealerCollect(): number {
     const n = collectDealerCash(this.state);
     if (n > 0) {
-      this.audio.play('cash');
+      this.audio.play('collect');
       this.toast(`Collected $${n} from Vince.`, 'cash');
       this.save();
     }
@@ -1375,7 +1416,7 @@ export class Game implements GameAPI {
     spendCash(s, WAREHOUSE_PRICE);
     s.properties.push('warehouse');
     s.storage.warehouse = s.storage.warehouse ?? [];
-    this.audio.play('unlock');
+    this.audio.play('jingle_property');
     this.hud.flash('WAREHOUSE 7 IS YOURS', '#ffd166');
     this.toast('YOU OWN WAREHOUSE 7. Buy station kits at the pawn shop and place them inside (walk in with a kit, press B).', 'cash', 8000);
     if (!s.crewName) this.toast('Name your operation at the fax/ledger in your back room — it goes up in neon on the warehouse.', 'info', 7000);
@@ -1487,7 +1528,7 @@ export class Game implements GameAPI {
     this.player.pitch = 0.5;
     this.hud.hiddenMode = true;
     this.hideLineTimer = 1.5;
-    this.audio.play('bump');
+    this.audio.play('thud');
     this.toast(this.state.heat >= 20 ? 'You are in a dumpster. Cops cannot see you here. It smells like 1994.' : 'You are in a dumpster for no reason. Respect.', 'info', 4000);
     for (const p of this.police) if (p.pstate === 'CHASE' || p.pstate === 'APPROACH') p.say('Where did he go?!', '#9ecbff', 2.5);
   }
@@ -1511,7 +1552,7 @@ export class Game implements GameAPI {
     this.hud.hiddenMode = false;
     this.player.teleport(h.exitX, 0.3, h.exitZ, this.player.yaw);
     this.player.pitch = 0;
-    this.audio.play('bump');
+    this.audio.play('thud');
     this.state.flags.hidDumpster = true;
   }
 
@@ -1550,7 +1591,7 @@ export class Game implements GameAPI {
     if (!this.confirmTwice('front', `Buy Lucky Laundromat for $${FRONT_PRICE}? +$${FRONT_DAILY_INCOME}/day clean income and suspicion drops ${FRONT_DAILY_SUSPICION}/day`)) return;
     spendCash(s, FRONT_PRICE);
     s.properties.push('laundromat');
-    this.audio.play('unlock');
+    this.audio.play('jingle_property');
     this.toast('You are now a legitimate businessman. Allegedly. The laundromat pays out every morning and cools your reputation.', 'cash', 8000);
     const sign = this.city.objects.find((o) => o.kind === 'front_sign');
     if (sign) sign.mesh.visible = false;
@@ -1569,7 +1610,7 @@ export class Game implements GameAPI {
     spendCash(s, MOTEL_PRICE);
     s.properties.push('motel');
     s.storage.motel = s.storage.motel ?? [];
-    this.audio.play('unlock');
+    this.audio.play('jingle_property');
     this.toast('Room 6 is yours: a stash by the beach strip, a bed to rest in, and no cops inside.', 'cash', 7000);
     const sign = this.city.objects.find((o) => o.kind === 'motel_sign');
     if (sign) sign.mesh.visible = false;
@@ -1587,7 +1628,7 @@ export class Game implements GameAPI {
     if (!this.confirmTwice('car', `Buy the '88 sedan for $${VEHICLE_PRICE}? Cross town in seconds, drive-by deliveries`)) return;
     spendCash(s, VEHICLE_PRICE);
     s.vehicle = { owned: true, x: CAR_SALE_SPOT.x, z: CAR_SALE_SPOT.z + 4, yaw: CAR_SALE_SPOT.yaw };
-    this.audio.play('unlock');
+    this.audio.play('jingle_property');
     this.toast("You own a car. W/S drive · A/D steer · SHIFT brake · SPACE horn · E get out. It saves where you leave it.", 'cash', 8000);
     this.syncVehicle();
     this.save();
@@ -1598,7 +1639,7 @@ export class Game implements GameAPI {
     this.driving = true;
     this.player.pitch = 0;
     this.player.yaw = this.vehicle.cameraYaw;
-    this.audio.play('click');
+    this.audio.play('door');
     this.cancelPlacement();
   }
 
@@ -1606,6 +1647,7 @@ export class Game implements GameAPI {
     if (!this.vehicle || !this.driving) return;
     if (Math.abs(this.vehicle.speed) > 1) return;
     this.driving = false;
+    this.audio.play('door');
     const spot = this.vehicle.exitSpot();
     this.player.teleport(spot.x, this.vehicle.position.y + 0.3, spot.z, this.vehicle.cameraYaw);
     this.state.vehicle = { owned: true, x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw };
@@ -1754,7 +1796,7 @@ export class Game implements GameAPI {
     }
     this.arrested = true;
     this.arrestTimer = 3.2;
-    this.audio.play('arrest');
+    this.audio.play('jingle_bust');
     this.hud.arrestMode = true;
     this.hud.flash('BUSTED', '#7fbfff');
     const r = applyArrest(this.state);
@@ -2008,9 +2050,7 @@ export class Game implements GameAPI {
         break;
       }
       case 'KeyN':
-        this.boomboxOn = !this.boomboxOn;
-        this.audio.init();
-        this.toast(this.boomboxOn ? 'Walkman ON · SOL PALMA FM (press N to stop)' : 'Walkman OFF');
+        this.cycleRadio();
         break;
       case 'Escape':
         if (this.placement) this.cancelPlacement();

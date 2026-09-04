@@ -289,7 +289,7 @@ export class PackUI extends Panel {
     this.queue = st.upgrades.includes('eq_sealer') ? can : 1;
     this.sealing = true;
     this.cooldown = packagingPerUnitSeconds(st);
-    this.api.sfx('seal');
+    this.api.sfx('bag');
   }
 
   onKey(code: string): boolean {
@@ -314,7 +314,7 @@ export class PackUI extends Panel {
       this.queue--;
       if (this.queue > 0) {
         this.cooldown = packagingPerUnitSeconds(this.api.state);
-        this.api.sfx('seal');
+        this.api.sfx('bag');
       } else {
         this.sealing = false;
         this.api.toast(`Packaged ${recipeDisplayName(this.api.state, this.key!)}.`);

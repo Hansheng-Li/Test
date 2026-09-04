@@ -1,6 +1,30 @@
 import { Radio } from './Radio';
 
-export type SfxName = 'pager' | 'cash' | 'click' | 'error' | 'siren' | 'seal' | 'mix' | 'arrest' | 'unlock' | 'step' | 'horn' | 'bump';
+export type SfxName = 'pager' | 'cash' | 'click' | 'error' | 'siren' | 'seal' | 'mix' | 'arrest' | 'unlock' | 'step' | 'horn' | 'bump' | 'thud' | 'open' | 'close' | 'confirm' | 'collect' | 'door' | 'bag' | 'page' | 'jingle_goal' | 'jingle_customer' | 'jingle_bust' | 'jingle_property' | 'jingle_intro' | 'switch' | 'tick';
+
+/** CC0 sample files (see public/assets/LICENSES.md). Missing files fall back to the synth versions. */
+const SAMPLES: Partial<Record<SfxName, { files: string[]; gain: number; synthFallback?: SfxName }>> = {
+  step: { files: ['step_0', 'step_1', 'step_2', 'step_3'], gain: 0.35 },
+  cash: { files: ['cash', 'cash2'], gain: 0.7 },
+  collect: { files: ['collect'], gain: 0.7, synthFallback: 'cash' },
+  bump: { files: ['bump'], gain: 0.6 },
+  thud: { files: ['thud'], gain: 0.6, synthFallback: 'bump' },
+  click: { files: ['ui_click'], gain: 0.35 },
+  confirm: { files: ['ui_confirm'], gain: 0.5, synthFallback: 'click' },
+  error: { files: ['ui_error'], gain: 0.5 },
+  open: { files: ['ui_open'], gain: 0.4, synthFallback: 'click' },
+  close: { files: ['ui_close'], gain: 0.4, synthFallback: 'click' },
+  switch: { files: ['ui_switch'], gain: 0.4, synthFallback: 'click' },
+  tick: { files: ['ui_tick'], gain: 0.3, synthFallback: 'click' },
+  door: { files: ['door_open', 'door_close'], gain: 0.6, synthFallback: 'click' },
+  bag: { files: ['bag'], gain: 0.6, synthFallback: 'seal' },
+  page: { files: ['page'], gain: 0.5, synthFallback: 'click' },
+  jingle_goal: { files: ['jingle_goal'], gain: 0.5, synthFallback: 'unlock' },
+  jingle_customer: { files: ['jingle_customer'], gain: 0.5, synthFallback: 'unlock' },
+  jingle_bust: { files: ['jingle_bust'], gain: 0.55, synthFallback: 'arrest' },
+  jingle_property: { files: ['jingle_property'], gain: 0.5, synthFallback: 'unlock' },
+  jingle_intro: { files: ['jingle_intro'], gain: 0.45, synthFallback: 'unlock' },
+};
 
 /**
  * Procedural WebAudio sound effects and an ambient bed. No external assets.
@@ -18,6 +42,10 @@ export class AudioSystem {
   masterVolume = 0.5;
   private lastSfx = new Map<string, number>();
   radio = new Radio();
+  private buffers = new Map<string, AudioBuffer | null>();
+  private loading = new Set<string>();
+  /** Set false to force the procedural sounds (tests / offline). */
+  useSamples = true;
 
   init(): void {
     if (this.ctx) return;
@@ -28,6 +56,7 @@ export class AudioSystem {
       this.master.connect(this.ctx.destination);
       this.startAmbient();
       this.radio.attach(this.ctx, this.master);
+      this.preload();
     } catch {
       this.ctx = null;
     }
@@ -123,6 +152,53 @@ export class AudioSystem {
     this.tone(base * 1.1, 0.22, 0.14, 'sine', 0.04 * vol, base * 0.8);
   }
 
+  /** Warm the sample cache so the first footstep is not silent. */
+  preload(names: SfxName[] = ['step', 'cash', 'click', 'confirm', 'error', 'open', 'close', 'bump']): void {
+    for (const n of names) {
+      const def = SAMPLES[n];
+      if (def) for (const f of def.files) void this.loadBuffer(f);
+    }
+  }
+
+  private async loadBuffer(file: string): Promise<AudioBuffer | null> {
+    if (this.buffers.has(file)) return this.buffers.get(file)!;
+    if (this.loading.has(file) || !this.ctx) return null;
+    this.loading.add(file);
+    try {
+      const res = await fetch(`/assets/audio/${file}.ogg`);
+      if (!res.ok) throw new Error(String(res.status));
+      const buf = await this.ctx.decodeAudioData(await res.arrayBuffer());
+      this.buffers.set(file, buf);
+      return buf;
+    } catch {
+      this.buffers.set(file, null);
+      return null;
+    } finally {
+      this.loading.delete(file);
+    }
+  }
+
+  /** Try a CC0 sample; returns false when it is unavailable so the synth version can run instead. */
+  private playSample(name: SfxName): boolean {
+    const def = SAMPLES[name];
+    if (!def || !this.useSamples || !this.ctx || !this.master) return false;
+    const file = def.files[Math.floor(Math.random() * def.files.length)];
+    const buf = this.buffers.get(file);
+    if (buf === undefined) {
+      void this.loadBuffer(file);
+      return false;
+    }
+    if (!buf) return false;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = name === 'step' ? 0.92 + Math.random() * 0.16 : 1;
+    const g = this.ctx.createGain();
+    g.gain.value = def.gain;
+    src.connect(g).connect(this.master);
+    src.start();
+    return true;
+  }
+
   play(name: SfxName): void {
     if (!this.enabled) return;
     this.init();
@@ -132,6 +208,9 @@ export class AudioSystem {
     const last = this.lastSfx.get(name) ?? 0;
     if (t - last < 60) return;
     this.lastSfx.set(name, t);
+    if (this.playSample(name)) return;
+    const fallback = SAMPLES[name]?.synthFallback;
+    if (fallback) name = fallback;
     switch (name) {
       case 'pager':
         // the signature beep: three double-chirps
@@ -181,6 +260,8 @@ export class AudioSystem {
         break;
       case 'bump':
         this.tone(70, 0, 0.18, 'sawtooth', 0.2, 40);
+        break;
+      default:
         break;
     }
   }

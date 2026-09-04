@@ -40,7 +40,7 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | `M` | Paper map of Sol Palma |
 | `1`–`8` | Select hotbar slot |
 | `B` | Place equipment (inside your warehouse, with a station kit in your backpack) |
-| `N` | Walkman on/off (original procedural synth radio, also plays in the car) |
+| `N` | Radio: cycles SOL PALMA FM → THE WAVE → FUNK CITY → SIGNAL ZERO → off (walkman on foot, car stereo while driving) |
 | `H` | Hide/show the HUD (screenshot mode) |
 
 A compass at the top of the screen points at the current target (the waiting customer, Rico when you need
@@ -135,7 +135,7 @@ src/
                           Inventory, Economy, Production, Customer, Order, Heat, Runner, Save, Interaction
   ui/                     DOM/CSS HUD, pager, backpack/storage, shops, prep & packaging stations, map, menu
   data/                   items & shops, product chemistry, customers, city layout
-  audio/                  WebAudio-synthesised pager beep, cash, siren, ambience, club bass
+  audio/                  WebAudio sfx (CC0 samples with synth fallbacks), ambience, 4-station radio with DJ chatter
 tests/                    Vitest behavioural tests for the systems
 e2e/                      Playwright smoke test
 ```
@@ -171,8 +171,13 @@ Design rules that shaped the code:
   automatic corner sales and shakedown events.
 - Daily trend bonus, daily world events (crackdown / shortage / club night), pedestrian gossip about
   your named products, 14 milestone goals with rewards, morning summaries.
-- Drivable arcade sedan with horn, headlights and persisted parking spot; procedural synth radio.
-- Accelerated day/night with neon, lit windows, lamp pool, fog and sunset tint; procedural audio.
+- Drivable arcade sedan with horn, headlights and persisted parking spot.
+- GTA-style radio: three CC0 music stations plus a procedural pirate synth loop, each with its own DJ,
+  fake 1996 commercials for in-game businesses and topical lines (police heat, world events); stations
+  keep running while you are tuned elsewhere and the last station is remembered.
+- CC0 sample sound effects (Kenney) for footsteps, cash, UI, doors, jingles for goals/customers/busts,
+  with the original procedural synth sounds as fallback when a file is missing.
+- Accelerated day/night with neon, lit windows, lamp pool, fog and sunset tint.
 - localStorage save/load with validation and repair of partial saves.
 - 56 Vitest tests covering behavioural contracts + Playwright smoke and core-loop tests.
 
@@ -216,5 +221,8 @@ and multi-worker warehouses; 3. richer NPC schedules (customers at work/home/clu
 
 ## Licensing
 
-All code and generated assets in this repository are original. No third-party art, audio or fonts are used
-beyond system fonts.
+All code, textures and world geometry in this repository are original. The only third-party content is in
+`public/assets/` and every file there is CC0 1.0 (public domain): Kenney sound effects and music jingles,
+and music by HoliznaCC0, Komiku and Loyalty Freak Music. The full per-file attribution table is in
+[`public/assets/LICENSES.md`](public/assets/LICENSES.md). None of these files is required: if they are
+missing the game falls back to the procedural sounds and the synth radio loop.

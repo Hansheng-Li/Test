@@ -1,153 +1,351 @@
+import { SynthLoop } from './SynthLoop';
+
+export interface Track {
+  file: string;
+  title: string;
+  artist: string;
+  /** Seconds; known up front so a station keeps "playing" while you are tuned elsewhere. */
+  dur: number;
+}
+
+export interface Station {
+  id: string;
+  name: string;
+  freq: string;
+  dj: string;
+  /** Lines the DJ says between tracks. {crew} = the player's operation, {zone} = a district. */
+  lines: string[];
+  tracks: Track[];
+  /** Procedural station: no files, the synth loop plays instead. */
+  synth?: boolean;
+  color: string;
+}
+
+/** Everything the radio is allowed to know about the game, for topical chatter. */
+export interface RadioContext {
+  heat: number;
+  night: boolean;
+  crewName: string;
+  eventId: string | null;
+  day: number;
+}
+
+/** All music is CC0 — see public/assets/LICENSES.md. Files live in public/assets/music. */
+export const STATIONS: Station[] = [
+  {
+    id: 'solpalma',
+    name: 'SOL PALMA FM',
+    freq: '101.5',
+    dj: 'Rico Delgado',
+    color: '#ff4fd8',
+    lines: [
+      "Rico Delgado with you till sunrise. Windows down, volume up, Sol Palma.",
+      'That was for everybody stuck on the Causeway bridge right now. We see you.',
+      "It's 1996 and the city still smells like sunscreen and gasoline. Stay with me.",
+      'Neon on the Marina strip is looking extra pink tonight. Somebody paid the power bill.',
+      'Requests on the hotline, we lost the number, keep listening anyway.',
+      'Word on the boardwalk is {crew} is the name on everybody lips. Not that I know anything.',
+      "Traffic: heavy police presence around {zone} tonight. Take the long way, kids.",
+      'This next one goes out to the night shift at the Neptune Arcade.',
+    ],
+    tracks: [
+      { file: 'holizna_back_in_the_80s', title: 'Back In The 80s', artist: 'HoliznaCC0', dur: 240 },
+      { file: 'holizna_night_driving', title: 'Night Driving', artist: 'HoliznaCC0', dur: 131 },
+      { file: 'holizna_retro_synths', title: 'Retro Synths', artist: 'HoliznaCC0', dur: 223 },
+    ],
+  },
+  {
+    id: 'wave',
+    name: 'THE WAVE',
+    freq: '96.3',
+    dj: 'Marina Costa',
+    color: '#4fe3ff',
+    lines: [
+      "Marina Costa, The Wave 96.3, the sound of the shoreline. Feet in the sand, please.",
+      'Tide is coming in at the pier. Bring a towel, leave the worries.',
+      "Ocean View Motel says the ice machine works again. That's the news.",
+      'Slow it down. Nobody in Sol Palma is in a hurry except the guys in the sedans.',
+      'A shout to whoever left the boombox on the beach. Good taste, bad memory.',
+      'Sunset is at 7:41 tonight. Be somewhere nice for it.',
+      'Lifeguards remind you: no glass on the beach, no arguments on the pier.',
+    ],
+    tracks: [
+      { file: 'komiku_sunset_on_the_beach', title: 'Sunset On The Beach', artist: 'Komiku', dur: 80 },
+      { file: 'holizna_city_lights', title: 'City Lights', artist: 'HoliznaCC0', dur: 277 },
+      { file: 'komiku_beach', title: 'Beach', artist: 'Komiku', dur: 64 },
+    ],
+  },
+  {
+    id: 'funk',
+    name: 'FUNK CITY',
+    freq: '105.1',
+    dj: 'Big Lou',
+    color: '#ffd166',
+    lines: [
+      "Big Lou on Funk City 105. If your neighbors can't hear this, you're doing it wrong.",
+      'Neon Flamingo Club is open late tonight. Dress code: sunglasses indoors.',
+      'This one is for the bartender at the Flamingo who never counts his tips wrong.',
+      "Hot night in Sol Palma. The cops are out, the kids are out, everybody's out.",
+      'Somebody just double-parked a purple van outside the studio. Respect.',
+      'Rumor has it {crew} throws the best parties on the strip. I am not invited.',
+      'Keep the bass low if you see blue lights in {zone}. Or do not. I am a DJ, not a lawyer.',
+    ],
+    tracks: [
+      { file: 'holizna_make_funk', title: 'Make Funk', artist: 'HoliznaCC0', dur: 163 },
+      { file: 'loyaltyfreak_chillin_at_the_club', title: "Chillin' At The Club", artist: 'Loyalty Freak Music', dur: 223 },
+      { file: 'holizna_night_life', title: 'Night Life', artist: 'HoliznaCC0', dur: 224 },
+    ],
+  },
+  {
+    id: 'signalzero',
+    name: 'SIGNAL ZERO',
+    freq: '88.1',
+    dj: '???',
+    color: '#7dff9a',
+    synth: true,
+    lines: [
+      'You are listening to a signal that does not exist. Do not adjust your set.',
+      'Pirate broadcast from a van somewhere in the Industrial district. Keep it quiet.',
+      'No ads, no DJ, no license. Just the loop.',
+      'If the police ask, you never heard this frequency.',
+    ],
+    tracks: [{ file: '', title: 'Untitled Loop', artist: 'Signal Zero', dur: 90 }],
+  },
+];
+
+/** Fake 1996 spots for the businesses you can actually visit in the game. */
+export const ADS: string[] = [
+  "Pelican Pawn: we buy gold, we buy watches, we ask no questions. Corner of 3rd and Marina.",
+  "Sunny's Corner Store, open twenty-four hours because sleep is for the rich. Baggies, batteries, boiled peanuts.",
+  "Neon Flamingo Club. Ladies free before ten. Everybody else, five dollars and a smile.",
+  "Ocean View Motel, room by the hour, day or week. Now with a working ice machine.",
+  "Lucky Laundromat: your whites come out white and your questions come out answered. Cash only.",
+  "Gulf Auto: the '88 sedan. Eight cylinders of pure Sol Palma. Financing available, references not.",
+  "Neptune Arcade. Two-for-one tokens on Tuesdays. Adults welcome, nobody checks.",
+  "Marina Fish Market: fresh off the boat, or at least fresh off a boat.",
+  "Salt Water Pharmacy: aspirin, sunscreen, and everything behind the counter you did not ask about.",
+];
+
+const ZONES = ['the Marina', 'Downtown', 'the Boardwalk', 'the Industrial district', 'Palm Heights'];
+
 /**
- * Procedural "SOL PALMA FM": an original synth loop built from oscillators — a
- * pulsing bass, a triangle arpeggio, a soft pad and a noise-based drum kit.
- * Nothing sampled, nothing copyrighted. Scheduled ahead with the WebAudio clock.
+ * GTA-style radio: several stations with their own DJ, playlist and chatter. Stations keep
+ * running while you are tuned elsewhere, so switching back lands you mid-song. Music is played
+ * through an HTMLAudioElement routed into the WebAudio master gain so the volume sliders apply.
  */
 export class Radio {
   private ctx: AudioContext | null = null;
   private out: GainNode | null = null;
-  private nextBeat = 0;
-  private beat = 0;
-  private timer: number | null = null;
+  private el: HTMLAudioElement | null = null;
+  private synth = new SynthLoop();
   playing = false;
   volume = 0.35;
-  private noiseBuf: AudioBuffer | null = null;
-  /** Chord progression in semitones from A (A minor / F / C / G — a familiar 90s loop). */
-  private chords = [
-    [0, 3, 7], // Am
-    [-4, 0, 3], // F
-    [3, 7, 10], // C
-    [-2, 2, 5], // G
-  ];
+  private level = 1;
+  station = 0;
+  /** Playlist position per station (seconds into the whole playlist) + when we last saw it. */
+  private pos: number[] = STATIONS.map((_, i) => (i * 97) % 200);
+  private leftAt: number[] = STATIONS.map(() => performance.now());
+  private trackIndex = 0;
+  private synthFallback = false;
+  private chatterTimer = 0;
+  private lineIndex: number[] = STATIONS.map(() => 0);
+  private adIndex = 0;
+  private lastText = '';
+  /** HUD hook: station label, track label (null while off), a transient DJ/ad line. */
+  onAir: ((station: Station | null, track: string, line: string | null) => void) | null = null;
+  context: (() => RadioContext) | null = null;
 
   attach(ctx: AudioContext, master: AudioNode): void {
     this.ctx = ctx;
     this.out = ctx.createGain();
     this.out.gain.value = 0;
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = 3200;
-    this.out.connect(lp).connect(master);
-    const len = ctx.sampleRate;
-    this.noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const d = this.noiseBuf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    this.out.connect(master);
+    this.synth.attach(ctx, this.out);
+    this.synth.volume = 1;
+    try {
+      this.el = new Audio();
+      this.el.preload = 'auto';
+      this.el.crossOrigin = 'anonymous';
+      const node = ctx.createMediaElementSource(this.el);
+      node.connect(this.out);
+      this.el.addEventListener('ended', () => this.advance());
+      this.el.addEventListener('error', () => this.onError());
+    } catch {
+      this.el = null;
+    }
+  }
+
+  get current(): Station {
+    return STATIONS[this.station];
+  }
+
+  nowPlaying(): { station: Station; track: Track } {
+    const st = this.current;
+    return { station: st, track: st.tracks[this.trackIndex % st.tracks.length] };
   }
 
   start(): void {
     if (!this.ctx || !this.out || this.playing) return;
     this.playing = true;
-    this.out.gain.setTargetAtTime(this.volume, this.ctx.currentTime, 0.4);
-    this.nextBeat = this.ctx.currentTime + 0.1;
-    this.beat = 0;
-    this.schedule();
+    this.out.gain.setTargetAtTime(this.volume * this.level, this.ctx.currentTime, 0.3);
+    this.tuneIn(true);
   }
 
   stop(): void {
     if (!this.ctx || !this.out) return;
+    if (!this.playing) return;
     this.playing = false;
-    this.out.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3);
-    if (this.timer !== null) {
-      clearTimeout(this.timer);
-      this.timer = null;
-    }
+    this.rememberPos();
+    this.out.gain.setTargetAtTime(0, this.ctx.currentTime, 0.2);
+    this.synth.stop();
+    if (this.el) this.el.pause();
+    this.onAir?.(null, '', null);
+  }
+
+  /** Switch station (wraps). Returns the new station. */
+  tune(index: number): Station {
+    const next = ((index % STATIONS.length) + STATIONS.length) % STATIONS.length;
+    if (next === this.station && this.playing) return this.current;
+    if (this.playing) this.rememberPos();
+    this.station = next;
+    if (this.playing) this.tuneIn(true);
+    return this.current;
+  }
+
+  next(): Station {
+    return this.tune(this.station + 1);
   }
 
   setVolume(v: number): void {
     this.volume = v;
-    if (this.ctx && this.out && this.playing) this.out.gain.setTargetAtTime(v, this.ctx.currentTime, 0.2);
+    if (this.ctx && this.out && this.playing) this.out.gain.setTargetAtTime(v * this.level, this.ctx.currentTime, 0.2);
   }
 
-  /** 0..1 loudness (used for distance falloff). */
+  /** 0..1 loudness (car stereo vs. walkman). */
   setLevel(level: number): void {
+    this.level = level;
     if (!this.ctx || !this.out || !this.playing) return;
     this.out.gain.setTargetAtTime(this.volume * level, this.ctx.currentTime, 0.2);
   }
 
-  private freq(semi: number, octave = 0): number {
-    return 220 * Math.pow(2, semi / 12 + octave);
-  }
-
-  private schedule(): void {
-    if (!this.ctx || !this.playing) return;
-    const bpm = 112;
-    const step = 60 / bpm / 2; // eighth notes
-    while (this.nextBeat < this.ctx.currentTime + 0.5) {
-      this.playStep(this.beat, this.nextBeat, step);
-      this.nextBeat += step;
-      this.beat++;
+  /** Drives the DJ chatter. Call once per frame with the real (uncapped) dt. */
+  update(dt: number): void {
+    if (!this.playing) return;
+    this.chatterTimer -= dt;
+    if (this.chatterTimer <= 0) {
+      this.chatterTimer = 50 + Math.random() * 40;
+      this.say(Math.random() < 0.4 && !this.current.synth ? this.nextAd() : this.nextLine());
     }
-    this.timer = window.setTimeout(() => this.schedule(), 120);
   }
 
-  private playStep(i: number, t: number, step: number): void {
-    const bar = Math.floor(i / 8) % 4;
-    const chord = this.chords[bar];
-    const inBar = i % 8;
-    // kick on 1 and 3 (eighths 0 and 4), snare on 2 and 4
-    if (inBar === 0 || inBar === 4) this.kick(t);
-    if (inBar === 2 || inBar === 6) this.snare(t);
-    if (inBar % 2 === 1) this.hat(t);
-    // bass: root eighths, octave down
-    this.tone(this.freq(chord[0], -1), t, step * 0.9, 'sawtooth', 0.11, 600);
-    // arpeggio: cycle chord tones up an octave
-    const arpNote = chord[i % 3];
-    this.tone(this.freq(arpNote, 1), t, step * 0.6, 'triangle', 0.07, 4000);
-    // pad on beat 1 of each bar
-    if (inBar === 0) for (const n of chord) this.tone(this.freq(n, 0), t, step * 8, 'sine', 0.035, 1200);
+  private totalDur(st: Station): number {
+    return st.tracks.reduce((a, t) => a + t.dur, 0);
   }
 
-  private tone(freq: number, t: number, dur: number, type: OscillatorType, gain: number, cutoff: number): void {
-    const ctx = this.ctx!;
-    const o = ctx.createOscillator();
-    o.type = type;
-    o.frequency.value = freq;
-    const f = ctx.createBiquadFilter();
-    f.type = 'lowpass';
-    f.frequency.value = cutoff;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(gain, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(f).connect(g).connect(this.out!);
-    o.start(t);
-    o.stop(t + dur + 0.05);
+  private rememberPos(): void {
+    const st = this.current;
+    let elapsed = 0;
+    for (let i = 0; i < this.trackIndex; i++) elapsed += st.tracks[i].dur;
+    elapsed += this.el && !st.synth && !this.synthFallback ? this.el.currentTime : 0;
+    this.pos[this.station] = elapsed % this.totalDur(st);
+    this.leftAt[this.station] = performance.now();
   }
 
-  private kick(t: number): void {
-    const ctx = this.ctx!;
-    const o = ctx.createOscillator();
-    o.type = 'sine';
-    o.frequency.setValueAtTime(140, t);
-    o.frequency.exponentialRampToValueAtTime(40, t + 0.18);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.5, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-    o.connect(g).connect(this.out!);
-    o.start(t);
-    o.stop(t + 0.3);
+  /** Resume the station where it "would be" now. */
+  private tuneIn(announce: boolean): void {
+    const st = this.current;
+    const total = this.totalDur(st);
+    const away = (performance.now() - this.leftAt[this.station]) / 1000;
+    let p = (this.pos[this.station] + away) % total;
+    this.trackIndex = 0;
+    while (p >= st.tracks[this.trackIndex].dur) {
+      p -= st.tracks[this.trackIndex].dur;
+      this.trackIndex++;
+    }
+    this.synthFallback = false;
+    this.playTrack(p);
+    this.chatterTimer = announce ? 3 : 20;
+    if (announce) this.announce();
   }
 
-  private noise(t: number, dur: number, gain: number, hp: number): void {
-    const ctx = this.ctx!;
-    const src = ctx.createBufferSource();
-    src.buffer = this.noiseBuf!;
-    const f = ctx.createBiquadFilter();
-    f.type = 'highpass';
-    f.frequency.value = hp;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(gain, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    src.connect(f).connect(g).connect(this.out!);
-    src.start(t);
-    src.stop(t + dur + 0.02);
+  private playTrack(offset: number): void {
+    const st = this.current;
+    const track = st.tracks[this.trackIndex];
+    if (st.synth || !this.el) {
+      if (this.el) this.el.pause();
+      this.synth.start();
+      return;
+    }
+    this.synth.stop();
+    const el = this.el;
+    el.src = `/assets/music/${track.file}.ogg`;
+    const seek = (): void => {
+      try {
+        if (offset > 1 && offset < (Number.isFinite(el.duration) ? el.duration : track.dur) - 2) el.currentTime = offset;
+      } catch {
+        /* not seekable yet */
+      }
+    };
+    el.addEventListener('loadedmetadata', seek, { once: true });
+    void el.play().catch(() => this.onError());
   }
 
-  private snare(t: number): void {
-    this.noise(t, 0.14, 0.22, 1800);
+  private onError(): void {
+    // file missing or blocked: keep the station identity, play the synth loop instead
+    if (!this.playing || this.synthFallback) return;
+    this.synthFallback = true;
+    if (this.el) this.el.pause();
+    this.synth.start();
   }
 
-  private hat(t: number): void {
-    this.noise(t, 0.05, 0.08, 6000);
+  private advance(): void {
+    if (!this.playing) return;
+    const st = this.current;
+    this.trackIndex = (this.trackIndex + 1) % st.tracks.length;
+    this.playTrack(0);
+    this.announce();
+    this.chatterTimer = 45 + Math.random() * 45;
+  }
+
+  private announce(): void {
+    this.say(this.nextLine());
+  }
+
+  private say(line: string): void {
+    const { station, track } = this.nowPlaying();
+    this.onAir?.(station, `${track.title} · ${track.artist}`, line);
+  }
+
+  private fill(line: string): string {
+    const c = this.context?.();
+    const crew = c?.crewName || 'some new crew';
+    const zone = ZONES[(c?.day ?? 0) % ZONES.length];
+    return line.replace('{crew}', crew).replace('{zone}', zone);
+  }
+
+  private nextLine(): string {
+    const st = this.current;
+    const c = this.context?.();
+    // topical lines first: the city reacts to what you are doing
+    if (c && c.heat >= 60 && Math.random() < 0.6 && this.lastText !== 'heat') {
+      this.lastText = 'heat';
+      return `${st.dj}: ` + this.fill(st.synth ? 'Scanner says every unit in the city is looking for somebody. Stay off the main roads.' : `News flash: police report a suspect on foot near {zone}. Drivers, expect checkpoints.`);
+    }
+    if (c && c.eventId === 'crackdown' && Math.random() < 0.5 && this.lastText !== 'event') {
+      this.lastText = 'event';
+      return `${st.dj}: Sol Palma PD announced a crackdown this morning. Extra patrols, extra attitude.`;
+    }
+    if (c && c.eventId === 'club_night' && Math.random() < 0.5 && this.lastText !== 'event') {
+      this.lastText = 'event';
+      return `${st.dj}: Club night at the Neon Flamingo. Line around the block, wallets wide open.`;
+    }
+    this.lastText = 'line';
+    const i = this.lineIndex[this.station]++ % st.lines.length;
+    return `${st.dj}: ${this.fill(st.lines[i])}`;
+  }
+
+  private nextAd(): string {
+    this.lastText = 'ad';
+    return 'AD · ' + ADS[this.adIndex++ % ADS.length];
   }
 }
