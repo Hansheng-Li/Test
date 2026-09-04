@@ -242,6 +242,8 @@ export class Game implements GameAPI {
     this.tips = [
       'Grab the STARTER BOX in your back room. Your pager will go off soon.',
       'WASD to move · SHIFT to sprint · E to interact · TAB backpack · P pager · M map',
+      '1-8 picks the hotbar slot: that is what you hand over as a free sample or a street deal.',
+      'People have habits: day folks page less after dark. Payphones (blue on the map) call around for work.',
     ];
     this.tipTimer = 0.5;
     this.beginPlay();
@@ -2110,7 +2112,8 @@ export class Game implements GameAPI {
     if (!s.properties.includes('motel') && s.cash >= MOTEL_PRICE + 200 && s.properties.includes('warehouse')) return `Rent Room 6 at the Ocean View Motel ($${MOTEL_PRICE}) for a beach-side stash.`;
     if (!s.vehicle?.owned && s.cash >= VEHICLE_PRICE + 100 && s.stats.sales >= 6) return `Buy the '88 sedan at Rojas Auto Repair ($${VEHICLE_PRICE}) to cross town fast.`;
     if (packagedInInventory(s).length && s.runner?.hired) return 'Store packaged product in STORAGE so Dizzy can deliver it.';
-    return 'Waiting for a page… restock, or use a payphone to call around for work.';
+    if (s.inventory.filter((st) => !st).length <= 1) return 'Backpack nearly full: the shelf in your back room is STORAGE (E) for supplies and product.';
+    return 'Waiting for a page… restock at Rico (Container Yard, docks) or Quick Stop 24, or use a payphone to call around.';
   }
 
   private currentOrderText(): string | null {
