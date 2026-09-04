@@ -5,6 +5,7 @@ import { initCustomers } from './CustomerSystem';
 import { CUSTOMER_MAP } from '../data/customers';
 import { ITEMS } from '../data/items';
 import { BASES, ALL_EFFECTS } from '../data/products';
+import { LOAN_TIERS, LOAN_CAP_MULT } from './LoanSystem';
 
 const ORDER_STATUSES = new Set(['pending', 'accepted', 'runner', 'completed', 'declined', 'expired', 'failed']);
 const STATION_KINDS = new Set(['prep_table', 'pack_table', 'storage']);
@@ -141,7 +142,11 @@ export function deserialize(json: string): GameState | null {
   const today = Math.floor(state.clockMinutes / (24 * 60));
   const dueDay = rl && typeof rl === 'object' && isFiniteNum(rl.dueDay) ? Math.min(Math.floor(rl.dueDay), today + 3) : 0;
   state.loan = rl && typeof rl === 'object' && isFiniteNum(rl.principal) && isFiniteNum(rl.owed) && Math.ceil(rl.owed) >= 1 && isFiniteNum(rl.dueDay)
-    ? { principal: Math.max(1, Math.floor(rl.principal)), owed: Math.ceil(rl.owed), takenDay: num(rl.takenDay, dueDay - 3), dueDay, lateDays: Math.max(0, Math.floor(num(rl.lateDays, 0))) }
+    ? (() => {
+        // no marker is bigger than the pawn shop writes, and no balance beyond the late cap
+        const principal = Math.min(Math.max(1, Math.floor(rl.principal)), Math.max(...LOAN_TIERS));
+        return { principal, owed: Math.min(Math.ceil(rl.owed), principal * LOAN_CAP_MULT), takenDay: num(rl.takenDay, dueDay - 3), dueDay, lateDays: Math.max(0, Math.floor(num(rl.lateDays, 0))) };
+      })()
     : null;
   const rv = r.vehicle;
   state.vehicle = rv && typeof rv === 'object' && rv.owned ? { owned: true, x: num(rv.x, -70), z: num(rv.z, -32), yaw: num(rv.yaw, 0), ...(typeof rv.paint === 'string' && /^#[0-9a-f]{6}$/i.test(rv.paint) ? { paint: rv.paint } : {}) } : null;

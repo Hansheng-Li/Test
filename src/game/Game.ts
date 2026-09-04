@@ -9,7 +9,7 @@ import { dressInteriors } from '../world/Dressing';
 import { BusUI } from '../ui/BusUI';
 import { DiceUI } from '../ui/DiceUI';
 import { rollDice, DicePick, DiceResult } from '../systems/DiceSystem';
-import { BUS_STOPS, BUS_FARE, BUS_MINUTES, CRUISER_ROUTE, CURFEW_CRUISER_ROUTE, RESPRAY_PRICE } from '../data/city';
+import { BUS_STOPS, BUS_FARE, BUS_MINUTES, CRUISER_ROUTE, CURFEW_CRUISER_ROUTE, RESPRAY_PRICE, RESPRAY_HEAT } from '../data/city';
 import { hashString } from '../utils/math';
 import { GameClock } from '../core/Time';
 import { PlayerController } from '../player/PlayerController';
@@ -37,7 +37,7 @@ import { hireDealer, giveDealerStock, takeDealerStock, assignDealerCustomer, una
 import { DealerUI } from '../ui/DealerUI';
 import { LedgerUI } from '../ui/LedgerUI';
 import { checkMilestones } from '../systems/MilestoneSystem';
-import { takeLoan, repayLoan, tickLoanDay, loanDaysLeft } from '../systems/LoanSystem';
+import { takeLoan, repayLoan, tickLoanDay, loanDaysLeft, LOAN_TIERS, LOAN_DAYS } from '../systems/LoanSystem';
 import { resprayCar, carPaint } from '../systems/GarageSystem';
 import { fogLevel, sightMultiplier } from '../systems/WeatherSystem';
 import { hireHandler, tickHandler } from '../systems/HandlerSystem';
@@ -661,6 +661,7 @@ export class Game implements GameAPI {
       const c = this.cruisers[this.cruisers.length - 1];
       if (c.holdTimer > 0) break;
       this.cruisers.pop();
+      c.dispose();
       this.dynamicGroup.remove(c.mesh);
     }
   }
@@ -1362,7 +1363,7 @@ export class Game implements GameAPI {
     const zoneMult = heatMultiplier(s, zoneAt(w.position.x));
     const crackdown = crackdownIn(s, zoneAt(w.position.x));
     if (witnessed) {
-      witnessedDeal(s, r.earned! * zoneMult);
+      witnessedDeal(s, r.earned!, zoneMult);
       if (crackdown) addHeat(s, 10);
       this.audio.play('siren');
       this.toast(byCruiser ? 'The patrol cruiser rolled past mid-deal. HEAT is rising — move.' : crackdown ? 'Crackdown day and a cop saw that street deal. HEAT spikes!' : zoneMult > 1 ? 'A cop saw that street deal — under curfew. HEAT is rising fast.' : 'A cop saw that street deal. HEAT is rising.', 'warn');
@@ -1431,7 +1432,7 @@ export class Game implements GameAPI {
     const zoneMult = heatMultiplier(s, zoneAt(npc.position.x));
     const crackdown = crackdownIn(s, zoneAt(npc.position.x));
     if (witnessed) {
-      witnessedDeal(s, r.earned! * zoneMult);
+      witnessedDeal(s, r.earned!, zoneMult);
       if (crackdown) addHeat(s, 10);
       this.audio.play('siren');
       this.toast(byCruiser ? 'The patrol cruiser rolled past mid-deal. HEAT is rising — get out of sight.' : crackdown ? 'A cop saw that — and it is crackdown day here. HEAT spikes!' : zoneMult > 1 ? 'A cop saw that — under curfew. HEAT is rising fast.' : 'A cop saw that. HEAT is rising — get out of sight.', 'warn');
@@ -2334,7 +2335,7 @@ export class Game implements GameAPI {
     const pending = pendingOrders(s);
     if (pending.length) return `Pager: ${pending.length} new order${pending.length > 1 ? 's' : ''}. Press P to accept or decline.`;
     if (s.loan && loanDaysLeft(s.loan, this.clock.day) <= 0) return `Pawn shop marker ${loanDaysLeft(s.loan, this.clock.day) < 0 ? 'OVERDUE' : 'due today'}: pay $${s.loan.owed} at Sol Palma Pawn.`;
-    if (s.heat >= 60 && s.vehicle?.owned && !this.hiding) return `Hot. Break line of sight, hide in a dumpster, or get the sedan resprayed at Rojas ($${RESPRAY_PRICE}, heat -30).`;
+    if (s.heat >= 60 && s.vehicle?.owned && !this.hiding) return `Hot. Break line of sight, hide in a dumpster, or get the sedan resprayed at Rojas ($${RESPRAY_PRICE}, heat -${RESPRAY_HEAT}).`;
     const active = activeOrders(s).filter((o) => o.status === 'accepted');
     if (active.length) {
       const o = active[0];
@@ -2351,7 +2352,7 @@ export class Game implements GameAPI {
     const looseNow = looseProductsInInventory(s);
     if (looseNow.length && countItem(s, 'baggies') > 0) return `Package your ${recipeDisplayName(s, looseNow[0].key)} at the PACKAGING table.`;
     if (['pulp_sunset', 'wax_velvet', 'gel_neon'].some((id) => countItem(s, id) > 0) && s.stats.produced === 0) return 'Prep your Sunset Pulp at the PREP TABLE while you wait for a page.';
-    if (s.cash < 30 && !s.loan && s.stats.sales >= 1 && !['pulp_sunset', 'wax_velvet', 'gel_neon'].some((id) => countItem(s, id) > 0) && packagedInInventory(s).length === 0) return 'Broke? Sol Palma Pawn writes a $300 marker — pay it back within 3 days.';
+    if (s.cash < 30 && !s.loan && s.stats.sales >= 1 && !['pulp_sunset', 'wax_velvet', 'gel_neon'].some((id) => countItem(s, id) > 0) && packagedInInventory(s).length === 0) return `Broke? Sol Palma Pawn writes a $${LOAN_TIERS[0]} marker — pay it back within ${LOAN_DAYS} days.`;
     if (countItem(s, 'baggies') < 3) return 'Stock up on baggies at Quick Stop 24. Wait for the next page.';
     if (s.cash >= WAREHOUSE_PRICE && !s.properties.includes('warehouse')) return `You can afford WAREHOUSE 7 ($${WAREHOUSE_PRICE}) at the docks.`;
     if (s.cash >= RUNNER_HIRE_PRICE && !s.runner?.hired && s.stats.sales >= 4) return `Hire Dizzy the runner near the Ocean View Motel ($${RUNNER_HIRE_PRICE}).`;

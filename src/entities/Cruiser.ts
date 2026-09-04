@@ -110,6 +110,11 @@ export class Cruiser {
     this.setNight(this.night);
   }
 
+  /** Free the one per-instance GPU object (the cloned headlight material); shared geometry and paints stay cached. */
+  dispose(): void {
+    this.headlights.dispose();
+  }
+
   setNight(night: boolean): void {
     this.night = night;
     this.headlights.emissiveIntensity = night ? 1.5 : 0;

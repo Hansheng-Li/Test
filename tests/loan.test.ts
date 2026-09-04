@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createNewState, serialize, deserialize } from '../src/systems/SaveSystem';
 import { takeLoan, repayLoan, tickLoanDay, loanTierAvailable, LOAN_CAP_MULT, LOAN_KEEP_CASH } from '../src/systems/LoanSystem';
 import { checkMilestones } from '../src/systems/MilestoneSystem';
+import { hireDealer } from '../src/systems/DealerSystem';
 
 describe('pawn shop marker', () => {
   it('lends cash at 25% and only one marker at a time', () => {
@@ -97,14 +98,15 @@ describe('pawn shop marker', () => {
     expect(partial.loan).toEqual({ principal: 300, owed: 200, takenDay: 1, dueDay: 4, lateDays: 0 });
     const frac = deserialize(JSON.stringify({ cash: 1, inventory: [], loan: { principal: 300, owed: 0.5, dueDay: 2 } }))!;
     expect(frac.loan!.owed).toBe(1);
+    const huge = deserialize(JSON.stringify({ cash: 1, inventory: [], loan: { principal: 1e308, owed: 1e308, dueDay: 1 } }))!;
+    expect(huge.loan).toEqual({ principal: 1500, owed: 4500, takenDay: -2, dueDay: 1, lateDays: 0 });
     const paid = deserialize(JSON.stringify({ cash: 1, inventory: [], loan: { principal: 300, owed: 0, dueDay: 7 } }))!;
     expect(paid.loan).toBeNull();
   });
 });
 
 describe('marker collectors and the corner', () => {
-  it('take what Vince is holding when your pockets are empty', async () => {
-    const { hireDealer } = await import('../src/systems/DealerSystem');
+  it('take what Vince is holding when your pockets are empty', () => {
     const s = createNewState();
     s.cash = 2000;
     hireDealer(s, 1000);

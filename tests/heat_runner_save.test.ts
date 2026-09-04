@@ -22,6 +22,12 @@ describe('heat', () => {
     expect(s.heat).toBeLessThan(before);
     decayHeat(s, 100, { atSafehouse: true, hidden: false });
     expect(s.heat).toBe(0);
+    // crackdown / curfew multipliers scale the heat itself
+    const a = createNewState();
+    const b = createNewState();
+    witnessedDeal(a, 60);
+    witnessedDeal(b, 60, 1.5);
+    expect(b.heat).toBeCloseTo(a.heat * 1.5);
   });
 
   it('arrest confiscates contraband only, fines, and keeps the state usable', () => {

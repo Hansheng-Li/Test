@@ -40,10 +40,11 @@ export function decayHeat(state: GameState, dtSeconds: number, opts: { atSafehou
  * A witnessed deal of $60 or more lands at 40+: the officer comes over for a stop-and-search
  * unless you break line of sight, so being seen is a moment, not a number.
  */
-export function witnessedDeal(state: GameState, dealValue: number): number {
+export function witnessedDeal(state: GameState, dealValue: number, mult = 1): number {
   const base = 38 + Math.min(22, dealValue / 10);
   const susp = 1 + state.suspicion / 200;
-  addHeat(state, base * susp);
+  // crackdown / curfew multipliers scale the heat itself, so "60% more heat" means what it says
+  addHeat(state, base * susp * mult);
   state.suspicion = Math.min(100, state.suspicion + 4);
   return state.heat;
 }

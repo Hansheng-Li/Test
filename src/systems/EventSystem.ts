@@ -130,7 +130,7 @@ export function describeEvent(ev: WorldEvent | null): string | null {
     case 'club_night':
       return 'CLUB NIGHT at the beach: beach customers pay +30% after dark.';
     case 'curfew':
-      return 'CURFEW 20:00-06:00: two extra patrols tonight and officers notice you sooner. Deals draw 50% more heat, but customers pay +20% after dark.';
+      return 'CURFEW 20:00-06:00: two extra officers, a second cruiser on the beach loop, and they notice you sooner. Deals draw 50% more heat, but customers pay +20% after dark.';
     case 'inspection':
       return 'PORT AUTHORITY INSPECTION at Warehouse 7: a quarter of any product on the shelves was seized.';
     case 'rival':
