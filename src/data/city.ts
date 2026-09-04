@@ -31,6 +31,13 @@ export const ROADS_X = [-130, -50, 30, 110, 160];
 export const ROADS_Z = [-100, -30, 40, 110];
 export const ROAD_WIDTH = 12;
 
+/** A second cruiser works the beach blocks on curfew nights (same lane rule, clockwise). */
+export const CURFEW_CRUISER_ROUTE = [
+  { x: 113, z: -97 },
+  { x: 157, z: -97 },
+  { x: 157, z: 107 },
+  { x: 113, z: 107 },
+];
 /** The patrol cruiser's loop: right-hand lane (3 m off the centreline) around the downtown blocks, clockwise. */
 export const CRUISER_ROUTE = [
   { x: -47, z: -97 },

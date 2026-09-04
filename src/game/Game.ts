@@ -9,7 +9,7 @@ import { dressInteriors } from '../world/Dressing';
 import { BusUI } from '../ui/BusUI';
 import { DiceUI } from '../ui/DiceUI';
 import { rollDice, DicePick, DiceResult } from '../systems/DiceSystem';
-import { BUS_STOPS, BUS_FARE, BUS_MINUTES, CRUISER_ROUTE, RESPRAY_PRICE } from '../data/city';
+import { BUS_STOPS, BUS_FARE, BUS_MINUTES, CRUISER_ROUTE, CURFEW_CRUISER_ROUTE, RESPRAY_PRICE } from '../data/city';
 import { hashString } from '../utils/math';
 import { GameClock } from '../core/Time';
 import { PlayerController } from '../player/PlayerController';
@@ -106,8 +106,12 @@ export class Game implements GameAPI {
   running = false;
   civilians: Civilian[] = [];
   police: Police[] = [];
-  /** District 3's patrol cruiser, driving its loop on rails. */
-  cruiser: Cruiser | null = null;
+  /** District 3's patrol cruisers, driving their loops on rails (a second one works the beach under curfew). */
+  cruisers: Cruiser[] = [];
+  /** The downtown cruiser, always present once spawned. */
+  get cruiser(): Cruiser | null {
+    return this.cruisers[0] ?? null;
+  }
   private radioCooldown = 0;
   private handlerIdleTimer = 0;
   private policeSpawned = 0;
@@ -640,19 +644,35 @@ export class Game implements GameAPI {
     }
   }
 
-  private spawnCruiser(): void {
-    const c = new Cruiser(CRUISER_ROUTE);
-    this.cruiser = c;
+  private spawnCruiser(route: { x: number; z: number }[] = CRUISER_ROUTE): void {
+    const c = new Cruiser(route);
+    this.cruisers.push(c);
     this.dynamicGroup.add(c.mesh);
     void loadModel('police').then((m) => {
-      if (m && this.cruiser === c) c.applyModel(instanceModel(m, { scale: CAR_SCALE }));
+      if (m && this.cruisers.includes(c)) c.applyModel(instanceModel(m, { scale: CAR_SCALE }));
     });
   }
 
-  /** The cruiser is a moving witness: close, and with a clear line to the spot. */
+  /** Curfew puts a second cruiser on the beach loop; it clocks off at dawn once it is not holding anyone. */
+  private syncCruisers(): void {
+    const want = 1 + (curfewExtraPolice(this.state) > 0 ? 1 : 0);
+    if (this.cruisers.length < want) this.spawnCruiser(CURFEW_CRUISER_ROUTE);
+    while (this.cruisers.length > want) {
+      const c = this.cruisers[this.cruisers.length - 1];
+      if (c.holdTimer > 0) break;
+      this.cruisers.pop();
+      this.dynamicGroup.remove(c.mesh);
+    }
+  }
+
+  /** A cruiser is a moving witness: close, and with a clear line to the spot. Returns the one that saw it. */
+  private cruiserSeeing(x: number, z: number): Cruiser | null {
+    for (const c of this.cruisers) if (c.distanceTo(x, z) < 24 * this.sight() && this.city.colliders.lineOfSight(c.position.x, 1.4, c.position.z, x, 1.2, z, 10)) return c;
+    return null;
+  }
+
   private cruiserSees(x: number, z: number): boolean {
-    const c = this.cruiser;
-    return !!c && c.distanceTo(x, z) < 24 * this.sight() && this.city.colliders.lineOfSight(c.position.x, 1.4, c.position.z, x, 1.2, z, 10);
+    return this.cruiserSeeing(x, z) !== null;
   }
 
   /**
@@ -660,8 +680,24 @@ export class Game implements GameAPI {
    * radio the nearest idle officer to the player's position (once every 45 s at most).
    */
   private updateCruiser(dt: number, safe: boolean): void {
-    const c = this.cruiser;
-    if (!c) return;
+    this.syncCruisers();
+    const px = this.player.position.x;
+    const pz = this.player.position.z;
+    const alert = this.state.heat >= 60 || curfewExtraPolice(this.state) > 0;
+    for (const c of this.cruisers) this.driveCruiser(c, dt, safe, alert);
+    this.radioCooldown -= dt;
+    if (this.state.heat < 60 || safe || this.hiding || this.arrested || this.radioCooldown > 0) return;
+    const spotter = this.cruiserSeeing(px, pz);
+    if (!spotter) return;
+    this.radioCooldown = 45;
+    spotter.holdTimer = 4;
+    const idle = this.police.filter((p) => p.pstate === 'PATROL' || p.pstate === 'RETURN_TO_PATROL').sort((a, b) => a.distanceTo(px, pz) - b.distanceTo(px, pz))[0];
+    if (idle) idle.dispatchTo(px, this.player.position.y, pz);
+    this.audio.play('siren');
+    this.toast(idle ? 'The cruiser radioed your position. A foot patrol is on the way — break line of sight.' : 'The cruiser radioed your position. Every unit is already busy — keep moving.', 'warn', 5000);
+  }
+
+  private driveCruiser(c: Cruiser, dt: number, safe: boolean, alert: boolean): void {
     const px = this.player.position.x;
     const pz = this.player.position.z;
     const f = c.forward();
@@ -673,17 +709,7 @@ export class Game implements GameAPI {
     };
     // the player on foot (or driving), or their car left in the lane
     const blockAhead = (!this.hiding && !safe && inLane(px, pz)) || (!!this.vehicle && !this.driving && inLane(this.vehicle.position.x, this.vehicle.position.z));
-    const alert = this.state.heat >= 60 || curfewExtraPolice(this.state) > 0;
     c.update(dt, { blockAhead, alert, night: this.clock.isNight });
-    this.radioCooldown -= dt;
-    if (this.state.heat < 60 || safe || this.hiding || this.arrested || this.radioCooldown > 0) return;
-    if (!this.cruiserSees(px, pz)) return;
-    this.radioCooldown = 45;
-    c.holdTimer = 4;
-    const idle = this.police.filter((p) => p.pstate === 'PATROL' || p.pstate === 'RETURN_TO_PATROL').sort((a, b) => a.distanceTo(px, pz) - b.distanceTo(px, pz))[0];
-    if (idle) idle.dispatchTo(px, this.player.position.y, pz);
-    this.audio.play('siren');
-    this.toast(idle ? 'The cruiser radioed your position. A foot patrol is on the way — break line of sight.' : 'The cruiser radioed your position. Every unit is already busy — keep moving.', 'warn', 5000);
   }
 
   private createRunnerNPC(): void {
@@ -2362,7 +2388,7 @@ export class Game implements GameAPI {
   }
   policeXZ(): { x: number; z: number }[] {
     const out = this.police.map((p) => ({ x: p.position.x, z: p.position.z }));
-    if (this.cruiser) out.push({ x: this.cruiser.position.x, z: this.cruiser.position.z });
+    for (const c of this.cruisers) out.push({ x: c.position.x, z: c.position.z });
     return out;
   }
   customerXZ(): { id: string; x: number; z: number; orderId: number }[] {

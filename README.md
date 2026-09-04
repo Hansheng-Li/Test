@@ -197,8 +197,8 @@ Design rules that shaped the code:
   pulls in to a block and every sight range in the city (officers, the cruiser, deal witnesses) drops by
   up to 45%. WSOL reads the forecast.
 - Curfew nights (from the fourth night, one night in five): District 3 puts two extra officers on the
-  street until 06:00, every deal draws 50% more heat and officers notice you sooner, but customers pay
-  +20% after dark. Announced on the pager, the radio and the ledger; idle officers clock off at dawn, one
+  street and a second cruiser on the beach loop until 06:00, every deal draws 50% more heat and
+  officers notice you sooner, but customers pay +20% after dark. Announced on the pager, the radio and the ledger; idle officers clock off at dawn, one
   mid-chase does not vanish.
 - Markers at Sol Palma Pawn: borrow $300, $800 or $1,500 (bigger sizes need a track record) and pay back
   +25% within three days. Overdue markers grow 20% a day, add heat and the collectors take any cash
@@ -244,7 +244,7 @@ Design rules that shaped the code:
 ## Roadmap
 
 1. **Second worker and dealer**, and a handler route that also feeds the motel stash.
-2. **Animated characters** (Kenney CC0 rigs) for customers, police and crew; a second cruiser on the beach loop.
+2. **Animated characters** (Kenney CC0 rigs) for customers, police and crew.
 3. Radio commercials that rotate with the day and react to shortages.
 4. **Co-op** (one player produces, one sells, one manages, one drives) on top of the serializable state.
 5. More interiors and richer NPC schedules.
