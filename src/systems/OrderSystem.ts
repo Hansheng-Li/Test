@@ -99,12 +99,16 @@ export function generateOrder(state: GameState, opts: OrderGenOptions): Order | 
     effects = [];
   }
   // never ask for something no product on this base can carry (some effect pairs cancel each other out)
-  if (effects.length && cheapestValueFor(base, effects, state) === Infinity) effects = [c.prefEffects[0]];
+  let cheapest = effects.length && !recipeKey ? cheapestValueFor(base, effects, state) : null;
+  if (cheapest === Infinity) {
+    effects = [c.prefEffects[0]];
+    cheapest = cheapestValueFor(base, effects, state);
+  }
   // quantity grows with relationship
   const sizeBoost = tier === 'stranger' ? 0 : tier === 'acquaintance' ? 0 : tier === 'regular' ? 1 : 2;
   const qty = Math.max(1, Math.min(c.orderSize[0] + Math.floor(rng() * (c.orderSize[1] - c.orderSize[0] + 1)) + sizeBoost, 8));
   // value reference: the cheapest recipe that satisfies the request
-  const refValue = referenceValue(base, effects, recipeKey, state);
+  const refValue = cheapest !== null && cheapest !== Infinity ? cheapest : referenceValue(base, effects, recipeKey, state);
   const unit = offeredUnitPrice(state, c, refValue);
   const spots = c.spots.filter((s) => LANDMARKS.some((l) => l.id === s));
   const locationId = spots[Math.floor(rng() * spots.length)] ?? LANDMARKS[0].id;

@@ -159,3 +159,26 @@ describe('design: customer wallets', () => {
     expect(r1.sales[0].qty).toBe(1);
   });
 });
+
+describe('design: late orders and the runner', () => {
+  it('a customer already past the window cannot be handed to Dizzy, and a late arrival pays 30% less', async () => {
+    const { hireRunner, assignRunner, tickRunner } = await import('../src/systems/RunnerSystem');
+    const { storageAdd } = await import('../src/systems/InventorySystem');
+    const s = createNewState();
+    s.cash = 1000;
+    hireRunner(s, 600);
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    storageAdd(s, 'safehouse', 'pkg:SUNSET', 20);
+    const o = generateOrder(s, { now: s.clockMinutes, customerId: 'moe', simple: true, rng: () => 0.1 })!;
+    acceptOrder(s, o.id);
+    s.clockMinutes = o.windowEnd + 5;
+    expect(assignRunner(s, o.id)).toEqual({ ok: false, reason: 'late' });
+    s.clockMinutes = o.windowEnd - 5;
+    expect(assignRunner(s, o.id).ok).toBe(true);
+    s.clockMinutes = o.windowEnd + 10; // Dizzy shows up late
+    const cash = s.cash;
+    const r = tickRunner(s, 10000, () => 0.9);
+    expect(r.completed?.earned).toBe(Math.round(o.price * 0.7) - Math.round(Math.round(o.price * 0.7) * 0.2));
+    expect(s.cash - cash).toBe(r.completed!.earned);
+  });
+});

@@ -73,7 +73,7 @@ describe('dealer pressure + supplier delivery', () => {
     for (let i = 0; i < 4; i++) {
       t += DEALER_INTERVAL;
       const r = tickDealer(s, t, () => 0.1);
-      if (r.poached) poached = r.poached;
+      if (r.poached) poached = r.poached[0];
     }
     expect(poached).toBe('tasha');
     expect(s.dealer!.customers).toEqual([]);

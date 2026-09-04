@@ -745,9 +745,9 @@ export class Game implements GameAPI {
     }
     if (dr.hassled) {
       this.audio.play('siren');
-      this.toast(`Cops shook Vince down: ${dr.hassled.lost} units lost, HEAT +8.`, 'warn', 6000);
+      this.toast(`Cops shook Vince down: ${dr.hassled.lost} units lost, HEAT +${dr.hassled.heat}.`, 'warn', 6000);
     }
-    for (const poached of dr.poachedAll ?? []) {
+    for (const poached of dr.poached ?? []) {
       this.audio.play('error');
       this.toast(`${CUSTOMER_MAP[poached].name.split(' ')[0]} got tired of Vince's empty corner and now buys from a rival crew. Keep him stocked!`, 'warn', 8000);
     }
@@ -1029,7 +1029,8 @@ export class Game implements GameAPI {
         const order = this.state.orders.find((x) => x.id === o.id);
         if (!order || order.status !== 'accepted') return null;
         const have = findFulfillingItem(this.state, order);
-        return have ? `[E] SELL ${order.qty}x ${describeRequest(this.state, order)} · $${order.price}` : `[E] TALK · ${def.name.split(' ')[0]} (needs ${order.qty}x ${describeRequest(this.state, order)})`;
+        const late = this.clock.totalMinutes > order.windowEnd;
+        return have ? `[E] SELL ${order.qty}x ${describeRequest(this.state, order)} · $${late ? Math.round(order.price * 0.7) : order.price}${late ? ' (LATE)' : ''}` : `[E] TALK · ${def.name.split(' ')[0]} (needs ${order.qty}x ${describeRequest(this.state, order)})`;
       },
       onInteract: () => this.dealWith(npc),
     });
@@ -1321,7 +1322,7 @@ export class Game implements GameAPI {
     const r = assignRunner(this.state, id);
     if (!r.ok) {
       this.audio.play('error');
-      this.toast(r.reason === 'no_stock' ? 'Runner needs the packaged product in your STORAGE first.' : r.reason === 'busy' ? 'Dizzy is already on a run.' : r.reason === 'queue_full' ? 'Dizzy already has two runs lined up. This one you walk yourself.' : 'Cannot send the runner.', 'warn');
+      this.toast(r.reason === 'no_stock' ? 'Runner needs the packaged product in your STORAGE first.' : r.reason === 'busy' ? 'Dizzy is already on a run.' : r.reason === 'queue_full' ? 'Dizzy already has two runs lined up. This one you walk yourself.' : r.reason === 'late' ? 'They are already waiting past the window: walk this one yourself (30% off).' : 'Cannot send the runner.', 'warn');
       return;
     }
     const o = this.state.orders.find((x) => x.id === id)!;

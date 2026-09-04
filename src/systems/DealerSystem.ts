@@ -82,11 +82,10 @@ export function collectDealerCash(state: GameState): number {
 
 export interface DealerTickResult {
   sales: { customerId: string; itemKey: string; qty: number; earned: number }[];
-  hassled?: { lost: number };
+  hassled?: { lost: number; heat: number };
   starved?: boolean;
-  /** A customer got tired of an empty corner and left for a rival crew (first one; all of them in poachedAll). */
-  poached?: string;
-  poachedAll?: string[];
+  /** Customers who got tired of an empty corner and left for a rival crew. */
+  poached?: string[];
   /** Customers who could not afford anything on the corner this round. */
   tooPricey?: string[];
 }
@@ -119,8 +118,7 @@ function tickDealerRound(state: GameState, d: NonNullable<GameState['dealer']>, 
       const cs = customerState(state, cid);
       cs.relationship = Math.max(0, cs.relationship - 5);
       d.starvedRounds = 0;
-      out.poached ??= cid;
-      (out.poachedAll ??= []).push(cid);
+      (out.poached ??= []).push(cid);
     }
     return;
   }
@@ -170,6 +168,6 @@ function tickDealerRound(state: GameState, d: NonNullable<GameState['dealer']>, 
     }
     d.stock = d.stock.filter((s) => s.qty > 0);
     state.heat = Math.min(100, state.heat + 8);
-    out.hassled = { lost: (out.hassled?.lost ?? 0) + lost };
+    out.hassled = { lost: (out.hassled?.lost ?? 0) + lost, heat: (out.hassled?.heat ?? 0) + 8 };
   }
 }

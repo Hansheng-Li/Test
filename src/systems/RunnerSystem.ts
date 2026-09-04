@@ -35,7 +35,7 @@ export function storageItemForOrder(state: GameState, order: Order): { property:
 
 export interface AssignResult {
   ok: boolean;
-  reason?: 'no_runner' | 'busy' | 'no_stock' | 'bad_order' | 'queue_full';
+  reason?: 'no_runner' | 'busy' | 'no_stock' | 'bad_order' | 'queue_full' | 'late';
   property?: string;
   key?: string;
   queued?: boolean;
@@ -49,6 +49,7 @@ export function assignRunner(state: GameState, orderId: number): AssignResult {
   if (!state.runner?.hired) return { ok: false, reason: 'no_runner' };
   const o = state.orders.find((x) => x.id === orderId);
   if (!o || o.status !== 'accepted') return { ok: false, reason: 'bad_order' };
+  if (state.clockMinutes > o.windowEnd) return { ok: false, reason: 'late' }; // a customer already waiting past the window is yours to walk to
   const stock = storageItemForOrder(state, o);
   if (!stock) return { ok: false, reason: 'no_stock' };
   if (state.runner.activeOrderId !== null && (state.runner.queue ?? []).length >= RUNNER_QUEUE_MAX) return { ok: false, reason: 'queue_full' };
@@ -128,8 +129,9 @@ export function tickRunner(state: GameState, dtSeconds: number, rng: () => numbe
     state.heat = Math.min(100, state.heat + 10);
     return { mishap: { order: o } };
   }
-  // delivered
-  const earned = o.price;
+  // delivered (late arrivals pay the same 30% less as an in-person late sale)
+  const onTime = state.clockMinutes <= o.windowEnd;
+  const earned = onTime ? o.price : Math.round(o.price * 0.7);
   const cut = Math.round(earned * RUNNER_CUT);
   addCash(state, earned - cut);
   r.earned += cut;
@@ -141,7 +143,7 @@ export function tickRunner(state: GameState, dtSeconds: number, rng: () => numbe
   const parsed = parseRecipeKey(o.runnerItemKey ?? '');
   const matched = parsed ? computeRecipe(parsed.base, parsed.mods).effects.length > 1 : false;
   if (o.runnerItemKey) noteRecipeBought(state, o.customerId, o.runnerItemKey);
-  const unlocked = recordSuccessfulDeal(state, o.customerId, { onTime: true, matchedPreference: matched });
+  const unlocked = recordSuccessfulDeal(state, o.customerId, { onTime, matchedPreference: matched });
   // small chance of a comedic hiccup that costs a little heat
   if (rng() < 0.15) state.heat = Math.min(100, state.heat + 6);
   return { completed: { order: o, earned: earned - cut, cut, unlocked } };
