@@ -247,7 +247,7 @@ export class Game implements GameAPI {
     const shots: Shot[] = [
       { from: [260, 70, 120], to: [200, 45, 40], lookFrom: [40, 0, 0], lookTo: [60, 4, 0], dur: 6, text: 'SOL PALMA, FLORIDA', sub: '1996' },
       { from: [175, 14, -50], to: [150, 9, 30], lookFrom: [135, 6, 5], lookTo: [110, 4, 20], dur: 5.5, text: 'NEON, SUNSCREEN AND BAD DECISIONS', sub: 'a city that never checks ID' },
-      { from: [30, 26, 60], to: [-2, 5, 22], lookFrom: [-21, 2, 14], dur: 6, text: 'YOU OWE SAL $2,000', sub: 'you have $80, a pager and a back room' },
+      { from: [30, 26, 60], to: [-2, 5, 22], lookFrom: [-21, 2, 14], dur: 6, text: '$80, A PAGER AND A BACK ROOM', sub: "Sal's crew owns the streets. For now." },
       { from: [-2, 5, 22], to: [-2, 5, 22], lookFrom: [-21, 2, 14], dur: 1.6, fade: 1, text: 'SUNSET SYNDICATE', sub: '' },
     ];
     this.hud.setVisible(false);
