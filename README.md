@@ -226,7 +226,7 @@ Design rules that shaped the code:
 - Engine drone while driving; Club Mirage streams a CC0 track that is muffled from the street and
   full-range inside.
 - localStorage save/load with validation and repair of partial saves.
-- 93 Vitest tests covering behavioural contracts + six Playwright e2e specs (smoke, first sale, automation, crew,
+- 106 Vitest tests covering behavioural contracts + six Playwright e2e specs (smoke, first sale, automation, crew,
   police, UI).
 
 ## Known limitations
