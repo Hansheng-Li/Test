@@ -8,7 +8,7 @@ import { lambert, basic, boxGeo, cylGeo, PALETTE } from './Materials';
 import { facadeTexture, signTexture, asphaltTexture, sidewalkTexture, sandTexture, grassTexture } from './Textures';
 import {
   PropBuilder, buildPalms, buildStreetLights, buildBench, buildTrashCan, buildDumpster, buildCar, buildFence,
-  buildContainer, buildPayphone, buildLifeguardTower, buildBusStop,
+  buildContainer, buildPayphone, buildLifeguardTower, buildBusStop, buildDiceTable,
 } from './Props';
 import { furnishInterior, InteriorContext, makeLabel, makeFigure } from './Interiors';
 import { WorldObject, NightToggle } from './WorldTypes';
@@ -294,6 +294,9 @@ export function buildCity(): CityResult {
   bw.position.set((166 + OCEAN_X) / 2, SLAB, 5);
   group.add(bw);
 
+  // street dice by the arcade door, a few steps from Vince
+  const dice = buildDiceTable(pb, 155, 93, 0.3);
+  objects.push({ kind: 'dice_table', id: 'dice_table', position: new THREE.Vector3(155, SLAB, 93), mesh: dice });
   // transit stops
   for (const b of BUS_STOPS) {
     const g = buildBusStop(pb, b.x, b.z, b.rot);

@@ -13,6 +13,7 @@ Fetched from the community mirror https://github.com/ETdoFresh/kenney.nl
 | audio/thud.ogg | Impact Sounds · impactSoft_heavy_000 |
 | audio/cash.ogg, cash2.ogg | RPG Audio · handleCoins, handleCoins2 |
 | audio/collect.ogg | Casino Audio · chipsStack1 |
+| audio/casino_diceThrow1.ogg, casino_diceThrow2.ogg, casino_dieThrow1.ogg, casino_chipsHandle1.ogg, casino_chipLay1.ogg, casino_chipsCollide1.ogg, casino_cardShuffle.ogg | Casino Audio · same file names |
 | audio/door_open.ogg, door_close.ogg | RPG Audio · doorOpen_1, doorClose_1 |
 | audio/bag.ogg | RPG Audio · cloth1 |
 | audio/page.ogg | RPG Audio · bookFlip2 |

@@ -177,6 +177,9 @@ Design rules that shaped the code:
   deliveries goes wrong.
 - Daily trend bonus, world events twice a day (crackdown / shortage / club night), pedestrian gossip about
   your named products, 14 milestone goals with rewards, morning summaries.
+- Street dice behind Neptune Arcade: call HIGH or LOW for $10-$200 a throw (seven is the house, snake
+  eyes on LOW pay triple); a money sink with Kenney casino sounds, a little heat per throw and a Hot Hand
+  milestone.
 - Sol Palma Transit: a bus stop per district (marked B on the map) rides you across town for $5 and
   twelve minutes behind a fade, unless a cop is on your heels.
 - Drivable arcade sedan (Kenney CC0 model, box fallback) with a chase camera that orbits with the mouse

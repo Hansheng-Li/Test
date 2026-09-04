@@ -182,3 +182,39 @@ describe('design: late orders and the runner', () => {
     expect(s.cash - cash).toBe(r.completed!.earned);
   });
 });
+
+describe('street dice', () => {
+  it('pays even money, triple on snake eyes for LOW, and the house takes seven', async () => {
+    const { rollDice } = await import('../src/systems/DiceSystem');
+    const s = createNewState();
+    s.cash = 1000;
+    // rng values map to die faces 1..6 via floor(r*6)
+    const r1 = rollDice(s, 50, 'high', seq([0.9, 0.9])); // 6+6 = 12
+    expect(r1.payout).toBe(1);
+    expect(s.cash).toBe(1050);
+    const r2 = rollDice(s, 50, 'low', seq([0.0, 0.0])); // 1+1 snake eyes
+    expect(r2.payout).toBe(3);
+    expect(s.cash).toBe(1200);
+    const r3 = rollDice(s, 50, 'high', seq([0.5, 0.34])); // 4+3 = 7
+    expect(r3.payout).toBe(0);
+    expect(s.cash).toBe(1150);
+    expect(s.stats.diceNet).toBe(150);
+    expect(s.stats.diceRolls).toBe(3);
+    expect(s.heat).toBe(6);
+    expect(rollDice(s, 5000, 'high').reason).toBe('bad_bet');
+    s.cash = 5;
+    expect(rollDice(s, 10, 'high').reason).toBe('no_cash');
+    expect(s.cash).toBe(5);
+  });
+
+  it('is a money sink: expected value is negative', async () => {
+    const { rollDice } = await import('../src/systems/DiceSystem');
+    let rs = 12345;
+    const rng = () => { rs = (rs * 1103515245 + 12345) & 0x7fffffff; return rs / 0x7fffffff; };
+    const s = createNewState();
+    s.cash = 1e9;
+    for (let i = 0; i < 20000; i++) rollDice(s, 10, i % 2 ? 'high' : 'low', rng);
+    expect(s.stats.diceNet!).toBeLessThan(0);
+    expect(s.stats.diceNet! / 200000).toBeGreaterThan(-0.2);
+  });
+});

@@ -12,6 +12,7 @@ export interface WorldObject {
     | 'bed'
     | 'payphone'
     | 'bus_stop'
+    | 'dice_table'
     | 'warehouse_sign'
     | 'supplier'
     | 'runner_contact'

@@ -122,7 +122,10 @@ export interface GameState {
   player: { x: number; y: number; z: number; yaw: number };
   stats: {
     /** Bus rides taken (flavour and a milestone). */
-    busRides?: number; sales: number; earned: number; arrests: number; declined: number; produced: number; playSeconds: number; earnedAtDayStart: number; salesAtDayStart: number; lastDay: number };
+    busRides?: number;
+    /** Street dice: throws and lifetime net. */
+    diceRolls?: number;
+    diceNet?: number; sales: number; earned: number; arrests: number; declined: number; produced: number; playSeconds: number; earnedAtDayStart: number; salesAtDayStart: number; lastDay: number };
   flags: Record<string, boolean>;
   /** Per-save seed so daily trends and world events differ between playthroughs. */
   seed: number;

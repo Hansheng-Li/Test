@@ -2,6 +2,7 @@ import { GameState } from '../game/GameState';
 import { PurchaseResult } from '../systems/EconomySystem';
 import { PrepPlan, PrepResult, PackageResult } from '../systems/ProductionSystem';
 import { SfxName } from '../audio/Audio';
+import { DicePick, DiceResult } from '../systems/DiceSystem';
 
 /** Escape player-typed text (product/crew names) before it goes into innerHTML. */
 export function esc(text: string): string {
@@ -19,6 +20,8 @@ export interface GameAPI {
   closePanel(): void;
   /** Take the bus from the current stop to another district's stop. */
   rideBus(stopId: string): void;
+  /** One throw of street dice. */
+  playDice(bet: number, pick: DicePick): DiceResult;
   acceptOrder(id: number): void;
   haggle(id: number, markup: number): void;
   declineOrder(id: number): void;

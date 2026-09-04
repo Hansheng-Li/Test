@@ -6,6 +6,8 @@ import { loadModel, instanceModel, upgradeParkedCars, CAR_SCALE } from '../world
 import { Cutscene, Shot } from './Cutscene';
 import { Weather } from '../world/Weather';
 import { BusUI } from '../ui/BusUI';
+import { DiceUI } from '../ui/DiceUI';
+import { rollDice, DicePick, DiceResult } from '../systems/DiceSystem';
 import { BUS_STOPS, BUS_FARE, BUS_MINUTES } from '../data/city';
 import { hashString } from '../utils/math';
 import { GameClock } from '../core/Time';
@@ -91,6 +93,7 @@ export class Game implements GameAPI {
   dealerUI: DealerUI;
   ledgerUI: LedgerUI;
   busUI: BusUI;
+  diceUI: DiceUI;
   private milestoneTimer = 0;
   private dealerStarvedTimer = 0;
   openPanelId: string | null = null;
@@ -185,7 +188,8 @@ export class Game implements GameAPI {
     this.dealerUI = new DealerUI(root, this);
     this.ledgerUI = new LedgerUI(root, this);
     this.busUI = new BusUI(root, this);
-    for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI, this.dealerUI, this.ledgerUI, this.busUI]) this.panels[p.id] = p;
+    this.diceUI = new DiceUI(root, this);
+    for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI, this.dealerUI, this.ledgerUI, this.busUI, this.diceUI]) this.panels[p.id] = p;
     this.cutscene = new Cutscene(root);
     this.menu = new Menu(root, {
       newGame: () => this.startNewGame(true),
@@ -516,6 +520,9 @@ export class Game implements GameAPI {
         break;
       case 'bed':
         add({ prompt: () => (o.data?.rest || owned() ? '[E] REST UNTIL MORNING' : null), onInteract: () => this.rest(), radius: 3 });
+        break;
+      case 'dice_table':
+        add({ prompt: () => `[E] STREET DICE · high or low, $${10}-$${200} a throw`, onInteract: () => this.openPanel('dice-panel'), radius: 3 });
         break;
       case 'bus_stop':
         add({ prompt: () => `[E] BUS STOP · ride to another district ($${BUS_FARE})`, onInteract: () => { this.busUI.here = String(o.data?.stop ?? ''); this.openPanel('bus-panel'); }, radius: 3.5 });
@@ -2220,6 +2227,23 @@ export class Game implements GameAPI {
       this.hud.flash(`${first} IS NOW ${after === 'acquaintance' ? 'AN' : 'A'} ${after.toUpperCase()}`, '#ffd166');
       this.toast(`${CUSTOMER_MAP[customerId].name} is now a ${after}: ${perk}.`, 'cash', 6000);
     }, 1700);
+  }
+
+  /** Street dice: a throw, a sound, a flash on a big win; the crate does not care who is watching. */
+  playDice(bet: number, pick: DicePick): DiceResult {
+    const r = rollDice(this.state, bet, pick);
+    if (!r.ok) {
+      this.audio.play('error');
+      this.toast(r.reason === 'no_cash' ? 'You are light. Come back with cash.' : 'That is not a bet.', 'warn');
+      return r;
+    }
+    this.audio.play('dice');
+    if (r.payout! > 0) {
+      setTimeout(() => this.audio.play('collect'), 350);
+      if (r.net! >= 150) this.hud.flash(r.payout === 3 ? `SNAKE EYES  +$${r.net}` : `DICE  +$${r.net}`, '#ffd166', flashScale(r.net!));
+    } else setTimeout(() => this.audio.play('chips'), 350);
+    if ((this.state.stats.diceRolls ?? 0) % 10 === 0) this.toast('The guys at the crate are getting loud. Cops notice loud.', 'warn', 4000);
+    return r;
   }
 
   /** Sol Palma Transit: a fade, a few minutes, and you are across town. Not with a cop on your heels. */

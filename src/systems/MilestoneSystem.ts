@@ -25,6 +25,7 @@ export const MILESTONES: Milestone[] = [
   { id: 'dealer', title: 'Network', hint: 'Vince makes 5 sales on his corner.', reward: 250, done: (s) => (s.dealer?.sales ?? 0) >= 5 },
   { id: 'escape', title: 'Clean Getaway', hint: 'Get searched by police while carrying nothing.', reward: 40, done: (s) => !!s.flags.cleanSearch },
   { id: 'dumpster', title: 'Trash Panda', hint: 'Hide in a dumpster.', reward: 20, done: (s) => !!s.flags.hidDumpster },
+  { id: 'dice', title: 'Hot Hand', hint: 'Be $200 up at street dice, lifetime.', reward: 50, done: (s) => (s.stats.diceNet ?? 0) >= 200 },
   { id: 'bus', title: 'Commuter', hint: 'Ride the Sol Palma Transit bus.', reward: 20, done: (s) => (s.stats.busRides ?? 0) >= 1 },
   { id: 'ten_k', title: 'Sunset Syndicate', hint: 'Earn $10,000 lifetime.', reward: 500, done: (s) => s.stats.earned >= 10000 },
 ];

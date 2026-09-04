@@ -217,6 +217,32 @@ export function buildContainer(pb: PropBuilder, x: number, z: number, color: str
   }
 }
 
+/** Street dice: a crate with two dice and a chalk line, tucked by the arcade. */
+export function buildDiceTable(pb: PropBuilder, x: number, z: number, rot: number): THREE.Group {
+  const g = new THREE.Group();
+  const crate = new THREE.Mesh(boxGeo(1.4, 0.8, 1.0), lambert('#8d6e63'));
+  crate.position.y = 0.4;
+  const felt = new THREE.Mesh(boxGeo(1.3, 0.04, 0.9), lambert('#1b5e20'));
+  felt.position.y = 0.82;
+  const dieMat = lambert('#f5f5f5');
+  for (const [dx, dz, ry] of [[-0.25, 0.1, 0.4], [0.2, -0.15, 1.1]]) {
+    const die = new THREE.Mesh(boxGeo(0.18, 0.18, 0.18), dieMat);
+    die.position.set(dx, 0.93, dz);
+    die.rotation.y = ry;
+    g.add(die);
+  }
+  const cash = new THREE.Mesh(boxGeo(0.35, 0.03, 0.18), lambert('#7dff9a'));
+  cash.position.set(0.45, 0.85, 0.3);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.45), new THREE.MeshBasicMaterial({ map: signTexture('STREET DICE', { color: '#ffd166', bg: '#111111', glow: false, sub: 'HIGH · LOW · 7 IS THE HOUSE' }), side: THREE.DoubleSide }));
+  sign.position.set(0, 1.6, -0.55);
+  g.add(crate, felt, cash, sign);
+  g.position.set(x, 0.15, z);
+  g.rotation.y = rot;
+  pb.group.add(g);
+  pb.collider(aabbFromBottom(x, 0.15, z, 1.4, 1.0, 1.0, 'dice'));
+  return g;
+}
+
 /** Transit stop: a pole with a sign and a small shelter roof over a bench. */
 export function buildBusStop(pb: PropBuilder, x: number, z: number, rot: number): THREE.Group {
   const g = new THREE.Group();
