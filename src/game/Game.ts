@@ -1845,6 +1845,13 @@ export class Game implements GameAPI {
   }
 
   private placementPoint(): { x: number; z: number } | null {
+    const pt = this.placementPointRaw();
+    // never on top of the player: a shelf spawned around you cannot be climbed out of
+    if (pt && Math.hypot(pt.x - this.player.position.x, pt.z - this.player.position.z) < 2.4) return null;
+    return pt;
+  }
+
+  private placementPointRaw(): { x: number; z: number } | null {
     const dir = new THREE.Vector3();
     this.camera.getWorldDirection(dir);
     if (dir.y > -0.05) return null;
@@ -1949,9 +1956,12 @@ export class Game implements GameAPI {
       },
     );
     this.toast(`BUSTED. ${items ? 'Confiscated: ' + items + '. ' : ''}Fine: $${r.fine}. You lost 6 hours in a holding cell.`, 'warn', 9000);
-    for (const o of this.state.orders) if (o.status === 'accepted' || o.status === 'failed' || o.status === 'expired') this.despawnCustomer(o.id);
+    for (const o of this.state.orders) if (o.status === 'failed' || o.status === 'expired') this.despawnCustomer(o.id);
     if (this.openPanelId) this.closePanel();
     this.cancelPlacement();
+    // the penalty is persisted right away so closing the tab during the BUSTED sequence cannot undo it
+    this.state.player = { x: 70, y: 0.3, z: -24, yaw: Math.PI };
+    saveToStorage(this.state, localStorage);
   }
 
   private updateArrest(dt: number): void {

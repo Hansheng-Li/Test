@@ -67,6 +67,16 @@ export function instanceModel(model: THREE.Group, opts: { paint?: string; scale?
 }
 
 export const CAR_SCALE = 1.55;
+
+let wheelGeo: THREE.BufferGeometry | null = null;
+/** Low-poly stand-in for the Kenney wheel (axle along x, same 0.3 radius). */
+function parkedWheelGeometry(): THREE.BufferGeometry {
+  if (!wheelGeo) {
+    wheelGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.24, 10);
+    wheelGeo.rotateZ(Math.PI / 2);
+  }
+  return wheelGeo;
+}
 const PARKED_VARIANTS = ['sedan', 'sedanSports', 'hatchbackSports', 'suv', 'suvLuxury', 'taxi', 'van', 'delivery'];
 
 /** Replace the box cars parked along the streets with Kenney models, merged into a few draw calls. */
@@ -84,6 +94,22 @@ export async function upgradeParkedCars(city: CityResult): Promise<boolean> {
     // taxis and police cruisers keep their livery, everything else gets the spot's colour
     const paint = spec.model || PARKED_VARIANTS[models.indexOf(model)] === 'taxi' ? undefined : spec.color;
     const car = instanceModel(model, { paint, scale: CAR_SCALE });
+    // parked cars are scenery: no shadow pass, and the 284-triangle wheels become 10-sided cylinders
+    const wheels: THREE.Object3D[] = [];
+    car.traverse((o) => {
+      if (o instanceof THREE.Mesh) o.castShadow = false;
+      if (o.name.startsWith('wheel')) wheels.push(o);
+    });
+    for (const w of wheels) {
+      // a wheel node is a Group of primitives (tire + hub) or a single mesh; either way keep the tire material
+      let mat: THREE.Material | null = null;
+      w.traverse((o) => { if (!mat && o instanceof THREE.Mesh) mat = Array.isArray(o.material) ? o.material[0] : o.material; });
+      if (!mat) continue;
+      w.clear();
+      const m = new THREE.Mesh(parkedWheelGeometry(), mat);
+      m.castShadow = false;
+      w.add(m);
+    }
     car.position.set(spec.x, 0.15, spec.z);
     // box cars are built along local x; the (flipped) models face +z
     car.rotation.y = spec.rot + Math.PI / 2;

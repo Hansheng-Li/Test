@@ -111,7 +111,7 @@ export function deserialize(json: string): GameState | null {
     if (!rr || typeof rr !== 'object' || !BASES[rr.base as keyof typeof BASES] || !Array.isArray(rr.mods)) delete state.recipes[key];
   }
   // stacks must name a real item or a packaged product whose recipe survived
-  const knownItem = (id: string): boolean => !!ITEMS[id] || (id.startsWith('pkg:') && !!state.recipes[id.slice(4)]);
+  const knownItem = (id: string): boolean => !!ITEMS[id] || (id.startsWith('pkg:') && !!state.recipes[id.slice(4)]) || (id.startsWith('prod:') && !!state.recipes[id.slice(5)]);
   state.inventory = state.inventory.map((st) => (st && knownItem(st.id) ? st : null));
   for (const key of Object.keys(state.storage)) if (Array.isArray(state.storage[key])) state.storage[key] = state.storage[key].filter((st) => validStack(st) && knownItem(st.id));
   for (const c of Object.values(state.customers)) {
@@ -153,7 +153,12 @@ export function deserialize(json: string): GameState | null {
     const o = state.orders.find((x) => x.id === state.runner!.activeOrderId);
     if (!o || o.status !== 'runner') state.runner.activeOrderId = null;
   }
-  if (state.runner) state.runner.queue = (state.runner.queue ?? []).filter((id) => state.orders.some((o) => o.id === id && o.status === 'accepted'));
+  if (state.runner) {
+    // queued orders are already in status 'runner'; anything in that status that is neither active nor queued is re-queued
+    const r2 = state.runner;
+    r2.queue = (r2.queue ?? []).filter((id) => id !== r2.activeOrderId && state.orders.some((o) => o.id === id && o.status === 'runner'));
+    for (const o of state.orders) if (o.status === 'runner' && o.id !== r2.activeOrderId && !r2.queue.includes(o.id)) r2.queue.push(o.id);
+  }
   initCustomers(state);
   return state;
 }

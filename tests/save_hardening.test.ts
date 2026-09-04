@@ -65,7 +65,7 @@ describe('save hardening', () => {
   });
 
   it('keeps a legitimate queued runner order', () => {
-    const s = deserialize(JSON.stringify({ cash: 1, inventory: [], runner: { hired: true, queue: [9], activeOrderId: null }, orders: [{ id: 9, customerId: 'moe', status: 'accepted', base: 'SUNSET', qty: 1, price: 30, locationId: 'pier' }] }))!;
+    const s = deserialize(JSON.stringify({ cash: 1, inventory: [], runner: { hired: true, queue: [9], activeOrderId: null }, orders: [{ id: 9, customerId: 'moe', status: 'runner', base: 'SUNSET', qty: 1, price: 30, locationId: 'pier' }] }))!;
     expect(s.runner!.queue).toEqual([9]);
   });
 });
@@ -75,5 +75,46 @@ describe('save hardening: names', () => {
     const s = deserialize(JSON.stringify({ cash: 1, inventory: [], crewName: '<img src=x>CREW', recipes: { SUNSET: { key: 'SUNSET', base: 'SUNSET', mods: [], effects: ['ENERGY'], value: 24, customName: '<b>X</b>' } } }))!;
     expect(s.crewName).toBe('img src=xCREW');
     expect(s.recipes['SUNSET'].customName).toBe('bX/b');
+  });
+});
+
+describe('save hardening: round trips keep legitimate state', () => {
+  it('loose product survives a save/load round trip', async () => {
+    const { createNewState, serialize } = await import('../src/systems/SaveSystem');
+    const { addItem, countItem, storageAdd, storageCount } = await import('../src/systems/InventorySystem');
+    const { executePrep } = await import('../src/systems/ProductionSystem');
+    const s = createNewState();
+    addItem(s, 'pulp_sunset', 3);
+    expect(executePrep(s, { inputItem: 'pulp_sunset', mods: [], units: 3 }).ok).toBe(true);
+    storageAdd(s, 'safehouse', 'prod:SUNSET', 2);
+    const back = deserialize(serialize(s))!;
+    expect(countItem(back, 'prod:SUNSET')).toBe(countItem(s, 'prod:SUNSET'));
+    expect(storageCount(back, 'safehouse', 'prod:SUNSET')).toBe(2);
+  });
+
+  it('a queued runner order survives a round trip and orphaned runner orders are re-queued', async () => {
+    const { createNewState, serialize } = await import('../src/systems/SaveSystem');
+    const { hireRunner, assignRunner } = await import('../src/systems/RunnerSystem');
+    const { generateOrder, acceptOrder } = await import('../src/systems/OrderSystem');
+    const { storageAdd } = await import('../src/systems/InventorySystem');
+    const { computeRecipe } = await import('../src/data/products');
+    const s = createNewState();
+    s.cash = 1000;
+    hireRunner(s, 600);
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    storageAdd(s, 'safehouse', 'pkg:SUNSET', 20);
+    const o1 = generateOrder(s, { now: s.clockMinutes, customerId: 'moe', simple: true, rng: () => 0.1 })!;
+    const o2 = generateOrder(s, { now: s.clockMinutes, customerId: 'tasha', simple: true, rng: () => 0.1 })!;
+    acceptOrder(s, o1.id);
+    acceptOrder(s, o2.id);
+    assignRunner(s, o1.id);
+    assignRunner(s, o2.id);
+    const back = deserialize(serialize(s))!;
+    expect(back.runner!.activeOrderId).toBe(o1.id);
+    expect(back.runner!.queue).toEqual([o2.id]);
+    // a save whose queue was lost still recovers the stranded order
+    const lost = JSON.parse(serialize(s));
+    lost.runner.queue = [];
+    expect(deserialize(JSON.stringify(lost))!.runner!.queue).toEqual([o2.id]);
   });
 });
