@@ -54,6 +54,8 @@ export class AudioSystem {
   private clubMusicGain: GainNode | null = null;
   private clubFilter: BiquadFilterNode | null = null;
   private clubStarted = false;
+  private waveGain: GainNode | null = null;
+  private sirenTimer = 20;
 
   init(): void {
     if (this.ctx) return;
@@ -114,6 +116,28 @@ export class AudioSystem {
     this.clubOsc.connect(thump).connect(this.clubGain);
     this.clubOsc.start();
     (this as unknown as { thump: GainNode }).thump = thump;
+    // surf: band-passed noise swelling with a slow LFO, faded in by beach proximity
+    const surf = ctx.createBufferSource();
+    surf.buffer = buf;
+    surf.loop = true;
+    surf.playbackRate.value = 0.7;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 900;
+    bp.Q.value = 0.4;
+    const swell = ctx.createGain();
+    swell.gain.value = 0.6;
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.11;
+    const lfoDepth = ctx.createGain();
+    lfoDepth.gain.value = 0.4;
+    lfo.connect(lfoDepth).connect(swell.gain);
+    this.waveGain = ctx.createGain();
+    this.waveGain.gain.value = 0;
+    surf.connect(bp).connect(swell).connect(this.waveGain).connect(this.master);
+    surf.start();
+    lfo.start();
   }
 
   /** Car engine: a two-oscillator drone whose pitch and brightness follow the throttle (0..1). */
@@ -218,9 +242,17 @@ export class AudioSystem {
   }
 
   /** Called every frame with proximity factors 0..1. */
-  update(dt: number, opts: { club: number; beach: number; night: boolean; insideClub?: boolean }): void {
+  update(dt: number, opts: { club: number; beach: number; night: boolean; insideClub?: boolean; heat?: number }): void {
     if (!this.ctx || !this.clubGain || !this.ambientGain) return;
     const ctx = this.ctx;
+    if (this.waveGain) this.waveGain.gain.setTargetAtTime(opts.beach * 0.5, ctx.currentTime, 0.6);
+    // a distant siren now and then when the city is on edge
+    this.sirenTimer -= dt;
+    if (this.sirenTimer <= 0) {
+      this.sirenTimer = 30 + Math.random() * 40;
+      const heat = opts.heat ?? 0;
+      if (heat >= 30 || (opts.night && Math.random() < 0.3)) this.distantSiren();
+    }
     const musicLevel = opts.night ? opts.club : opts.club * 0.4;
     this.updateClubMusic(musicLevel, !!opts.insideClub);
     const clubLevel = opts.insideClub ? 0.1 : opts.night ? opts.club * 0.35 : opts.club * 0.12;
@@ -255,6 +287,13 @@ export class AudioSystem {
     o.connect(g).connect(this.master);
     o.start(ctx.currentTime + start);
     o.stop(ctx.currentTime + start + dur + 0.05);
+  }
+
+  private distantSiren(): void {
+    for (let i = 0; i < 4; i++) {
+      this.tone(620, i * 0.7, 0.35, 'sine', 0.018, 880);
+      this.tone(880, i * 0.7 + 0.35, 0.35, 'sine', 0.018, 620);
+    }
   }
 
   private gull(vol: number): void {

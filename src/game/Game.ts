@@ -765,7 +765,7 @@ export class Game implements GameAPI {
     // ambient audio
     const club = BUILDINGS.find((b) => b.id === 'club')!;
     const dClub = Math.hypot(this.player.position.x - club.x, this.player.position.z - club.z);
-    this.audio.update(dt, { club: Math.max(0, 1 - dClub / 45), beach: Math.max(0, Math.min(1, (this.player.position.x - 140) / 40)), night: this.clock.isNight, insideClub: this.playerInsideBuilding('club') });
+    this.audio.update(dt, { club: Math.max(0, 1 - dClub / 45), beach: Math.max(0, Math.min(1, (this.player.position.x - 140) / 40)), night: this.clock.isNight, insideClub: this.playerInsideBuilding('club'), heat: this.state.heat });
     this.audio.setEngine(this.driving, this.vehicle ? Math.abs(this.vehicle.speed) / this.vehicle.maxSpeed : 0);
 
     // radio: car stereo while driving, walkman when toggled
@@ -1358,6 +1358,7 @@ export class Game implements GameAPI {
       return false;
     }
     this.audio.play('unlock');
+    this.hud.flash('DIZZY JOINED THE CREW', '#7fffd4');
     this.toast('Dizzy is on the payroll! Stock packaged products in STORAGE, then use SEND RUNNER on the pager. Dizzy keeps 20%.', 'cash', 8000);
     this.createRunnerNPC();
     this.updateRunnerContact();
@@ -1411,6 +1412,7 @@ export class Game implements GameAPI {
     if (!this.confirmTwice('dealer', `Hire Vince as a dealer for $${DEALER_HIRE_PRICE}? Give him stock, assign customers, collect cash`)) return;
     if (hireDealer(s, DEALER_HIRE_PRICE)) {
       this.audio.play('unlock');
+      this.hud.flash('VINCE JOINED THE CREW', '#7fffd4');
       this.toast('Vince works for you now. Hand him packaged product, assign up to 5 customers, and come back for the cash.', 'cash', 8000);
       this.save();
       this.openPanel('dealer-panel');
@@ -1472,6 +1474,7 @@ export class Game implements GameAPI {
     if (!this.confirmTwice('worker', `Hire Marisol for $${WORKER_HIRE_PRICE}? She turns warehouse supplies into packaged product non-stop`)) return;
     if (hireWorker(s, WORKER_HIRE_PRICE, 'warehouse')) {
       this.audio.play('unlock');
+      this.hud.flash('MARISOL JOINED THE CREW', '#7fffd4');
       this.toast('Marisol is hired! Stock base supplies, modifiers and baggies in WAREHOUSE STORAGE, then assign her a recipe at a PREP TABLE.', 'cash', 9000);
       this.updateWorkerFigure();
       this.save();
