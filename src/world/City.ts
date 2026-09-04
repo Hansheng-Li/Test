@@ -29,7 +29,7 @@ export interface CityResult {
   lampPositions: { x: number; z: number }[];
   /** Box cars parked along the streets (swapped for GLB models when those load). */
   parkedGroup: THREE.Group;
-  parkedCars: { x: number; z: number; rot: number; color: string }[];
+  parkedCars: { x: number; z: number; rot: number; color: string; model?: string }[];
 }
 
 function facingDir(f: Facing): THREE.Vector3 {
@@ -204,10 +204,13 @@ export function buildCity(): CityResult {
   group.add(parkedGroup);
   const pbCars = new PropBuilder(parkedGroup, colliders);
   const parkedCars: CityResult['parkedCars'] = [];
-  const parkCar = (x: number, z: number, rot: number, color: string): void => {
+  const parkCar = (x: number, z: number, rot: number, color: string, model?: string): void => {
     buildCar(pbCars, x, z, rot, color);
-    parkedCars.push({ x, z, rot, color });
+    parkedCars.push({ x, z, rot, color, model });
   };
+  // cruisers outside the police station (the release spot at x=70 stays clear)
+  parkCar(58, -25.5, 0, '#f4f6f8', 'police');
+  parkCar(84, -25.5, 0, '#f4f6f8', 'police');
   for (const [x, z, r] of carSpots) parkCar(x, z, r, carColors[Math.floor(rnd() * carColors.length)]);
   // yard cars at Rojas
   parkCar(-70, -66, 0.3, '#95a5a6');

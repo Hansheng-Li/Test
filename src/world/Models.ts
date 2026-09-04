@@ -70,14 +70,16 @@ const PARKED_VARIANTS = ['sedan', 'sedanSports', 'hatchbackSports', 'suv', 'suvL
 export async function upgradeParkedCars(city: CityResult): Promise<boolean> {
   const models = await Promise.all(PARKED_VARIANTS.map((v) => loadModel(v)));
   const ok = models.filter((m): m is THREE.Group => !!m);
+  const special = new Map<string, THREE.Group | null>();
+  for (const spec of city.parkedCars) if (spec.model && !special.has(spec.model)) special.set(spec.model, await loadModel(spec.model));
   if (!ok.length || !city.parkedGroup.parent) return false;
   const rnd = seeded(77);
   const group = new THREE.Group();
   for (const spec of city.parkedCars) {
     const idx = Math.floor(rnd() * ok.length);
-    const model = ok[idx];
-    // taxis stay yellow, everything else gets the spot's colour
-    const paint = PARKED_VARIANTS[models.indexOf(model)] === 'taxi' ? undefined : spec.color;
+    const model = (spec.model ? special.get(spec.model) : null) ?? ok[idx];
+    // taxis and police cruisers keep their livery, everything else gets the spot's colour
+    const paint = spec.model || PARKED_VARIANTS[models.indexOf(model)] === 'taxi' ? undefined : spec.color;
     const car = instanceModel(model, { paint, scale: CAR_SCALE });
     car.position.set(spec.x, 0.15, spec.z);
     // box cars are built along local x; the models face +z

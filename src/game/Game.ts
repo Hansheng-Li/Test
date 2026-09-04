@@ -338,6 +338,7 @@ export class Game implements GameAPI {
 
   pause(): void {
     if (!this.running) return;
+    this.audio.setEngine(false, 0);
     this.expectUnlock = true;
     this.input.releaseLock();
     this.menu.show('pause');
@@ -737,7 +738,8 @@ export class Game implements GameAPI {
     // ambient audio
     const club = BUILDINGS.find((b) => b.id === 'club')!;
     const dClub = Math.hypot(this.player.position.x - club.x, this.player.position.z - club.z);
-    this.audio.update(dt, { club: Math.max(0, 1 - dClub / 45), beach: Math.max(0, Math.min(1, (this.player.position.x - 140) / 40)), night: this.clock.isNight });
+    this.audio.update(dt, { club: Math.max(0, 1 - dClub / 45), beach: Math.max(0, Math.min(1, (this.player.position.x - 140) / 40)), night: this.clock.isNight, insideClub: this.playerInsideBuilding('club') });
+    this.audio.setEngine(this.driving, this.vehicle ? Math.abs(this.vehicle.speed) / this.vehicle.maxSpeed : 0);
 
     // radio: car stereo while driving, walkman when toggled
     const wantRadio = this.driving ? this.carRadioOn : this.boomboxOn;

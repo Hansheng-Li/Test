@@ -46,6 +46,14 @@ export class AudioSystem {
   private loading = new Set<string>();
   /** Set false to force the procedural sounds (tests / offline). */
   useSamples = true;
+  private engineGain: GainNode | null = null;
+  private engineOsc: OscillatorNode | null = null;
+  private engineSub: OscillatorNode | null = null;
+  private engineFilter: BiquadFilterNode | null = null;
+  private clubEl: HTMLAudioElement | null = null;
+  private clubMusicGain: GainNode | null = null;
+  private clubFilter: BiquadFilterNode | null = null;
+  private clubStarted = false;
 
   init(): void {
     if (this.ctx) return;
@@ -108,11 +116,84 @@ export class AudioSystem {
     (this as unknown as { thump: GainNode }).thump = thump;
   }
 
+  /** Car engine: a two-oscillator drone whose pitch and brightness follow the throttle (0..1). */
+  setEngine(on: boolean, throttle: number): void {
+    if (!this.ctx || !this.master) return;
+    const ctx = this.ctx;
+    if (!this.engineGain) {
+      this.engineGain = ctx.createGain();
+      this.engineGain.gain.value = 0;
+      this.engineFilter = ctx.createBiquadFilter();
+      this.engineFilter.type = 'lowpass';
+      this.engineFilter.frequency.value = 400;
+      this.engineOsc = ctx.createOscillator();
+      this.engineOsc.type = 'sawtooth';
+      this.engineSub = ctx.createOscillator();
+      this.engineSub.type = 'square';
+      const subGain = ctx.createGain();
+      subGain.gain.value = 0.5;
+      this.engineOsc.connect(this.engineFilter);
+      this.engineSub.connect(subGain).connect(this.engineFilter);
+      this.engineFilter.connect(this.engineGain).connect(this.master);
+      this.engineOsc.start();
+      this.engineSub.start();
+    }
+    const t = Math.max(0, Math.min(1, throttle));
+    const target = on ? 0.045 + t * 0.075 : 0;
+    this.engineGain.gain.setTargetAtTime(target, ctx.currentTime, 0.12);
+    if (on) {
+      this.engineOsc!.frequency.setTargetAtTime(55 + t * 120, ctx.currentTime, 0.15);
+      this.engineSub!.frequency.setTargetAtTime(27 + t * 60, ctx.currentTime, 0.15);
+      this.engineFilter!.frequency.setTargetAtTime(350 + t * 1200, ctx.currentTime, 0.15);
+    }
+  }
+
+  /** Club Mirage plays a CC0 track: muffled through the walls outside, full range inside. */
+  private updateClubMusic(level: number, inside: boolean): void {
+    if (!this.ctx || !this.master) return;
+    const ctx = this.ctx;
+    if (!this.clubEl) {
+      try {
+        this.clubEl = new Audio('/assets/music/loyaltyfreak_chillin_at_the_club.ogg');
+        this.clubEl.loop = true;
+        this.clubEl.preload = 'none';
+        this.clubEl.addEventListener('error', () => { this.clubEl = null; this.clubStarted = true; });
+        const node = ctx.createMediaElementSource(this.clubEl);
+        this.clubFilter = ctx.createBiquadFilter();
+        this.clubFilter.type = 'lowpass';
+        this.clubFilter.frequency.value = 400;
+        this.clubMusicGain = ctx.createGain();
+        this.clubMusicGain.gain.value = 0;
+        node.connect(this.clubFilter).connect(this.clubMusicGain).connect(this.master);
+      } catch {
+        this.clubStarted = true;
+        return;
+      }
+    }
+    if (!this.clubEl || !this.clubMusicGain || !this.clubFilter) return;
+    if (level > 0.02 && !this.clubStarted) {
+      this.clubStarted = true;
+      void this.clubEl.play().catch(() => { this.clubStarted = false; });
+    }
+    const gain = inside ? 0.55 : level * level * 0.35;
+    this.clubMusicGain.gain.setTargetAtTime(gain, ctx.currentTime, 0.4);
+    this.clubFilter.frequency.setTargetAtTime(inside ? 14000 : 300 + level * 500, ctx.currentTime, 0.4);
+    // the synth bass thump only carries outside; inside the real track takes over
+    if (this.clubEl.paused && this.clubStarted && level > 0.02) void this.clubEl.play().catch(() => undefined);
+    if (level <= 0.02 && !this.clubEl.paused) this.clubEl.pause();
+  }
+
+  get clubPlaying(): boolean {
+    return !!this.clubEl && !this.clubEl.paused;
+  }
+
   /** Called every frame with proximity factors 0..1. */
-  update(dt: number, opts: { club: number; beach: number; night: boolean }): void {
+  update(dt: number, opts: { club: number; beach: number; night: boolean; insideClub?: boolean }): void {
     if (!this.ctx || !this.clubGain || !this.ambientGain) return;
     const ctx = this.ctx;
-    const clubLevel = opts.night ? opts.club * 0.35 : opts.club * 0.12;
+    const musicLevel = opts.night ? opts.club : opts.club * 0.4;
+    this.updateClubMusic(musicLevel, !!opts.insideClub);
+    const clubLevel = opts.insideClub ? 0.1 : opts.night ? opts.club * 0.35 : opts.club * 0.12;
     this.clubGain.gain.setTargetAtTime(clubLevel, ctx.currentTime, 0.3);
     this.clubTimer -= dt;
     if (this.clubTimer <= 0 && clubLevel > 0.01) {
