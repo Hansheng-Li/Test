@@ -82,8 +82,10 @@ test('runner delivers from storage and the dealer sells from his corner', async 
   expect(s.storage.safehouse.find((x) => x.id === 'pkg:SUNSET')!.qty).toBeLessThan(20);
   const cashBefore = s.cash;
   // the trip is real-time (up to ~90 s) and physics dt is capped at 0.05 s a frame: skip to the last second so 40 frames always cover it
-  await page.evaluate(() => { const game = (window as unknown as { game: G & { state: { orders: { status: string; runnerProgress?: number }[] } } }).game; for (const o of game.state.orders) if (o.status === 'runner') o.runnerProgress = 0.99; });
+  // Dizzy's 1-in-20 mishap roll is pinned for the wait (the mishap itself is covered by the unit tests)
+  await page.evaluate(() => { const w = window as unknown as { game: G & { state: { orders: { status: string; runnerProgress?: number }[] } }; __rand?: () => number }; w.__rand = Math.random; Math.random = () => 0.1; for (const o of w.game.state.orders) if (o.status === 'runner') o.runnerProgress = 0.99; });
   await frames(page, 40);
+  await page.evaluate(() => { const w = window as unknown as { __rand?: () => number }; if (w.__rand) Math.random = w.__rand; });
   s = (await g(page)).state;
   expect(s.runner?.deliveries).toBeGreaterThanOrEqual(1);
   expect(s.cash).toBeGreaterThan(cashBefore);
@@ -104,9 +106,10 @@ test('runner delivers from storage and the dealer sells from his corner', async 
   expect(s.dealer?.stock.reduce((a, x) => a + x.qty, 0)).toBe(8);
   expect(s.dealer?.customers.length).toBeGreaterThanOrEqual(1);
   await page.keyboard.press('Escape');
-  // three dealer rounds
-  await page.evaluate(() => { (window as unknown as { game: G }).game.clock.totalMinutes += 300; });
+  // three dealer rounds; Vince's coin flips are pinned so the round always sells (the odds are covered by the unit tests)
+  await page.evaluate(() => { const w = window as unknown as { game: G; __rand?: () => number }; w.__rand = Math.random; Math.random = () => 0.1; w.game.clock.totalMinutes += 300; });
   await frames(page, 6);
+  await page.evaluate(() => { const w = window as unknown as { __rand?: () => number }; if (w.__rand) Math.random = w.__rand; });
   s = (await g(page)).state;
   expect(s.dealer!.sales).toBeGreaterThanOrEqual(1);
   expect(s.dealer!.cash).toBeGreaterThan(0);
