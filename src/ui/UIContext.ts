@@ -28,6 +28,9 @@ export interface GameAPI {
   sendRunner(id: number): void;
   buy(shopId: string, itemId: string, qty: number): PurchaseResult;
   buyDelivered(shopId: string, itemId: string, qty: number): PurchaseResult;
+  /** Sol Palma Pawn markers: borrow a tier amount / pay some of it back. */
+  takeLoan(amount: number): boolean;
+  repayLoan(amount: number): number;
   prep(plan: PrepPlan): PrepResult;
   packageProduct(key: string, qty: number): PackageResult;
   nameRecipe(key: string, name: string): boolean;

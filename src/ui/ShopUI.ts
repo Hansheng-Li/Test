@@ -3,6 +3,7 @@ import { GameAPI } from './UIContext';
 import { SHOPS, ITEMS } from '../data/items';
 import { countItem } from '../systems/InventorySystem';
 import { shopPrice, DELIVERY_FEE } from '../systems/EconomySystem';
+import { LOAN_TIERS, LOAN_INTEREST, LOAN_DAYS, LOAN_LATE_INTEREST, loanTierAvailable, loanDaysLeft } from '../systems/LoanSystem';
 
 /** Generic vendor screen for the store, the supplier and the pawn shop. */
 export class ShopUI extends Panel {
@@ -32,6 +33,7 @@ export class ShopUI extends Panel {
       row.appendChild(this.button(!this.deliver ? '✓ CARRY MYSELF' : 'CARRY MYSELF', () => { this.deliver = false; this.render(); }, !this.deliver ? 'primary' : 'cyan'));
       body.appendChild(row);
     }
+    if (this.shopId === 'pawn') body.appendChild(this.markerBox());
     for (const e of shop.entries) {
       if (e.requires && !st.properties.includes(e.requires) && !st.upgrades.includes(e.requires)) continue;
       const def = ITEMS[e.itemId];
@@ -60,5 +62,36 @@ export class ShopUI extends Panel {
       }
       body.appendChild(row);
     }
+  }
+
+  /** The marker: a loan-shark advance with a due day, shown above the pawn shop's shelves. */
+  private markerBox(): HTMLElement {
+    const st = this.api.state;
+    const box = document.createElement('div');
+    box.className = 'pager-screen';
+    box.style.margin = '6px 0 10px';
+    const row = document.createElement('div');
+    row.className = 'pager-btns';
+    const loan = st.loan;
+    if (!loan) {
+      box.innerHTML = `<b>MARKER</b> · cash now, pay back +${Math.round(LOAN_INTEREST * 100)}% within ${LOAN_DAYS} days. Late: +${Math.round(LOAN_LATE_INTEREST * 100)}% a day, the collectors take your cash and ask around.`;
+      for (const t of LOAN_TIERS) {
+        const ok = loanTierAvailable(st, t);
+        const b = this.button(`BORROW $${t}`, () => { this.api.takeLoan(t); this.render(); }, ok ? 'cyan' : '');
+        if (!ok) {
+          b.disabled = true;
+          b.title = t === 800 ? 'Needs $1,000 earned lifetime' : 'Needs Warehouse 7';
+        }
+        row.appendChild(b);
+      }
+    } else {
+      const left = loanDaysLeft(loan, Math.floor(this.api.now() / (24 * 60)));
+      const when = left > 1 ? `due in ${left} days` : left === 1 ? 'due TOMORROW' : left === 0 ? 'due TODAY' : `<span style="color:#ff5c5c">OVERDUE ${-left} day${-left === 1 ? '' : 's'}</span>`;
+      box.innerHTML = `<b>MARKER</b> · you owe <b>$${loan.owed}</b> on a $${loan.principal} advance · ${when} (end of day ${loan.dueDay}).`;
+      for (const amt of [100, 500]) if (loan.owed > amt) row.appendChild(this.button(`REPAY $${amt}`, () => { this.api.repayLoan(amt); this.render(); }, 'cyan'));
+      row.appendChild(this.button(`REPAY ALL ($${loan.owed})`, () => { this.api.repayLoan(loan.owed); this.render(); }, 'primary'));
+    }
+    box.appendChild(row);
+    return box;
   }
 }

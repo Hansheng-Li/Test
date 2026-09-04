@@ -182,6 +182,9 @@ Design rules that shaped the code:
   milestone.
 - Sol Palma Transit: a bus stop per district (marked B on the map) rides you across town for $5 and
   twelve minutes behind a fade, unless a cop is on your heels.
+- Markers at Sol Palma Pawn: borrow $300, $800 or $1,500 (bigger sizes need a track record) and pay back
+  +25% within three days. Overdue markers grow 20% a day, add heat and the collectors take any cash
+  above bus fare; the balance is capped so a broke player is never buried. Shown in the ledger.
 - Interiors dressed with the Kenney Furniture Kit (CC0): sofa, TV and bookcase in the back room, a lounge
   chair in the motel, bar stools and a lounge corner in Club Mirage, a desk and fridge in the warehouse
   office. Merged statically (about 30 extra draw calls), solid pieces block movement, rooms keep their

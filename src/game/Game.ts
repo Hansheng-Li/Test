@@ -37,6 +37,7 @@ import { hireDealer, giveDealerStock, takeDealerStock, assignDealerCustomer, una
 import { DealerUI } from '../ui/DealerUI';
 import { LedgerUI } from '../ui/LedgerUI';
 import { checkMilestones } from '../systems/MilestoneSystem';
+import { takeLoan, repayLoan, tickLoanDay } from '../systems/LoanSystem';
 import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent, applyInspection, eventSlot } from '../systems/EventSystem';
 import { relationshipTier } from '../systems/CustomerSystem';
 import { AudioSystem, SfxName } from '../audio/Audio';
@@ -907,6 +908,13 @@ export class Game implements GameAPI {
           s.cash += FRONT_DAILY_INCOME;
           s.suspicion = Math.max(0, s.suspicion - FRONT_DAILY_SUSPICION);
           this.toast(`Lucky Laundromat: +$${FRONT_DAILY_INCOME} clean money, suspicion -${FRONT_DAILY_SUSPICION}.`, 'cash', 5000);
+        }
+        const loan = tickLoanDay(s, day);
+        if (loan.dueToday) this.toast(`Pawn shop marker due TODAY: $${s.loan?.owed ?? 0}. Pay at Sol Palma Pawn before midnight.`, 'warn', 7000);
+        if (loan.late) {
+          this.audio.play('error');
+          const took = loan.collected ? ` The collectors took $${loan.collected}.` : ' The collectors found no cash on you.';
+          this.toast(`MARKER OVERDUE: +20% interest and the collectors asked around (heat +${loan.late.heat}).${took} ${loan.cleared ? 'Marker closed.' : `Still owed $${s.loan?.owed ?? 0}.`}`, 'warn', 9000);
         }
       }
     }
@@ -2246,6 +2254,31 @@ export class Game implements GameAPI {
     } else setTimeout(() => this.audio.play('chips'), 350);
     if ((this.state.stats.diceRolls ?? 0) % 10 === 0) this.toast('The guys at the crate are getting loud. Cops notice loud.', 'warn', 4000);
     return r;
+  }
+
+  /** Sol Palma Pawn writes a marker: cash now, 25% on top by the due day. */
+  takeLoan(amount: number): boolean {
+    const r = takeLoan(this.state, amount, this.clock.day);
+    if (!r.ok) {
+      this.audio.play('error');
+      this.toast(r.reason === 'active' ? 'One marker at a time. Pay this one off first.' : r.reason === 'locked' ? 'The pawn shop wants to see a track record before writing that size.' : 'No.', 'warn');
+      return false;
+    }
+    this.audio.play('cash');
+    this.toast(`Marker written: $${amount} in hand, $${r.owed} due by the end of day ${this.state.loan?.dueDay}. Miss it and the collectors come.`, 'cash', 7000);
+    return true;
+  }
+
+  repayLoan(amount: number): number {
+    const paid = repayLoan(this.state, amount);
+    if (paid <= 0) {
+      this.audio.play('error');
+      this.toast('Not enough cash on hand.', 'warn');
+      return 0;
+    }
+    this.audio.play('cash');
+    this.toast(this.state.loan ? `Paid $${paid} on the marker. $${this.state.loan.owed} to go.` : `Marker paid off. Sol Palma Pawn remembers people who pay.`, 'cash');
+    return paid;
   }
 
   /** Sol Palma Transit: a fade, a few minutes, and you are across town. Not with a cop on your heels. */

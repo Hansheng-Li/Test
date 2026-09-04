@@ -99,6 +99,16 @@ export interface DealerState {
   starvedRounds?: number;
 }
 
+/** Marker written by Sol Palma Pawn: cash now, more cash later, collectors when late. */
+export interface LoanState {
+  principal: number;
+  owed: number;
+  takenDay: number;
+  /** Due by the end of this calendar day. */
+  dueDay: number;
+  lateDays: number;
+}
+
 export interface GameState {
   version: number;
   cash: number;
@@ -116,6 +126,7 @@ export interface GameState {
   runner: RunnerState | null;
   worker: WorkerState | null;
   dealer: DealerState | null;
+  loan: LoanState | null;
   vehicle: { owned: boolean; x: number; z: number; yaw: number } | null;
   /** Player-chosen name for the operation; shows on the warehouse sign and the ledger. */
   crewName: string;
@@ -125,7 +136,10 @@ export interface GameState {
     busRides?: number;
     /** Street dice: throws and lifetime net. */
     diceRolls?: number;
-    diceNet?: number; sales: number; earned: number; arrests: number; declined: number; produced: number; playSeconds: number; earnedAtDayStart: number; salesAtDayStart: number; lastDay: number };
+    diceNet?: number;
+    /** Pawn shop markers taken and paid off. */
+    loansTaken?: number;
+    loansRepaid?: number; sales: number; earned: number; arrests: number; declined: number; produced: number; playSeconds: number; earnedAtDayStart: number; salesAtDayStart: number; lastDay: number };
   flags: Record<string, boolean>;
   /** Per-save seed so daily trends and world events differ between playthroughs. */
   seed: number;

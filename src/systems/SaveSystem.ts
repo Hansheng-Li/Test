@@ -32,6 +32,7 @@ export function createNewState(): GameState {
     runner: null,
     worker: null,
     dealer: null,
+    loan: null,
     vehicle: null,
     player: { x: SPAWN.x, y: SPAWN.y, z: SPAWN.z, yaw: SPAWN.yaw },
     stats: { sales: 0, earned: 0, arrests: 0, declined: 0, produced: 0, playSeconds: 0, earnedAtDayStart: 0, salesAtDayStart: 0, lastDay: 1 },
@@ -132,6 +133,10 @@ export function deserialize(json: string): GameState | null {
   if (state.dealer) state.dealer.stock = state.dealer.stock.filter((st) => st.id.startsWith('pkg:') && knownItem(st.id));
   if (state.worker && !state.properties.includes(state.worker.property)) state.worker.property = 'warehouse';
   if (state.worker && state.worker.recipeKey && !state.recipes[state.worker.recipeKey]) state.worker.recipeKey = null;
+  const rl = r.loan;
+  state.loan = rl && typeof rl === 'object' && isFiniteNum(rl.principal) && isFiniteNum(rl.owed) && rl.owed > 0 && isFiniteNum(rl.dueDay)
+    ? { principal: Math.max(1, Math.floor(rl.principal)), owed: Math.floor(rl.owed), takenDay: num(rl.takenDay, rl.dueDay - 3), dueDay: Math.floor(rl.dueDay), lateDays: Math.max(0, Math.floor(num(rl.lateDays, 0))) }
+    : null;
   const rv = r.vehicle;
   state.vehicle = rv && typeof rv === 'object' && rv.owned ? { owned: true, x: num(rv.x, -70), z: num(rv.z, -32), yaw: num(rv.yaw, 0) } : null;
   const cleanName = (v: unknown): string => (typeof v === 'string' ? v.replace(/[<>&"'`]/g, '').slice(0, 24) : '');
