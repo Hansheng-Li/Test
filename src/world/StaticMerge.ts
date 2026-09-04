@@ -7,6 +7,25 @@ import { mergeGeometries } from './Props';
  * `userData.dynamic` (or under such a parent) is left alone so gameplay code can
  * still toggle visibility on it.
  */
+/** A mirrored transform reverses triangle winding; swap two corners per triangle so faces stay front-facing. */
+function flipWinding(geo: THREE.BufferGeometry): void {
+  const index = geo.getIndex();
+  if (index) {
+    const a = index.array;
+    for (let i = 0; i + 2 < a.length; i += 3) {
+      const t = a[i + 1];
+      a[i + 1] = a[i + 2];
+      a[i + 2] = t;
+    }
+    index.needsUpdate = true;
+    return;
+  }
+  const count = geo.getAttribute('position').count;
+  const order: number[] = [];
+  for (let i = 0; i + 2 < count; i += 3) order.push(i, i + 2, i + 1);
+  geo.setIndex(order);
+}
+
 export function mergeStaticMeshes(root: THREE.Object3D): { before: number; after: number } {
   root.updateMatrixWorld(true);
   const buckets = new Map<string, { material: THREE.Material; cast: boolean; receive: boolean; geos: THREE.BufferGeometry[]; meshes: THREE.Mesh[] }>();
@@ -32,7 +51,9 @@ export function mergeStaticMeshes(root: THREE.Object3D): { before: number; after
       b = { material: o.material, cast: o.castShadow, receive: o.receiveShadow, geos: [], meshes: [] };
       buckets.set(key, b);
     }
-    b.geos.push(g.clone().applyMatrix4(o.matrixWorld));
+    const baked = g.clone().applyMatrix4(o.matrixWorld);
+    if (o.matrixWorld.determinant() < 0) flipWinding(baked);
+    b.geos.push(baked);
     b.meshes.push(o);
   });
   let merged = 0;

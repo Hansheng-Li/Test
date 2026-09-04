@@ -57,6 +57,13 @@ export class Cutscene {
     this.finish();
   }
 
+  /** Stop without running the completion callback (quitting to the title, loading another game). */
+  cancel(): void {
+    if (!this.active) return;
+    this.done = null;
+    this.finish();
+  }
+
   private finish(): void {
     this.active = false;
     this.el.classList.remove('on');

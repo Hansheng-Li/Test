@@ -26,6 +26,9 @@ const SAMPLES: Partial<Record<SfxName, { files: string[]; gain: number; synthFal
   jingle_intro: { files: ['jingle_intro'], gain: 0.45, synthFallback: 'unlock' },
 };
 
+/** Sounds that play once per event: wait briefly for the sample instead of using the synth version. */
+const ONE_SHOT = new Set<SfxName>(['jingle_goal', 'jingle_customer', 'jingle_bust', 'jingle_property', 'jingle_intro', 'door', 'page', 'collect', 'thud', 'bag', 'switch', 'confirm', 'open', 'close']);
+
 /**
  * Procedural WebAudio sound effects and an ambient bed. No external assets.
  * The context is created lazily on the first user gesture.
@@ -302,8 +305,8 @@ export class AudioSystem {
     this.tone(base * 1.1, 0.22, 0.14, 'sine', 0.04 * vol, base * 0.8);
   }
 
-  /** Warm the sample cache so the first footstep is not silent. */
-  preload(names: SfxName[] = ['step', 'cash', 'click', 'confirm', 'error', 'open', 'close', 'bump']): void {
+  /** Warm the whole sample cache (a few hundred KB) so first plays use the real samples. */
+  preload(names: SfxName[] = Object.keys(SAMPLES) as SfxName[]): void {
     for (const n of names) {
       const def = SAMPLES[n];
       if (def) for (const f of def.files) void this.loadBuffer(f);
@@ -335,18 +338,29 @@ export class AudioSystem {
     const file = def.files[Math.floor(Math.random() * def.files.length)];
     const buf = this.buffers.get(file);
     if (buf === undefined) {
-      void this.loadBuffer(file);
+      const p = this.loadBuffer(file);
+      // one-shots (jingles, doors, page flips) are worth a short wait; rapid sounds fall back at once
+      if (ONE_SHOT.has(name)) {
+        const at = performance.now();
+        void p.then((b) => { if (b && performance.now() - at < 2500) this.playBuffer(b, def.gain, 1); });
+        return true;
+      }
       return false;
     }
     if (!buf) return false;
+    this.playBuffer(buf, def.gain, name === 'step' ? 0.92 + Math.random() * 0.16 : 1);
+    return true;
+  }
+
+  private playBuffer(buf: AudioBuffer, gain: number, rate: number): void {
+    if (!this.ctx || !this.master) return;
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
-    src.playbackRate.value = name === 'step' ? 0.92 + Math.random() * 0.16 : 1;
+    src.playbackRate.value = rate;
     const g = this.ctx.createGain();
-    g.gain.value = def.gain;
+    g.gain.value = gain;
     src.connect(g).connect(this.master);
     src.start();
-    return true;
   }
 
   play(name: SfxName): void {

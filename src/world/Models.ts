@@ -20,7 +20,10 @@ export function loadModel(name: string): Promise<THREE.Group | null> {
     loader!.load(
       `/assets/models/${name}.glb`,
       (gltf) => {
-        const root = gltf.scene;
+        // Kenney cars face -z; the game's vehicles and props treat +z as the front, so flip the root
+        const root = new THREE.Group();
+        gltf.scene.rotation.y = Math.PI;
+        root.add(gltf.scene);
         root.traverse((o) => {
           if (!(o instanceof THREE.Mesh)) return;
           const src = o.material as THREE.MeshStandardMaterial;
@@ -82,7 +85,7 @@ export async function upgradeParkedCars(city: CityResult): Promise<boolean> {
     const paint = spec.model || PARKED_VARIANTS[models.indexOf(model)] === 'taxi' ? undefined : spec.color;
     const car = instanceModel(model, { paint, scale: CAR_SCALE });
     car.position.set(spec.x, 0.15, spec.z);
-    // box cars are built along local x; the models face +z
+    // box cars are built along local x; the (flipped) models face +z
     car.rotation.y = spec.rot + Math.PI / 2;
     group.add(car);
   }

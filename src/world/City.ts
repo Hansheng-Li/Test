@@ -253,14 +253,14 @@ export function buildCity(): CityResult {
   parkCar(-110, -150, 0.2, '#7f8c8d');
   parkCar(-95, -160, -0.3, '#b03a2e');
   parkCar(-75, -145, 0.8, '#1f618d');
-  buildCar(pb, -100, -125, 0.1, '#f4d03f');
+  parkCar(-100, -125, 0.1, '#f4d03f');
   // west block empty lot: basketball court + bleachers
   pb.visualBox(-90, SLAB, -140, 26, 0.04, 16, lambert('#3e7c59'));
   pb.solidBox(-103, SLAB, -140, 0.2, 3.2, 0.2, lambert(PALETTE.darkMetal), 'hoop');
   pb.solidBox(-77, SLAB, -140, 0.2, 3.2, 0.2, lambert(PALETTE.darkMetal), 'hoop');
   // parking lot behind Palmetto / Coral Arms (north row) with cars
-  for (let i = 0; i < 5; i++) buildCar(pb, 40 + i * 6, -150, Math.PI / 2, carColors[(i * 3) % carColors.length]);
-  for (let i = 0; i < 4; i++) buildCar(pb, -40 + i * 6, -155, Math.PI / 2, carColors[(i * 5 + 1) % carColors.length]);
+  for (let i = 0; i < 5; i++) parkCar(40 + i * 6, -150, Math.PI / 2, carColors[(i * 3) % carColors.length]);
+  for (let i = 0; i < 4; i++) parkCar(-40 + i * 6, -155, Math.PI / 2, carColors[(i * 5 + 1) % carColors.length]);
   // beach umbrellas + towels
   for (let i = 0; i < 14; i++) {
     const ux = 174 + rnd() * 20;
@@ -311,7 +311,7 @@ export function buildCity(): CityResult {
   colliders.add(aabbFromBottom(SUPPLIER_SPOT.x, SLAB, SUPPLIER_SPOT.z, 0.7, 1.9, 0.7, 'npc'));
   objects.push({ kind: 'supplier', id: 'supplier', position: rico.position.clone(), mesh: rico });
   // van behind Rico
-  buildCar(pb, SUPPLIER_SPOT.x + 4, SUPPLIER_SPOT.z + 5, Math.PI / 2, '#ecf0f1');
+  parkCar(SUPPLIER_SPOT.x + 4, SUPPLIER_SPOT.z + 5, Math.PI / 2, '#ecf0f1');
 
   const dizzy = makeFigure('#00bcd4', '#f1c27d', '#ff4081');
   dizzy.position.set(RUNNER_CONTACT_SPOT.x, SLAB, RUNNER_CONTACT_SPOT.z);

@@ -93,8 +93,8 @@ export class Vehicle {
         o.material = m;
       }
     });
-    // front wheels first so the steering rule (index < 2) keeps working
-    wheels.sort((a, b) => b.position.z - a.position.z);
+    // front wheels first so the steering rule (index < 2) keeps working (the source model faces -z)
+    wheels.sort((a, b) => a.position.z - b.position.z);
     for (const w of wheels) {
       const pivot = new THREE.Group();
       pivot.rotation.order = 'YXZ';
@@ -165,13 +165,6 @@ export class Vehicle {
       x: this.position.x + x * Math.cos(this.yaw) + z * Math.sin(this.yaw),
       z: this.position.z - x * Math.sin(this.yaw) + z * Math.cos(this.yaw),
     };
-  }
-
-  /** Driver eye position in world space (left seat, a little behind the windshield). */
-  eye(out: THREE.Vector3): THREE.Vector3 {
-    const p = this.local(-0.45, -0.2);
-    out.set(p.x, this.position.y + 1.35, p.z);
-    return out;
   }
 
   /** Where the player stands after getting out (driver side). */

@@ -276,7 +276,7 @@ export class Game implements GameAPI {
 
   quitToTitle(): void {
     this.running = false;
-    this.cutscene.skip();
+    this.cutscene.cancel();
     this.arrested = false;
     this.hud.arrestMode = false;
     this.hud.setVisible(false);
@@ -345,6 +345,7 @@ export class Game implements GameAPI {
       radio.tune(this.settings.radioStation);
     } else if (radio.station >= STATIONS.length - 1) {
       nowOn = false;
+      this.applySetting('radioStation', 0); // next press starts the cycle again
     } else {
       nowOn = true;
       radio.next();
@@ -403,7 +404,7 @@ export class Game implements GameAPI {
     this.hud.hiddenMode = false;
     this.hud.arrestMode = false;
     this.arrested = false;
-    this.cutscene.skip();
+    this.cutscene.cancel();
     this.syncVehicle();
     // placed stations
     const stale: import('../physics/Colliders').AABB[] = [];

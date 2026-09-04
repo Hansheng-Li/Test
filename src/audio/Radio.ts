@@ -148,6 +148,7 @@ export class Radio {
   private trackIndex = 0;
   private synthFallback = false;
   private chatterTimer = 0;
+  private pendingSeek: (() => void) | null = null;
   private lineIndex: number[] = STATIONS.map(() => 0);
   private adIndex = 0;
   private lastText = '';
@@ -278,14 +279,19 @@ export class Radio {
     }
     this.synth.stop();
     const el = this.el;
-    el.src = `/assets/music/${track.file}.ogg`;
+    if (this.pendingSeek) el.removeEventListener('loadedmetadata', this.pendingSeek);
+    const src = `/assets/music/${track.file}.ogg`;
+    el.src = src;
     const seek = (): void => {
+      this.pendingSeek = null;
+      if (!el.src.endsWith(src)) return; // a later tune replaced this track
       try {
         if (offset > 1 && offset < (Number.isFinite(el.duration) ? el.duration : track.dur) - 2) el.currentTime = offset;
       } catch {
         /* not seekable yet */
       }
     };
+    this.pendingSeek = seek;
     el.addEventListener('loadedmetadata', seek, { once: true });
     void el.play().catch(() => this.onError());
   }
