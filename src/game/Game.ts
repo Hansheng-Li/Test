@@ -390,9 +390,13 @@ export class Game implements GameAPI {
     const s = this.state;
     this.clock.totalMinutes = s.clockMinutes;
     this.player.teleport(s.player.x, s.player.y + 0.1, s.player.z, s.player.yaw);
-    for (const c of this.customers.values()) this.dynamicGroup.remove(c.mesh);
+    for (const c of this.customers.values()) {
+      c.dispose();
+      this.dynamicGroup.remove(c.mesh);
+    }
     this.customers.clear();
     for (const w of this.wanderers.values()) {
+      w.dispose();
       this.dynamicGroup.remove(w.mesh);
       this.interaction.remove(w.id);
     }
@@ -946,6 +950,7 @@ export class Game implements GameAPI {
       c.update(dt, px, pz);
       c.syncVisual(dt);
       if (c.cstate === 'DONE') {
+        c.dispose();
         this.dynamicGroup.remove(c.mesh);
         this.interaction.remove('customer_' + id);
         this.customers.delete(id);
@@ -1081,6 +1086,7 @@ export class Game implements GameAPI {
           onInteract: () => this.talkToWanderer(w),
         });
       } else if (!shouldExist && existing) {
+        existing.dispose();
         this.dynamicGroup.remove(existing.mesh);
         this.interaction.remove(existing.id);
         this.wanderers.delete(def.id);

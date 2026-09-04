@@ -50,6 +50,16 @@ export class NPC {
     kids[1].castShadow = true;
   }
 
+  /** Free GPU resources owned only by this NPC (the speech bubble); call before dropping the mesh. */
+  dispose(): void {
+    if (this.bubble) {
+      this.mesh.remove(this.bubble);
+      (this.bubble.material as THREE.SpriteMaterial).map?.dispose();
+      this.bubble.material.dispose();
+      this.bubble = null;
+    }
+  }
+
   say(text: string, color = '#ffffff', seconds = 3): void {
     if (this.bubble) {
       this.mesh.remove(this.bubble);

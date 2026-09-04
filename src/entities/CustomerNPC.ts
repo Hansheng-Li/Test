@@ -13,6 +13,13 @@ export type CustomerVisualState = 'WAITING' | 'TALK' | 'REACT' | 'LEAVE' | 'DONE
  * A customer standing at a meeting spot. After the deal they play a cartoonish
  * reaction based on the product's effect tags, then wander off along the sidewalk.
  */
+let meetTex: THREE.Texture | null = null;
+/** One shared '$ MEET' texture for every customer (a fresh one per spawn leaked a texture each time). */
+function meetTexture(): THREE.Texture {
+  meetTex ??= labelTexture('$ MEET', '#7dff9a');
+  return meetTex;
+}
+
 export class CustomerNPC extends NPC {
   cstate: CustomerVisualState = 'WAITING';
   reaction: Effect | null = null;
@@ -35,7 +42,7 @@ export class CustomerNPC extends NPC {
     label.position.y = 2.25;
     this.mesh.add(label);
     // tall bobbing "$" marker so the meeting spot reads from a block away
-    this.marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture('$ MEET', '#7dff9a'), transparent: true, depthTest: false, sizeAttenuation: true }));
+    this.marker = new THREE.Sprite(new THREE.SpriteMaterial({ map: meetTexture(), transparent: true, depthTest: false, sizeAttenuation: true }));
     this.marker.scale.set(5, 1, 1);
     this.marker.position.y = 4;
     this.marker.renderOrder = 998;
