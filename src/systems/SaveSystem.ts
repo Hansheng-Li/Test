@@ -41,6 +41,7 @@ export function createNewState(): GameState {
     trend: null,
     event: null,
     crewName: '',
+    seed: Math.floor(Math.random() * 1e9),
   };
   initCustomers(state);
   return state;
@@ -134,6 +135,7 @@ export function deserialize(json: string): GameState | null {
   const rv = r.vehicle;
   state.vehicle = rv && typeof rv === 'object' && rv.owned ? { owned: true, x: num(rv.x, -70), z: num(rv.z, -32), yaw: num(rv.yaw, 0) } : null;
   state.crewName = typeof r.crewName === 'string' ? r.crewName.slice(0, 24) : '';
+  state.seed = Math.floor(num(r.seed, 0));
   state.trend = r.trend && typeof r.trend === 'object' && ALL_EFFECTS.includes(r.trend.effect) && isFiniteNum(r.trend.day) ? r.trend : null;
   state.event = r.event && typeof r.event === 'object' && typeof r.event.id === 'string' && isFiniteNum(r.event.day) ? r.event : null;
   if (state.event?.id === 'rival' && !CUSTOMER_MAP[state.event.param ?? '']) state.event = { id: 'none', day: state.event.day };

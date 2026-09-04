@@ -29,17 +29,18 @@ export function rollWorldEvent(state: GameState, day: number): WorldEvent | null
     state.event = { id: 'none', day };
     return null;
   }
-  const roll = hashString('event' + day) % 10;
+  const salt = ':' + (state.seed ?? 0);
+  const roll = hashString('event' + day + salt) % 10;
   let ev: WorldEvent;
-  if (roll < 3) ev = { id: 'crackdown', day, param: ZONES[hashString('zone' + day) % ZONES.length] };
-  else if (roll < 5) ev = { id: 'shortage', day, param: BASE_SUPPLY_IDS[hashString('supply' + day) % BASE_SUPPLY_IDS.length] };
+  if (roll < 3) ev = { id: 'crackdown', day, param: ZONES[hashString('zone' + day + salt) % ZONES.length] };
+  else if (roll < 5) ev = { id: 'shortage', day, param: BASE_SUPPLY_IDS[hashString('supply' + day + salt) % BASE_SUPPLY_IDS.length] };
   else if (roll < 7) ev = { id: 'club_night', day };
   else if (roll < 8 && state.properties.includes('warehouse') && state.suspicion >= 20) ev = { id: 'inspection', day };
   else if (roll < 9) {
     // a rival crew works one of your unlocked customers for the day
     const unlocked = CUSTOMERS.filter((c) => state.customers[c.id]?.unlocked && !dealerHandles(state, c.id));
     if (unlocked.length >= 3) {
-      const target = unlocked[hashString('rival' + day) % unlocked.length];
+      const target = unlocked[hashString('rival' + day + salt) % unlocked.length];
       ev = { id: 'rival', day, param: target.id };
       const cs = state.customers[target.id];
       cs.relationship = Math.max(0, cs.relationship - 3);

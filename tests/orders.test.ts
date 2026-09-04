@@ -103,6 +103,7 @@ describe('haggling + trend', () => {
     const e = s.trend!.effect;
     expect(rollTrend(s, 3)).toBe(false);
     const s2 = createNewState();
+    s2.seed = s.seed;
     rollTrend(s2, 3);
     expect(s2.trend!.effect).toBe(e);
     // force a trend that a plain SUNSET has

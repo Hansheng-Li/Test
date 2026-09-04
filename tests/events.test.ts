@@ -10,6 +10,7 @@ describe('world events', () => {
   it('are deterministic per day and start on day 2', () => {
     const a = createNewState();
     const b = createNewState();
+    b.seed = a.seed; // same save seed -> same calendar; different saves get different ones
     expect(rollWorldEvent(a, 1)).toBeNull();
     for (let d = 2; d < 12; d++) {
       rollWorldEvent(a, d);
@@ -80,6 +81,7 @@ describe('rival crew', () => {
     let day = 2;
     while (day < 300) {
       const t = createNewState();
+      t.seed = s.seed;
       for (const c of Object.values(t.customers)) c.unlocked = true;
       rollWorldEvent(t, day);
       if (t.event!.id === 'rival') break;
@@ -113,5 +115,18 @@ describe('rival win-back through a pager deal', () => {
     expect(r.ok && r.wonBack).toBe(true);
     expect(rivalTarget(s)).toBeNull();
     expect(s.event!.wonBack).toBe(true);
+  });
+});
+
+describe('per-save seed', () => {
+  it('different saves see different event calendars', () => {
+    const ids = new Set<string>();
+    for (let seed = 0; seed < 12; seed++) {
+      const s = createNewState();
+      s.seed = seed;
+      rollWorldEvent(s, 2);
+      ids.add(s.event!.id);
+    }
+    expect(ids.size).toBeGreaterThan(1);
   });
 });

@@ -42,13 +42,13 @@ export const STATIONS: Station[] = [
     color: '#ff4fd8',
     lines: [
       "Rico Delgado with you till sunrise. Windows down, volume up, Sol Palma.",
-      'That was for everybody stuck on the Causeway bridge right now. We see you.',
+      'That was for everybody stuck at the Bus Depot right now. We see you.',
       "It's 1996 and the city still smells like sunscreen and gasoline. Stay with me.",
-      'Neon on the Marina strip is looking extra pink tonight. Somebody paid the power bill.',
+      'Neon on the Beach strip is looking extra pink tonight. Somebody paid the power bill.',
       'Requests on the hotline, we lost the number, keep listening anyway.',
       'Word on the boardwalk is {crew} is the name on everybody lips. Not that I know anything.',
       "Traffic: heavy police presence around {zone} tonight. Take the long way, kids.",
-      'This next one goes out to the night shift at the Neptune Arcade.',
+      'This next one goes out to the night shift at the Flamingo Diner.',
     ],
     tracks: [
       { file: 'holizna_back_in_the_80s', title: 'Back In The 80s', artist: 'HoliznaCC0', dur: 240 },
@@ -85,8 +85,8 @@ export const STATIONS: Station[] = [
     color: '#ffd166',
     lines: [
       "Big Lou on Funk City 105. If your neighbors can't hear this, you're doing it wrong.",
-      'Neon Flamingo Club is open late tonight. Dress code: sunglasses indoors.',
-      'This one is for the bartender at the Flamingo who never counts his tips wrong.',
+      'Club Mirage is open late tonight. Dress code: sunglasses indoors.',
+      'This one is for the bartender at the Canal Side Bar who never counts his tips wrong.',
       "Hot night in Sol Palma. The cops are out, the kids are out, everybody's out.",
       'Somebody just double-parked a purple van outside the studio. Respect.',
       'Rumor has it {crew} throws the best parties on the strip. I am not invited.',
@@ -107,7 +107,7 @@ export const STATIONS: Station[] = [
     synth: true,
     lines: [
       'You are listening to a signal that does not exist. Do not adjust your set.',
-      'Pirate broadcast from a van somewhere in the Industrial district. Keep it quiet.',
+      'Pirate broadcast from a van somewhere behind the Container Yard. Keep it quiet.',
       'No ads, no DJ, no license. Just the loop.',
       'If the police ask, you never heard this frequency.',
     ],
@@ -117,18 +117,21 @@ export const STATIONS: Station[] = [
 
 /** Fake 1996 spots for the businesses you can actually visit in the game. */
 export const ADS: string[] = [
-  "Pelican Pawn: we buy gold, we buy watches, we ask no questions. Corner of 3rd and Marina.",
-  "Sunny's Corner Store, open twenty-four hours because sleep is for the rich. Baggies, batteries, boiled peanuts.",
-  "Neon Flamingo Club. Ladies free before ten. Everybody else, five dollars and a smile.",
-  "Ocean View Motel, room by the hour, day or week. Now with a working ice machine.",
-  "Lucky Laundromat: your whites come out white and your questions come out answered. Cash only.",
-  "Gulf Auto: the '88 sedan. Eight cylinders of pure Sol Palma. Financing available, references not.",
-  "Neptune Arcade. Two-for-one tokens on Tuesdays. Adults welcome, nobody checks.",
-  "Marina Fish Market: fresh off the boat, or at least fresh off a boat.",
-  "Salt Water Pharmacy: aspirin, sunscreen, and everything behind the counter you did not ask about.",
-];
+  'Sol Palma Pawn: we buy gold, we buy watches, we ask no questions. Mixers, sealers, scanners — every tool a small business needs.',
+  'Quick Stop 24, open twenty-four hours because sleep is for the rich. Baggies, batteries, boiled peanuts.',
+  'Club Mirage. DJ Tidal every night this week. Dress code: sunglasses indoors.',
+  'Ocean View Motel, room by the hour, day or week. Color TV, vacancy, no questions at the desk.',
+  'Lucky Laundromat: your whites come out white and your questions come out answered. Open late, cash only.',
+  "Rojas Auto Repair: brakes, A/C, tires, and one '88 sedan out front with your name on it. Financing available, references not.",
+  'Neptune Arcade. Two-for-one tokens on Tuesdays. Adults welcome, nobody checks.',
+  'Marlin Fish Market: fresh off the boat, or at least fresh off a boat.',
+  'Flamingo Diner, corner booth always open. Coffee refills until the night nurse shift ends.',
+  "Del Mar Records: CDs, tapes, vinyl. If it charted in '96, it is on the wall.",
+  'Bay Cinema: RIPTIDE II, now on the big screen and, allegedly, already on VHS.',
+  'Sandbar Ice Cream on the pier. Two scoops, one sunburn.',
+]
 
-const ZONES = ['the Marina', 'Downtown', 'the Boardwalk', 'the Industrial district', 'Palm Heights'];
+const ZONES = ['Downtown', 'the Docks', 'the Beach strip'];
 
 /**
  * GTA-style radio: several stations with their own DJ, playlist and chatter. Stations keep
@@ -349,7 +352,7 @@ export class Radio {
     }
     if (c && c.eventId === 'club_night' && Math.random() < 0.5 && this.lastText !== 'event') {
       this.lastText = 'event';
-      return `${st.dj}: Club night at the Neon Flamingo. Line around the block, wallets wide open.`;
+      return `${st.dj}: Club night at Club Mirage. Line around the block, wallets wide open.`;
     }
     this.lastText = 'line';
     const i = this.lineIndex[this.station]++ % st.lines.length;

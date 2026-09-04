@@ -198,7 +198,7 @@ const TREND_EFFECTS: Effect[] = ALL_EFFECTS;
 /** Deterministic daily trend so save/load and tests agree. Returns true when the trend changed. */
 export function rollTrend(state: GameState, day: number): boolean {
   if (state.trend && state.trend.day === day) return false;
-  const idx = hashString('trend' + day) % TREND_EFFECTS.length;
+  const idx = hashString('trend' + day + ':' + (state.seed ?? 0)) % TREND_EFFECTS.length;
   state.trend = { effect: TREND_EFFECTS[idx], day };
   return true;
 }
