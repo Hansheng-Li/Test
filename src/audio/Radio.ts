@@ -386,7 +386,7 @@ export class Radio {
     }
     if (c && c.eventId === 'curfew' && Math.random() < 0.5 && this.lastText !== 'event') {
       this.lastText = 'event';
-      return `${st.dj}: ` + (st.synth ? 'Curfew tonight. Twice the cruisers, half the shadows. Stay sharp out there.' : 'District 3 has declared a curfew from eight until six. Extra patrols on every corner, folks. Get home safe.');
+      return `${st.dj}: ` + (st.synth ? 'Curfew tonight. Extra patrols, fewer shadows. Stay sharp out there.' : 'District 3 has declared a curfew from eight until six. Two extra patrols on the street, folks. Get home safe.');
     }
     if (c && c.eventId === 'club_night' && Math.random() < 0.5 && this.lastText !== 'event') {
       this.lastText = 'event';

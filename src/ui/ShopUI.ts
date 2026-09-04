@@ -74,7 +74,7 @@ export class ShopUI extends Panel {
     row.className = 'pager-btns';
     const loan = st.loan;
     if (!loan) {
-      box.innerHTML = `<b>MARKER</b> · cash now, pay back +${Math.round(LOAN_INTEREST * 100)}% within ${LOAN_DAYS} days. Late: +${Math.round(LOAN_LATE_INTEREST * 100)}% a day, the collectors take your cash and ask around.`;
+      box.innerHTML = `<b>MARKER</b> · cash now, pay back +${Math.round(LOAN_INTEREST * 100)}% within ${LOAN_DAYS} days. Late: +${Math.round(LOAN_LATE_INTEREST * 100)}% a day, the collectors take your cash (and Vince's) and the port hears about it.`;
       for (const t of LOAN_TIERS) {
         const ok = loanTierAvailable(st, t);
         const b = this.button(`BORROW $${t}`, () => { this.api.takeLoan(t); this.render(); }, ok ? 'cyan' : '');

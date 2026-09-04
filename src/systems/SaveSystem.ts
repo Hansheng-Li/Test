@@ -130,15 +130,18 @@ export function deserialize(json: string): GameState | null {
   const rw = r.worker;
   state.worker = rw && typeof rw === 'object' && rw.hired ? { hired: true, name: typeof rw.name === 'string' ? rw.name : 'Marisol', recipeKey: typeof rw.recipeKey === 'string' ? rw.recipeKey : null, property: typeof rw.property === 'string' ? rw.property : 'warehouse', progress: num(rw.progress, 0), produced: num(rw.produced, 0) } : null;
   const rd = r.dealer;
-  state.dealer = rd && typeof rd === 'object' && rd.hired ? { hired: true, name: typeof rd.name === 'string' ? rd.name : 'Vince', stock: Array.isArray(rd.stock) ? rd.stock.filter(validStack) : [], cash: num(rd.cash, 0), customers: Array.isArray(rd.customers) ? rd.customers.filter((x) => typeof x === 'string' && !!CUSTOMER_MAP[x]) : [], lastTickMinute: num(rd.lastTickMinute, state.clockMinutes), sales: num(rd.sales, 0), earnedTotal: num(rd.earnedTotal, 0), starvedRounds: num(rd.starvedRounds, 0) } : null;
+  state.dealer = rd && typeof rd === 'object' && rd.hired ? { hired: true, name: typeof rd.name === 'string' ? rd.name : 'Vince', stock: Array.isArray(rd.stock) ? rd.stock.filter(validStack) : [], cash: num(rd.cash, 0), customers: Array.isArray(rd.customers) ? rd.customers.filter((x) => typeof x === 'string' && !!CUSTOMER_MAP[x]) : [], lastTickMinute: Math.min(num(rd.lastTickMinute, state.clockMinutes), state.clockMinutes), sales: num(rd.sales, 0), earnedTotal: num(rd.earnedTotal, 0), starvedRounds: num(rd.starvedRounds, 0) } : null;
   if (state.dealer) state.dealer.stock = state.dealer.stock.filter((st) => st.id.startsWith('pkg:') && knownItem(st.id));
   if (state.worker && !state.properties.includes(state.worker.property)) state.worker.property = 'warehouse';
   if (state.worker && state.worker.recipeKey && !state.recipes[state.worker.recipeKey]) state.worker.recipeKey = null;
   const rh = r.handler;
-  state.handler = rh && typeof rh === 'object' && rh.hired ? { hired: true, name: typeof rh.name === 'string' ? rh.name : 'Teddy', lastTickMinute: num(rh.lastTickMinute, state.clockMinutes), trips: num(rh.trips, 0), moved: num(rh.moved, 0) } : null;
+  state.handler = rh && typeof rh === 'object' && rh.hired ? { hired: true, name: typeof rh.name === 'string' ? rh.name : 'Teddy', lastTickMinute: Math.min(num(rh.lastTickMinute, state.clockMinutes), state.clockMinutes), trips: num(rh.trips, 0), moved: num(rh.moved, 0) } : null;
   const rl = r.loan;
-  state.loan = rl && typeof rl === 'object' && isFiniteNum(rl.principal) && isFiniteNum(rl.owed) && rl.owed > 0 && isFiniteNum(rl.dueDay)
-    ? { principal: Math.max(1, Math.floor(rl.principal)), owed: Math.floor(rl.owed), takenDay: num(rl.takenDay, rl.dueDay - 3), dueDay: Math.floor(rl.dueDay), lateDays: Math.max(0, Math.floor(num(rl.lateDays, 0))) }
+  // a marker can never be due later than three days from now, and never owe a fraction
+  const today = Math.floor(state.clockMinutes / (24 * 60));
+  const dueDay = rl && typeof rl === 'object' && isFiniteNum(rl.dueDay) ? Math.min(Math.floor(rl.dueDay), today + 3) : 0;
+  state.loan = rl && typeof rl === 'object' && isFiniteNum(rl.principal) && isFiniteNum(rl.owed) && Math.ceil(rl.owed) >= 1 && isFiniteNum(rl.dueDay)
+    ? { principal: Math.max(1, Math.floor(rl.principal)), owed: Math.ceil(rl.owed), takenDay: num(rl.takenDay, dueDay - 3), dueDay, lateDays: Math.max(0, Math.floor(num(rl.lateDays, 0))) }
     : null;
   const rv = r.vehicle;
   state.vehicle = rv && typeof rv === 'object' && rv.owned ? { owned: true, x: num(rv.x, -70), z: num(rv.z, -32), yaw: num(rv.yaw, 0), ...(typeof rv.paint === 'string' && /^#[0-9a-f]{6}$/i.test(rv.paint) ? { paint: rv.paint } : {}) } : null;

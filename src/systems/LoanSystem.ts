@@ -11,6 +11,8 @@ export const LOAN_LATE_INTEREST = 0.2;
 /** The balance never grows past this multiple of the principal: a debt spiral is a soft-lock. */
 export const LOAN_CAP_MULT = 3;
 export const LOAN_LATE_HEAT = 10;
+/** Suspicion per overdue day: heat decays, a reputation for not paying does not. */
+export const LOAN_LATE_SUSPICION = 6;
 /** Collectors leave bus fare and baggie money so a broke player can still work. */
 export const LOAN_KEEP_CASH = 30;
 
@@ -68,8 +70,8 @@ export interface LoanDayResult {
 
 /**
  * Runs once per calendar day. Overdue markers grow by LOAN_LATE_INTEREST (capped),
- * add heat because the collectors ask around, and the collectors take whatever cash
- * is on hand above LOAN_KEEP_CASH.
+ * add heat and suspicion because the collectors ask around, and the collectors take
+ * whatever cash is on hand above LOAN_KEEP_CASH, then whatever Vince is holding.
  */
 export function tickLoanDay(state: GameState, day: number): LoanDayResult {
   const loan = state.loan;
@@ -83,10 +85,17 @@ export function tickLoanDay(state: GameState, day: number): LoanDayResult {
   loan.lateDays += 1;
   loan.owed = Math.min(Math.round(loan.owed * (1 + LOAN_LATE_INTEREST)), loan.principal * LOAN_CAP_MULT);
   state.heat = Math.min(100, state.heat + LOAN_LATE_HEAT);
+  state.suspicion = Math.min(100, state.suspicion + LOAN_LATE_SUSPICION);
   out.late = { owed: loan.owed, heat: LOAN_LATE_HEAT };
-  const take = Math.max(0, Math.min(Math.floor(state.cash) - LOAN_KEEP_CASH, loan.owed));
+  // pocket first, then whatever Vince is holding: the collectors know where the corner is
+  let take = Math.max(0, Math.min(Math.floor(state.cash) - LOAN_KEEP_CASH, loan.owed));
+  if (take > 0) spendCash(state, take);
+  if (state.dealer?.hired && loan.owed - take > 0 && state.dealer.cash > 0) {
+    const fromVince = Math.min(Math.floor(state.dealer.cash), loan.owed - take);
+    state.dealer.cash -= fromVince;
+    take += fromVince;
+  }
   if (take > 0) {
-    spendCash(state, take);
     loan.owed -= take;
     out.collected = take;
     if (loan.owed <= 0) {

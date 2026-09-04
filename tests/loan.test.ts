@@ -61,6 +61,7 @@ describe('pawn shop marker', () => {
     const r = tickLoanDay(s, 5);
     expect(r.late?.owed).toBe(450);
     expect(s.heat).toBe(10);
+    expect(s.suspicion).toBe(6);
     expect(r.collected).toBe(200 - LOAN_KEEP_CASH);
     expect(s.cash).toBe(LOAN_KEEP_CASH);
     expect(s.loan!.owed).toBe(450 - 170);
@@ -86,14 +87,40 @@ describe('pawn shop marker', () => {
 
   it('survives a save round trip and repairs junk', () => {
     const s = createNewState();
-    takeLoan(s, 300, 2);
+    takeLoan(s, 300, 1); // the fresh clock is day 1: a marker taken today is due on day 4
     const loaded = deserialize(serialize(s))!;
     expect(loaded.loan).toEqual(s.loan);
     const junk = deserialize(JSON.stringify({ cash: 1, inventory: [], loan: { principal: 'x', owed: 50 } }))!;
     expect(junk.loan).toBeNull();
     const partial = deserialize(JSON.stringify({ cash: 1, inventory: [], loan: { principal: 300, owed: 200, dueDay: 7 } }))!;
-    expect(partial.loan).toEqual({ principal: 300, owed: 200, takenDay: 4, dueDay: 7, lateDays: 0 });
+    // a due day past three days from now is pulled in; a fractional balance rounds up instead of becoming a $0 zombie
+    expect(partial.loan).toEqual({ principal: 300, owed: 200, takenDay: 1, dueDay: 4, lateDays: 0 });
+    const frac = deserialize(JSON.stringify({ cash: 1, inventory: [], loan: { principal: 300, owed: 0.5, dueDay: 2 } }))!;
+    expect(frac.loan!.owed).toBe(1);
     const paid = deserialize(JSON.stringify({ cash: 1, inventory: [], loan: { principal: 300, owed: 0, dueDay: 7 } }))!;
     expect(paid.loan).toBeNull();
+  });
+});
+
+describe('marker collectors and the corner', () => {
+  it('take what Vince is holding when your pockets are empty', async () => {
+    const { hireDealer } = await import('../src/systems/DealerSystem');
+    const s = createNewState();
+    s.cash = 2000;
+    hireDealer(s, 1000);
+    takeLoan(s, 300, 1);
+    s.cash = 10;
+    s.dealer!.cash = 500;
+    const r = tickLoanDay(s, 5);
+    expect(r.collected).toBe(450);
+    expect(r.cleared).toBe(true);
+    expect(s.dealer!.cash).toBe(50);
+    expect(s.cash).toBe(10);
+  });
+
+  it('a save cannot park Teddy or Vince in the future', () => {
+    const s = deserialize(JSON.stringify({ cash: 1, inventory: [], clockMinutes: 5000, handler: { hired: true, lastTickMinute: 1e12 }, dealer: { hired: true, lastTickMinute: 1e12 } }))!;
+    expect(s.handler!.lastTickMinute).toBe(5000);
+    expect(s.dealer!.lastTickMinute).toBe(5000);
   });
 });

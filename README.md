@@ -194,8 +194,8 @@ Design rules that shaped the code:
   the city is hot or under curfew and radios the nearest idle officer to your position once it spots
   you. Shows on the scanner map.
 - Curfew nights (from the fourth night, one night in five): District 3 puts two extra officers on the
-  street until 06:00, every deal draws 50% more heat and cops notice sooner, but customers pay +20%
-  after dark. Announced on the pager, the radio and the ledger; idle officers clock off at dawn, one
+  street until 06:00, every deal draws 50% more heat and officers notice you sooner, but customers pay
+  +20% after dark. Announced on the pager, the radio and the ledger; idle officers clock off at dawn, one
   mid-chase does not vanish.
 - Markers at Sol Palma Pawn: borrow $300, $800 or $1,500 (bigger sizes need a track record) and pay back
   +25% within three days. Overdue markers grow 20% a day, add heat and the collectors take any cash

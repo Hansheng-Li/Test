@@ -40,7 +40,7 @@ import { checkMilestones } from '../systems/MilestoneSystem';
 import { takeLoan, repayLoan, tickLoanDay } from '../systems/LoanSystem';
 import { resprayCar, carPaint } from '../systems/GarageSystem';
 import { hireHandler, tickHandler } from '../systems/HandlerSystem';
-import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent, applyInspection, eventSlot, curfewExtraPolice } from '../systems/EventSystem';
+import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent, applyInspection, eventSlot, curfewExtraPolice, crackdownIn } from '../systems/EventSystem';
 import { relationshipTier } from '../systems/CustomerSystem';
 import { AudioSystem, SfxName } from '../audio/Audio';
 import { HUD } from '../ui/HUD';
@@ -994,7 +994,7 @@ export class Game implements GameAPI {
         if (loan.late) {
           this.audio.play('error');
           const took = loan.collected ? ` The collectors took $${loan.collected}.` : ' The collectors found no cash on you.';
-          this.toast(`MARKER OVERDUE: +20% interest and the collectors asked around (heat +${loan.late.heat}).${took} ${loan.cleared ? 'Marker closed.' : `Still owed $${s.loan?.owed ?? 0}.`}`, 'warn', 9000);
+          this.toast(`MARKER OVERDUE: +20% interest and the collectors asked around (heat +${loan.late.heat}, suspicion up).${took} ${loan.cleared ? 'Marker closed.' : `Still owed $${s.loan?.owed ?? 0}.`}`, 'warn', 9000);
         }
       }
     }
@@ -1314,11 +1314,12 @@ export class Game implements GameAPI {
     const byCruiser = !witnessed && this.cruiserSees(w.position.x, w.position.z);
     if (byCruiser) witnessed = true;
     const zoneMult = heatMultiplier(s, zoneAt(w.position.x));
+    const crackdown = crackdownIn(s, zoneAt(w.position.x));
     if (witnessed) {
       witnessedDeal(s, r.earned! * zoneMult);
-      if (zoneMult > 1) addHeat(s, 10);
+      if (crackdown) addHeat(s, 10);
       this.audio.play('siren');
-      this.toast(byCruiser ? 'The patrol cruiser rolled past mid-deal. HEAT is rising — move.' : zoneMult > 1 ? 'Crackdown day and a cop saw that street deal. HEAT spikes!' : 'A cop saw that street deal. HEAT is rising.', 'warn');
+      this.toast(byCruiser ? 'The patrol cruiser rolled past mid-deal. HEAT is rising — move.' : crackdown ? 'Crackdown day and a cop saw that street deal. HEAT spikes!' : zoneMult > 1 ? 'A cop saw that street deal — under curfew. HEAT is rising fast.' : 'A cop saw that street deal. HEAT is rising.', 'warn');
     } else if (Math.random() < def.risk * 0.4 * zoneMult) addHeat(s, 5);
     this.save();
   }
@@ -1382,11 +1383,12 @@ export class Game implements GameAPI {
     const byCruiser = !witnessed && this.cruiserSees(npc.position.x, npc.position.z);
     if (byCruiser) witnessed = true;
     const zoneMult = heatMultiplier(s, zoneAt(npc.position.x));
+    const crackdown = crackdownIn(s, zoneAt(npc.position.x));
     if (witnessed) {
       witnessedDeal(s, r.earned! * zoneMult);
-      if (zoneMult > 1) addHeat(s, 10);
+      if (crackdown) addHeat(s, 10);
       this.audio.play('siren');
-      this.toast(byCruiser ? 'The patrol cruiser rolled past mid-deal. HEAT is rising — get out of sight.' : zoneMult > 1 ? 'A cop saw that — and it is crackdown day here. HEAT spikes!' : 'A cop saw that. HEAT is rising — get out of sight.', 'warn');
+      this.toast(byCruiser ? 'The patrol cruiser rolled past mid-deal. HEAT is rising — get out of sight.' : crackdown ? 'A cop saw that — and it is crackdown day here. HEAT spikes!' : zoneMult > 1 ? 'A cop saw that — under curfew. HEAT is rising fast.' : 'A cop saw that. HEAT is rising — get out of sight.', 'warn');
     } else if (loud && def.risk > 0.3) {
       addHeat(s, 6);
     } else if (Math.random() < def.risk * 0.3) {
