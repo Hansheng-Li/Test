@@ -24,11 +24,12 @@ export function addHeat(state: GameState, amount: number): number {
  * Heat decays over time. Faster at the safehouse and with a police scanner.
  * `dtSeconds` is real seconds.
  */
-export function decayHeat(state: GameState, dtSeconds: number, opts: { atSafehouse: boolean; hidden: boolean }): void {
+export function decayHeat(state: GameState, dtSeconds: number, opts: { atSafehouse: boolean; hidden: boolean; rateMul?: number }): void {
   let rate = 0.9; // per second
   if (opts.atSafehouse) rate = 3.5;
   else if (opts.hidden) rate = 1.6;
   if (state.upgrades.includes('eq_scanner')) rate *= 1.4;
+  rate *= opts.rateMul ?? 1; // weather only touches heat, never the long-term suspicion below
   state.heat = Math.max(0, state.heat - rate * dtSeconds);
   // long-term suspicion drifts down very slowly
   state.suspicion = Math.max(0, state.suspicion - 0.01 * dtSeconds);

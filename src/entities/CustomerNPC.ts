@@ -13,15 +13,9 @@ export type CustomerVisualState = 'WAITING' | 'TALK' | 'REACT' | 'LEAVE' | 'DONE
  * A customer standing at a meeting spot. After the deal they play a cartoonish
  * reaction based on the product's effect tags, then wander off along the sidewalk.
  */
-const meetTex = new Map<string, THREE.Texture>();
-/** Shared marker textures per relationship tier (a fresh one per spawn leaked a texture each time). */
+/** Marker label per relationship tier (labelTexture caches by text and colour). */
 function meetTexture(tier = 'stranger'): THREE.Texture {
-  let t = meetTex.get(tier);
-  if (!t) {
-    t = labelTexture(tier === 'stranger' ? '$ MEET' : `$ MEET · ${tier.toUpperCase()}`, tier === 'friend' || tier === 'family' ? '#ffd166' : '#7dff9a');
-    meetTex.set(tier, t);
-  }
-  return t;
+  return labelTexture(tier === 'stranger' ? '$ MEET' : `$ MEET · ${tier.toUpperCase()}`, tier === 'friend' || tier === 'family' ? '#ffd166' : '#7dff9a');
 }
 
 export class CustomerNPC extends NPC {
@@ -32,6 +26,7 @@ export class CustomerNPC extends NPC {
   private baseY = 0.15;
   private glowMat: import('three').MeshLambertMaterial | null = null;
   private marker: THREE.Sprite;
+  private markerWidth = 5;
   private markerT = 0;
 
   constructor(public def: CustomerDef, public orderId: number, x: number, z: number, world: CollisionWorld, graph: WaypointGraph) {
@@ -56,7 +51,7 @@ export class CustomerNPC extends NPC {
   /** Relabel the meeting marker with the customer's relationship tier. */
   setTier(tier: string): void {
     (this.marker.material as THREE.SpriteMaterial).map = meetTexture(tier);
-    this.marker.scale.set(tier === 'stranger' ? 5 : 7, 1, 1);
+    this.markerWidth = tier === 'stranger' ? 5 : 7;
   }
 
   update(dt: number, playerX: number, playerZ: number): void {
@@ -66,7 +61,7 @@ export class CustomerNPC extends NPC {
     this.marker.position.y = 4 + Math.sin(this.markerT * 3) * 0.2;
     const d = this.distanceTo(playerX, playerZ);
     const k = d > 60 ? 2.2 : d > 25 ? 1.6 : 1;
-    this.marker.scale.set(5 * k, k, 1);
+    this.marker.scale.set(this.markerWidth * k, k, 1);
     switch (this.cstate) {
       case 'WAITING':
         this.velocity.set(0, 0, 0);

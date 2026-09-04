@@ -117,6 +117,8 @@ export class Game implements GameAPI {
   private titleAngle = 0;
   private weather!: Weather;
   private wasRaining = false;
+  /** This frame's shower state, computed once in frame(). */
+  private rainNow = false;
   private workerToastTimer = 0;
   private dealerPriceyTimer = 0;
   private workerBlockedTimer = 0;
@@ -428,6 +430,7 @@ export class Game implements GameAPI {
     this.hud.arrestMode = false;
     this.arrested = false;
     this.cutscene.cancel();
+    this.wasRaining = this.isRaining(); // the shower notice only fires on a transition inside this game
     this.syncVehicle();
     // placed stations
     const stale: import('../physics/Colliders').AABB[] = [];
@@ -581,6 +584,7 @@ export class Game implements GameAPI {
     }
     while (this.police.length > want) {
       const p = this.police.pop()!;
+      p.dispose();
       this.dynamicGroup.remove(p.mesh);
     }
   }
@@ -634,7 +638,9 @@ export class Game implements GameAPI {
     if (this.running && !paused) this.tick(dt);
     if (!this.running) this.updateTitleCamera(this.uiDt);
     else if (this.cutscene.active && !paused) this.cutscene.update(this.uiDt, this.camera);
-    this.weather.setRaining(this.isRaining());
+    this.rainNow = this.isRaining();
+    // showers stay outside: interiors are in place, so the cloud is switched off while you are under a roof
+    this.weather.setRaining(this.rainNow && !(this.running && this.playerInsideAnyInterior()));
     this.weather.update(this.uiDt, this.camera.position);
     this.dayNight.update(this.clock, this.player.position, this.weather.intensity);
     this.renderer.render(this.scene, this.camera);
@@ -796,7 +802,7 @@ export class Game implements GameAPI {
 
     // heat
     const safe = this.playerInsideOwnedProperty() || !!this.hiding;
-    decayHeat(s, dt * (this.weather.intensity > 0.5 ? 1.2 : 1), { atSafehouse: this.playerInsideOwnedProperty(), hidden: this.playerInsideAnyInterior() || !!this.hiding });
+    decayHeat(s, dt, { atSafehouse: this.playerInsideOwnedProperty(), hidden: this.playerInsideAnyInterior() || !!this.hiding, rateMul: this.rainNow ? 1.2 : 1 });
     const lvl = heatLevel(s.heat);
     if (lvl !== this.lastHeatLevel) {
       if (lvl === 'hunted' || lvl === 'wanted') this.audio.play('siren');
@@ -813,7 +819,7 @@ export class Game implements GameAPI {
     this.audio.update(dt, { club: Math.max(0, 1 - dClub / 45), beach: Math.max(0, Math.min(1, (this.player.position.x - 140) / 40)), night: this.clock.isNight, insideClub: this.playerInsideBuilding('club'), heat: this.state.heat });
     this.audio.setEngine(this.driving, this.vehicle ? Math.abs(this.vehicle.speed) / this.vehicle.maxSpeed : 0);
     this.audio.setRain(this.weather.intensity * (this.playerInsideAnyInterior() || this.driving ? 0.3 : 1));
-    const raining = this.isRaining();
+    const raining = this.rainNow;
     if (raining !== this.wasRaining) {
       this.wasRaining = raining;
       if (raining) this.toast('Rain over Sol Palma. Heat cools a little faster while it lasts.', 'info', 5000);

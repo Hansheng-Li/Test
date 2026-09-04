@@ -61,11 +61,7 @@ export class NPC {
   }
 
   say(text: string, color = '#ffffff', seconds = 3): void {
-    if (this.bubble) {
-      this.mesh.remove(this.bubble);
-      (this.bubble.material as THREE.SpriteMaterial).map?.dispose();
-      this.bubble.material.dispose();
-    }
+    this.dispose();
     const mat = new THREE.SpriteMaterial({ map: speechTexture(text, color), transparent: true, depthTest: false });
     this.bubble = new THREE.Sprite(mat);
     this.bubble.scale.set(2.4, 0.75, 1);
@@ -149,12 +145,7 @@ export class NPC {
     }
     if (this.bubble) {
       this.bubbleTimer -= dt;
-      if (this.bubbleTimer <= 0) {
-        this.mesh.remove(this.bubble);
-        (this.bubble.material as THREE.SpriteMaterial).map?.dispose();
-        this.bubble.material.dispose();
-        this.bubble = null;
-      }
+      if (this.bubbleTimer <= 0) this.dispose();
     }
   }
 
