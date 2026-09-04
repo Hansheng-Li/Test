@@ -223,7 +223,7 @@ stamina, dumpster hiding, warehouse inspections, settings, and five code-review 
 
 **Tested** — 56 Vitest behavioural tests (economy, production chemistry, orders, haggling, samples,
 street deals, dealer, worker, runner queue, heat/arrest, events, milestones, save repair and migration);
-Playwright smoke, core-loop, warehouse/worker and runner/dealer e2e; scripted browser regressions for warehouse placement, worker, dealer,
+Playwright smoke, core-loop, warehouse/worker, runner/dealer and police e2e; scripted browser regressions for warehouse placement, worker, dealer,
 runner queue, motel, car, hiding, arrest; a 6-game-hour automated soak of the late-game economy with
 reload; screenshot passes for every district by day and night.
 
