@@ -197,7 +197,7 @@ haggling, wandering customers with samples and street deals, dealer network, wor
 crew naming, drivable sedan, procedural radio, motel and laundromat properties, VIP orders, boredom,
 stamina, dumpster hiding, warehouse inspections, settings, and five code-review rounds of fixes.
 
-**Tested** — 55 Vitest behavioural tests (economy, production chemistry, orders, haggling, samples,
+**Tested** — 56 Vitest behavioural tests (economy, production chemistry, orders, haggling, samples,
 street deals, dealer, worker, runner queue, heat/arrest, events, milestones, save repair and migration);
 Playwright smoke + core-loop e2e; scripted browser regressions for warehouse placement, worker, dealer,
 runner queue, motel, car, hiding, arrest; a 6-game-hour automated soak of the late-game economy with

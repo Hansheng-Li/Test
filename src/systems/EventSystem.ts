@@ -2,14 +2,17 @@ import { GameState } from '../game/GameState';
 import { hashString } from '../utils/math';
 import { BASE_SUPPLY_IDS } from '../data/items';
 import { CUSTOMERS } from '../data/customers';
+import { dealerHandles } from './DealerSystem';
 
 export type WorldEventId = 'none' | 'crackdown' | 'shortage' | 'club_night' | 'inspection' | 'rival';
 
 export interface WorldEvent {
   id: WorldEventId;
   day: number;
-  /** crackdown: zone; shortage: supply item id. */
+  /** crackdown: zone; shortage: supply item id; rival: customer id. */
   param?: string;
+  /** rival: the player already won the customer back today. */
+  wonBack?: boolean;
 }
 
 const ZONES = ['beach', 'downtown', 'docks'] as const;
@@ -34,7 +37,7 @@ export function rollWorldEvent(state: GameState, day: number): WorldEvent | null
   else if (roll < 8 && state.properties.includes('warehouse') && state.suspicion >= 20) ev = { id: 'inspection', day };
   else if (roll < 9) {
     // a rival crew works one of your unlocked customers for the day
-    const unlocked = CUSTOMERS.filter((c) => state.customers[c.id]?.unlocked && !(state.dealer?.customers ?? []).includes(c.id));
+    const unlocked = CUSTOMERS.filter((c) => state.customers[c.id]?.unlocked && !dealerHandles(state, c.id));
     if (unlocked.length >= 3) {
       const target = unlocked[hashString('rival' + day) % unlocked.length];
       ev = { id: 'rival', day, param: target.id };
@@ -114,14 +117,14 @@ export function describeEvent(ev: WorldEvent | null): string | null {
 /** Customer currently being courted by the rival crew (no pager orders until the player wins them back). */
 export function rivalTarget(state: GameState): string | null {
   const ev = activeEvent(state);
-  return ev?.id === 'rival' && ev.param && !state.flags['rival_won_' + ev.day] ? ev.param : null;
+  return ev?.id === 'rival' && ev.param && !ev.wonBack ? ev.param : null;
 }
 
 /** A face-to-face deal wins the customer back for the day. */
 export function winBackFromRival(state: GameState, customerId: string): boolean {
   const ev = activeEvent(state);
-  if (ev?.id !== 'rival' || ev.param !== customerId || state.flags['rival_won_' + ev.day]) return false;
-  state.flags['rival_won_' + ev.day] = true;
+  if (ev?.id !== 'rival' || ev.param !== customerId || ev.wonBack) return false;
+  ev.wonBack = true;
   const cs = state.customers[customerId];
   if (cs) cs.relationship = Math.min(100, cs.relationship + 5);
   return true;

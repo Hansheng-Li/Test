@@ -47,7 +47,7 @@ import { WanderingCustomer } from '../entities/WanderingCustomer';
 import { Vehicle } from '../player/Vehicle';
 import { CUSTOMERS } from '../data/customers';
 import { offerSample } from '../systems/CustomerSystem';
-import { streetSale, streetSaleCandidate, streetUnitPrice, STREET_SALE_COOLDOWN } from '../systems/OrderSystem';
+import { streetSale, canStreetSell, streetUnitPrice } from '../systems/OrderSystem';
 import { lambert, boxGeo } from '../world/Materials';
 import { signTexture } from '../world/Textures';
 
@@ -944,10 +944,8 @@ export class Game implements GameAPI {
       const sample = this.sampleItem();
       return sample ? `[E] OFFER SAMPLE (1x ${resolveItem(s, sample).name}) · ${first}, ${w.def.personality}` : `[E] TALK · ${first} (${w.def.personality}) — bring a sample`;
     }
-    const cand = streetSaleCandidate(s, w.def.id);
-    const cooling = this.clock.totalMinutes - cs.lastOrderMinute < STREET_SALE_COOLDOWN;
-    const viaDealer = !!s.dealer?.customers.includes(w.def.id);
-    if (cand && !cooling && !viaDealer) return `[E] SELL ${resolveItem(s, cand.id).name} · $${streetUnitPrice(s, w.def.id, cand.key)}/unit · ${first}`;
+    const gate = canStreetSell(s, w.def.id, this.clock.totalMinutes);
+    if (gate.ok) return `[E] SELL ${resolveItem(s, gate.item.id).name} · $${streetUnitPrice(s, w.def.id, gate.item.key)}/unit · ${first}`;
     return `[E] TALK · ${first} (${w.def.personality})`;
   }
 
@@ -1050,7 +1048,7 @@ export class Game implements GameAPI {
     const r = completeSale(s, order.id, this.clock.totalMinutes);
     if (!r.ok) return;
     this.audio.play('cash');
-    this.hud.flash(`SOLD  +$${r.earned}`);
+    this.hud.flash(r.wonBack ? `WON BACK FROM SAL  +$${r.earned}` : `SOLD  +$${r.earned}`);
     const name = recipeDisplayName(s, r.itemKey!);
     this.toast(`+$${r.earned} · Sold ${order.qty}x ${name} to ${def.name}${r.onTime ? '' : ' (late, 30% off)'}${r.trendHit ? ' · TREND BONUS +25%' : ''}`, 'cash');
     const rel = s.customers[def.id];

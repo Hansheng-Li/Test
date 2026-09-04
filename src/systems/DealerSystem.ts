@@ -17,6 +17,11 @@ export function hireDealer(state: GameState, price: number): boolean {
   return true;
 }
 
+/** True when this customer buys from the dealer instead of paging the player. */
+export function dealerHandles(state: GameState, customerId: string): boolean {
+  return !!state.dealer?.hired && state.dealer.customers.includes(customerId);
+}
+
 export function dealerStockCount(state: GameState): number {
   return state.dealer?.stock.reduce((a, s) => a + s.qty, 0) ?? 0;
 }

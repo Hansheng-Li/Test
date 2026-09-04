@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createNewState } from '../src/systems/SaveSystem';
 import { rollWorldEvent, shopPriceMultiplier, orderPriceMultiplier, heatMultiplier, applyInspection, rivalTarget, winBackFromRival } from '../src/systems/EventSystem';
-import { generateOrder, streetSale } from '../src/systems/OrderSystem';
+import { generateOrder, streetSale, acceptOrder, completeSale } from '../src/systems/OrderSystem';
 import { addItem } from '../src/systems/InventorySystem';
 import { computeRecipe } from '../src/data/products';
 import { buyFromShop, shopPrice } from '../src/systems/EconomySystem';
@@ -96,5 +96,22 @@ describe('rival crew', () => {
     expect(r.ok && r.wonBack).toBe(true);
     expect(rivalTarget(s)).toBeNull();
     expect(winBackFromRival(s, target)).toBe(false);
+  });
+});
+
+describe('rival win-back through a pager deal', () => {
+  it('an in-person pager sale also wins the customer back', () => {
+    const s = createNewState();
+    const o = generateOrder(s, { now: 1000, customerId: 'moe', simple: true, rng: () => 0.1 })!;
+    acceptOrder(s, o.id);
+    s.event = { id: 'rival', day: s.clockMinutes / 1440, param: 'moe' };
+    s.event.day = Math.floor(s.event.day);
+    expect(rivalTarget(s)).toBe('moe');
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    addItem(s, 'pkg:SUNSET', o.qty);
+    const r = completeSale(s, o.id, 1000);
+    expect(r.ok && r.wonBack).toBe(true);
+    expect(rivalTarget(s)).toBeNull();
+    expect(s.event!.wonBack).toBe(true);
   });
 });

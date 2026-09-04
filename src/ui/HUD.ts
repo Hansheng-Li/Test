@@ -150,7 +150,7 @@ export class HUD {
     const el = this.root.querySelector('#flash') as HTMLElement;
     el.textContent = text;
     el.style.color = color;
-    el.style.textShadow = `0 0 18px ${color}99, 0 3px 0 #000`;
+    el.style.textShadow = `0 0 18px color-mix(in srgb, ${color} 60%, transparent), 0 3px 0 #000`;
     el.classList.remove('show');
     void el.offsetWidth;
     el.classList.add('show');

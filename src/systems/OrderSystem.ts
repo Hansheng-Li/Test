@@ -3,6 +3,7 @@ import { CustomerDef } from '../data/customers';
 import { BASES, computeRecipe, Effect, ALL_EFFECTS, packagedItemId, parseRecipeKey } from '../data/products';
 import { hashString } from '../utils/math';
 import { orderPriceMultiplier, rivalTarget, winBackFromRival } from './EventSystem';
+import { dealerHandles } from './DealerSystem';
 import { LANDMARKS } from '../data/city';
 import { customerState, relationshipTier, unlockedCustomers, recordSuccessfulDeal, customerDef } from './CustomerSystem';
 import { countItem, removeItem, packagedInInventory } from './InventorySystem';
@@ -47,9 +48,8 @@ export function generateOrder(state: GameState, opts: OrderGenOptions): Order | 
   const hour = (now % (24 * 60)) / 60;
   const isNight = hour >= 20 || hour < 6;
   const busy = new Set(state.orders.filter((o) => o.status === 'pending' || o.status === 'accepted' || o.status === 'runner').map((o) => o.customerId));
-  const dealerHas = new Set(state.dealer?.customers ?? []);
   const rival = rivalTarget(state);
-  let candidates = unlockedCustomers(state).filter((c) => !busy.has(c.id) && !dealerHas.has(c.id) && c.id !== rival);
+  let candidates = unlockedCustomers(state).filter((c) => !busy.has(c.id) && !dealerHandles(state, c.id) && c.id !== rival);
   if (opts.customerId) candidates = candidates.filter((c) => c.id === opts.customerId);
   candidates = candidates.filter((c) => now - customerState(state, c.id).lastOrderMinute > 40);
   const c = pickWeighted(
@@ -280,6 +280,7 @@ export interface SaleResult {
   unlocked?: string[];
   matchedPreference?: boolean;
   trendHit?: boolean;
+  wonBack?: boolean;
 }
 
 /** Complete a sale in person: remove product, add cash, bump relationship. */
@@ -303,8 +304,9 @@ export function completeSale(state: GameState, orderId: number, now: number): Sa
   const cdef = unlockedCustomers(state).find((c) => c.id === o.customerId);
   const matchedPreference = !!cdef && cdef.prefEffects.some((e) => r.effects.includes(e));
   noteRecipeBought(state, o.customerId, item.key);
+  const wonBack = winBackFromRival(state, o.customerId);
   const unlocked = recordSuccessfulDeal(state, o.customerId, { onTime, matchedPreference });
-  return { ok: true, earned, itemKey: item.key, onTime, unlocked, matchedPreference, trendHit };
+  return { ok: true, earned, itemKey: item.key, onTime, unlocked, matchedPreference, trendHit, wonBack };
 }
 
 /** Expire stale orders; returns the ones that just expired. */
@@ -363,18 +365,27 @@ export function streetUnitPrice(state: GameState, customerId: string, key: strin
   return Math.round(offeredUnitPrice(state, customerDef(customerId), value) * 0.9);
 }
 
+/** Dry run of the street-sale gates; the prompt and the sale itself both use this so they never disagree. */
+export function canStreetSell(state: GameState, customerId: string, now: number): { ok: true; item: { id: string; key: string; qty: number } } | { ok: false; reason: 'locked' | 'cooldown' | 'no_item' | 'bored' | 'dealer' } {
+  const cs = customerState(state, customerId);
+  if (!cs.unlocked) return { ok: false, reason: 'locked' };
+  if (dealerHandles(state, customerId)) return { ok: false, reason: 'dealer' };
+  if (now - cs.lastOrderMinute < STREET_SALE_COOLDOWN) return { ok: false, reason: 'cooldown' };
+  const item = streetSaleCandidate(state, customerId);
+  if (!item) return { ok: false, reason: 'no_item' };
+  if (isBored(state, customerId) && cs.lastRecipe === item.key) return { ok: false, reason: 'bored' };
+  return { ok: true, item };
+}
+
 /**
  * Sell directly to a customer met on the street: no pager, no meeting spot, a small
  * discount, 1-2 units. Uses the same relationship and trend rules as a pager deal.
  */
 export function streetSale(state: GameState, customerId: string, now: number, rng: () => number = Math.random): StreetSaleResult {
   const cs = customerState(state, customerId);
-  if (!cs.unlocked) return { ok: false, reason: 'locked' };
-  if (state.dealer?.customers.includes(customerId)) return { ok: false, reason: 'dealer' };
-  if (now - cs.lastOrderMinute < STREET_SALE_COOLDOWN) return { ok: false, reason: 'cooldown' };
-  const item = streetSaleCandidate(state, customerId);
-  if (!item) return { ok: false, reason: 'no_item' };
-  if (isBored(state, customerId) && cs.lastRecipe === item.key) return { ok: false, reason: 'bored' };
+  const gate = canStreetSell(state, customerId, now);
+  if (!gate.ok) return { ok: false, reason: gate.reason };
+  const item = gate.item;
   const qty = Math.min(item.qty, 1 + (rng() < 0.5 ? 1 : 0));
   const unit = streetUnitPrice(state, customerId, item.key);
   const parsed = parseRecipeKey(item.key)!;
