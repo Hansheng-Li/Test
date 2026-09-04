@@ -217,6 +217,36 @@ export function buildContainer(pb: PropBuilder, x: number, z: number, color: str
   }
 }
 
+/** Transit stop: a pole with a sign and a small shelter roof over a bench. */
+export function buildBusStop(pb: PropBuilder, x: number, z: number, rot: number): THREE.Group {
+  const g = new THREE.Group();
+  const pole = new THREE.Mesh(cylGeo(0.06, 0.06, 2.8, 6), lambert(PALETTE.metal));
+  pole.position.set(-1.2, 1.4, 0);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.5), new THREE.MeshBasicMaterial({ map: signTexture('BUS', { color: '#ffffff', bg: '#e67e22', glow: false, sub: 'SOL PALMA TRANSIT' }), side: THREE.DoubleSide }));
+  sign.position.set(-1.2, 2.55, 0.05);
+  const roof = new THREE.Mesh(boxGeo(3, 0.1, 1.4), lambert('#e67e22'));
+  roof.position.set(0.4, 2.4, -0.2);
+  const back = new THREE.Mesh(boxGeo(3, 2.3, 0.08), lambert('#dfe6ee', { transparent: true, opacity: 0.55 }));
+  back.position.set(0.4, 1.25, -0.85);
+  const seat = new THREE.Mesh(boxGeo(2.4, 0.1, 0.5), lambert('#a9744f'));
+  seat.position.set(0.4, 0.55, -0.4);
+  for (const sx of [-0.6, 1.4]) {
+    const leg = new THREE.Mesh(boxGeo(0.1, 0.5, 0.4), lambert(PALETTE.darkMetal));
+    leg.position.set(sx, 0.25, -0.4);
+    g.add(leg);
+    const post = new THREE.Mesh(boxGeo(0.08, 2.4, 0.08), lambert(PALETTE.darkMetal));
+    post.position.set(sx, 1.2, -0.85);
+    g.add(post);
+  }
+  g.add(pole, sign, roof, back, seat);
+  g.position.set(x, 0.15, z);
+  g.rotation.y = rot;
+  pb.group.add(g);
+  const along = Math.abs(Math.cos(rot)) > 0.5;
+  pb.collider(aabbFromBottom(x + (along ? 0.4 : 0), 0.15, z + (along ? -0.6 : 0.4), along ? 3 : 1.2, 2.4, along ? 0.8 : 3, 'bus_stop'));
+  return g;
+}
+
 export function buildPayphone(pb: PropBuilder, x: number, z: number, rot: number): THREE.Group {
   const g = new THREE.Group();
   const booth = new THREE.Mesh(boxGeo(0.9, 2.3, 0.9), lambert('#2b7bd6', { transparent: true, opacity: 0.85 }));

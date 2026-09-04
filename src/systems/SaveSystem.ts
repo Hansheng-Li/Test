@@ -149,7 +149,7 @@ export function deserialize(json: string): GameState | null {
   }
   for (const key of Object.keys(state.storage)) state.storage[key] = Array.isArray(state.storage[key]) ? state.storage[key].filter(validStack) : [];
   state.clockMinutes = Math.max(0, state.clockMinutes);
-  for (const k of Object.keys(state.stats) as (keyof typeof state.stats)[]) state.stats[k] = num(state.stats[k], fresh.stats[k]);
+  for (const k of Object.keys(state.stats) as (keyof typeof state.stats)[]) state.stats[k] = num(state.stats[k], fresh.stats[k] ?? 0);
   for (const prop of state.properties) if (!state.storage[prop]) state.storage[prop] = [];
   state.heat = Math.max(0, Math.min(100, Number(state.heat) || 0));
   state.suspicion = Math.max(0, Math.min(100, Number(state.suspicion) || 0));

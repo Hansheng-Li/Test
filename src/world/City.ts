@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import {
   BUILDINGS, BuildingSpec, ROADS_X, ROADS_Z, ROAD_WIDTH, SIDEWALK_WIDTH, MAP_MIN_X, MAP_MAX_X, MAP_MIN_Z, MAP_MAX_Z,
-  OCEAN_X, CANAL_X, CANAL_Z, PAYPHONES, SUPPLIER_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT, DEALER_CONTACT_SPOT, CAR_SALE_SPOT, WAREHOUSE_SIGN, Facing,
+  OCEAN_X, CANAL_X, CANAL_Z, PAYPHONES, BUS_STOPS, SUPPLIER_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT, DEALER_CONTACT_SPOT, CAR_SALE_SPOT, WAREHOUSE_SIGN, Facing,
 } from '../data/city';
 import { CollisionWorld, aabbFromBottom } from '../physics/Colliders';
 import { lambert, basic, boxGeo, cylGeo, PALETTE } from './Materials';
 import { facadeTexture, signTexture, asphaltTexture, sidewalkTexture, sandTexture, grassTexture } from './Textures';
 import {
   PropBuilder, buildPalms, buildStreetLights, buildBench, buildTrashCan, buildDumpster, buildCar, buildFence,
-  buildContainer, buildPayphone, buildLifeguardTower,
+  buildContainer, buildPayphone, buildLifeguardTower, buildBusStop,
 } from './Props';
 import { furnishInterior, InteriorContext, makeLabel, makeFigure } from './Interiors';
 import { WorldObject, NightToggle } from './WorldTypes';
@@ -294,6 +294,11 @@ export function buildCity(): CityResult {
   bw.position.set((166 + OCEAN_X) / 2, SLAB, 5);
   group.add(bw);
 
+  // transit stops
+  for (const b of BUS_STOPS) {
+    const g = buildBusStop(pb, b.x, b.z, b.rot);
+    objects.push({ kind: 'bus_stop', id: 'bus_' + b.id, position: new THREE.Vector3(b.x, SLAB, b.z), mesh: g, data: { stop: b.id } });
+  }
   // payphones
   PAYPHONES.forEach((p, i) => {
     const g = buildPayphone(pb, p.x, p.z, p.rot);

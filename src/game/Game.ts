@@ -5,6 +5,8 @@ import { STATIONS } from '../audio/Radio';
 import { loadModel, instanceModel, upgradeParkedCars, CAR_SCALE } from '../world/Models';
 import { Cutscene, Shot } from './Cutscene';
 import { Weather } from '../world/Weather';
+import { BusUI } from '../ui/BusUI';
+import { BUS_STOPS, BUS_FARE, BUS_MINUTES } from '../data/city';
 import { hashString } from '../utils/math';
 import { GameClock } from '../core/Time';
 import { PlayerController } from '../player/PlayerController';
@@ -88,6 +90,7 @@ export class Game implements GameAPI {
   mapUI: MapUI;
   dealerUI: DealerUI;
   ledgerUI: LedgerUI;
+  busUI: BusUI;
   private milestoneTimer = 0;
   private dealerStarvedTimer = 0;
   openPanelId: string | null = null;
@@ -181,7 +184,8 @@ export class Game implements GameAPI {
     this.mapUI = new MapUI(root, this);
     this.dealerUI = new DealerUI(root, this);
     this.ledgerUI = new LedgerUI(root, this);
-    for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI, this.dealerUI, this.ledgerUI]) this.panels[p.id] = p;
+    this.busUI = new BusUI(root, this);
+    for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI, this.dealerUI, this.ledgerUI, this.busUI]) this.panels[p.id] = p;
     this.cutscene = new Cutscene(root);
     this.menu = new Menu(root, {
       newGame: () => this.startNewGame(true),
@@ -512,6 +516,9 @@ export class Game implements GameAPI {
         break;
       case 'bed':
         add({ prompt: () => (o.data?.rest || owned() ? '[E] REST UNTIL MORNING' : null), onInteract: () => this.rest(), radius: 3 });
+        break;
+      case 'bus_stop':
+        add({ prompt: () => `[E] BUS STOP · ride to another district ($${BUS_FARE})`, onInteract: () => { this.busUI.here = String(o.data?.stop ?? ''); this.openPanel('bus-panel'); }, radius: 3.5 });
         break;
       case 'payphone':
         add({ prompt: () => (this.payphoneCooldown > 0 ? null : `[E] USE PAYPHONE · CALL AROUND (${this.state.cash < 1 ? 'FREE, you look broke' : '$1'})`), onInteract: () => this.usePayphone(), radius: 2.8 });
@@ -2213,6 +2220,45 @@ export class Game implements GameAPI {
       this.hud.flash(`${first} IS NOW ${after === 'acquaintance' ? 'AN' : 'A'} ${after.toUpperCase()}`, '#ffd166');
       this.toast(`${CUSTOMER_MAP[customerId].name} is now a ${after}: ${perk}.`, 'cash', 6000);
     }, 1700);
+  }
+
+  /** Sol Palma Transit: a fade, a few minutes, and you are across town. Not with a cop on your heels. */
+  rideBus(stopId: string): void {
+    const s = this.state;
+    const dest = BUS_STOPS.find((b) => b.id === stopId);
+    if (!dest || this.driving || this.hiding || this.arrested) return;
+    const px = this.player.position.x;
+    const pz = this.player.position.z;
+    const tail = this.police.find((p) => (p.pstate === 'CHASE' || p.pstate === 'APPROACH') && p.distanceTo(px, pz) < 30);
+    if (tail) {
+      this.audio.play('error');
+      this.toast('The driver takes one look at the cop behind you and closes the door.', 'warn', 4000);
+      return;
+    }
+    if (!spendCash(s, BUS_FARE)) {
+      this.audio.play('error');
+      this.toast(`Fare is $${BUS_FARE}. Exact change, no stories.`, 'warn');
+      return;
+    }
+    this.closePanel();
+    this.audio.play('door');
+    const arrive = (): void => {
+      this.clock.totalMinutes += BUS_MINUTES;
+      s.clockMinutes = this.clock.totalMinutes;
+      this.player.teleport(dest.x + Math.sin(dest.rot + Math.PI / 2) * 2.5, 0.3, dest.z + Math.cos(dest.rot + Math.PI / 2) * 2.5, dest.rot + Math.PI);
+      s.stats.busRides = (s.stats.busRides ?? 0) + 1;
+      this.toast(`${dest.name}. ${BUS_MINUTES} minutes and $${BUS_FARE} well spent.`, 'info', 4000);
+      this.save();
+    };
+    if (this.settings.cutscenes) {
+      const p = this.player.position;
+      this.hud.setVisible(false);
+      this.cutscene.play([{ from: [p.x, p.y + 1.6, p.z], to: [p.x, p.y + 1.6, p.z], lookFrom: [p.x + 1, p.y + 1.6, p.z], dur: 1.6, fade: 1, text: 'SOL PALMA TRANSIT', sub: dest.name.toUpperCase() }], () => {
+        arrive();
+        this.hud.setVisible(true);
+        this.input.requestLock();
+      });
+    } else arrive();
   }
 
   /** Run an in-game cutscene: closes panels, hides the HUD and hands control back afterwards. */

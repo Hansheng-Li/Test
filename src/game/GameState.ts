@@ -120,7 +120,9 @@ export interface GameState {
   /** Player-chosen name for the operation; shows on the warehouse sign and the ledger. */
   crewName: string;
   player: { x: number; y: number; z: number; yaw: number };
-  stats: { sales: number; earned: number; arrests: number; declined: number; produced: number; playSeconds: number; earnedAtDayStart: number; salesAtDayStart: number; lastDay: number };
+  stats: {
+    /** Bus rides taken (flavour and a milestone). */
+    busRides?: number; sales: number; earned: number; arrests: number; declined: number; produced: number; playSeconds: number; earnedAtDayStart: number; salesAtDayStart: number; lastDay: number };
   flags: Record<string, boolean>;
   /** Per-save seed so daily trends and world events differ between playthroughs. */
   seed: number;

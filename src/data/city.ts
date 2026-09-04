@@ -109,6 +109,15 @@ export const LANDMARKS: Landmark[] = [
   { id: 'canal', name: 'Canal Boardwalk', x: -27, z: 142, zone: 'docks' },
 ];
 
+/** Sol Palma Transit stops: one per district, on the sidewalk. Riding costs BUS_FARE and BUS_MINUTES of clock. */
+export const BUS_STOPS: { id: string; name: string; x: number; z: number; rot: number; zone: Zone }[] = [
+  { id: 'downtown', name: 'Bus Depot · Downtown', x: 62, z: -108, rot: 0, zone: 'downtown' },
+  { id: 'docks', name: 'Port Gate · Docks', x: -115, z: 47, rot: Math.PI / 2, zone: 'docks' },
+  { id: 'beach', name: 'Pier Road · Beach', x: 147, z: 47, rot: -Math.PI / 2, zone: 'beach' },
+];
+export const BUS_FARE = 5;
+export const BUS_MINUTES = 12;
+
 export const PAYPHONES: { x: number; z: number; rot: number }[] = [
   { x: -43, z: -36, rot: 0 },
   { x: 118, z: -36, rot: 0 },

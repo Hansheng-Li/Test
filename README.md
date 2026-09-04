@@ -177,6 +177,8 @@ Design rules that shaped the code:
   deliveries goes wrong.
 - Daily trend bonus, world events twice a day (crackdown / shortage / club night), pedestrian gossip about
   your named products, 14 milestone goals with rewards, morning summaries.
+- Sol Palma Transit: a bus stop per district (marked B on the map) rides you across town for $5 and
+  twelve minutes behind a fade, unless a cop is on your heels.
 - Drivable arcade sedan (Kenney CC0 model, box fallback) with a chase camera that orbits with the mouse
   and pulls in at walls; horn, headlights and persisted parking spot. Streets are lined with Kenney
   sedans, hatchbacks, SUVs, taxis and vans merged into a handful of draw calls.

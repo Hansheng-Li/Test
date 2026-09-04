@@ -17,6 +17,8 @@ export interface GameAPI {
   toast(msg: string, kind?: ToastKind): void;
   sfx(name: SfxName): void;
   closePanel(): void;
+  /** Take the bus from the current stop to another district's stop. */
+  rideBus(stopId: string): void;
   acceptOrder(id: number): void;
   haggle(id: number, markup: number): void;
   declineOrder(id: number): void;

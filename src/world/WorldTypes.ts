@@ -11,6 +11,7 @@ export interface WorldObject {
     | 'pawn_counter'
     | 'bed'
     | 'payphone'
+    | 'bus_stop'
     | 'warehouse_sign'
     | 'supplier'
     | 'runner_contact'
