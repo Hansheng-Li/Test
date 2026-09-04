@@ -17,10 +17,11 @@ npx playwright test  # e2e（e2e/*.spec.ts，需要 dev 服务器；Chromium 在
 
 - `src/game/Game.ts`：唯一的编排者（tick 循环、交互接线、面板、过场、电台开关、存档）。实现 `GameAPI` 供 UI 调用。
 - `src/game/GameState.ts`：可序列化状态；`SAVE_VERSION` 变更时在 `SaveSystem.deserialize` 里写迁移。
-- `src/systems/*.ts`：**纯函数**逻辑（库存、经济、生产、顾客、订单、热度、跑腿、工人、经销商、事件、里程碑、存档修复）。不碰 DOM/Three，所有单测针对这里。
+- `src/systems/*.ts`：**纯函数**逻辑（库存、经济、生产、顾客、订单、热度、跑腿、工人、经销商、搬运工 `HandlerSystem`、借条 `LoanSystem`、喷漆 `GarageSystem`、骰子 `DiceSystem`、雾 `WeatherSystem`、事件、里程碑、存档修复）。不碰 DOM/Three，所有单测针对这里。
 - `src/data/*.ts`：城市布局、物品/商店、产品化学、顾客定义。电台文案里出现的商家必须存在于 `city.ts`。
-- `src/world/*`：城市生成、静态合并（`StaticMerge`）、Kenney 模型加载（`Models.ts`，缺文件回退方块）、天气、昼夜。
-- `src/entities/*`：NPC 状态机（市民、警察 7 态、顾客、游荡顾客、跑腿）。
+- `src/world/*`：城市生成、静态合并（`StaticMerge`）、Kenney 模型加载（`Models.ts`，缺文件回退方块）、室内家具陈设（`Dressing.ts`）、脸部贴图（`Faces.ts`）、雨（`Weather.ts`）、昼夜与雾（`DayNight.ts`）。
+- `src/entities/*`：NPC 状态机（市民、警察 7 态、顾客、游荡顾客、跑腿）；`Cruiser.ts` 是沿固定环线行驶的巡逻警车（移动目击者，宵禁时海滩多一辆）。
+- `src/audio/News.ts`：WSOL 新闻电台播报的纯文本生成，电台里提到的商家必须存在于 `city.ts`。
 - `src/audio/*`：程序化音效 + CC0 采样（缺文件回退合成音）、四频道电台（`Radio.ts`）、合成器电台（`SynthLoop.ts`）。
 - `src/ui/*`：DOM/CSS HUD 与面板。玩家输入的文字进入 `innerHTML` 前必须经 `esc()`。
 - `public/assets/`：仅 CC0 素材，逐文件记录在 `public/assets/LICENSES.md`；游戏在这些文件缺失时必须仍可运行。

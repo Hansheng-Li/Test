@@ -37,7 +37,7 @@ import { hireDealer, giveDealerStock, takeDealerStock, assignDealerCustomer, una
 import { DealerUI } from '../ui/DealerUI';
 import { LedgerUI } from '../ui/LedgerUI';
 import { checkMilestones } from '../systems/MilestoneSystem';
-import { takeLoan, repayLoan, tickLoanDay } from '../systems/LoanSystem';
+import { takeLoan, repayLoan, tickLoanDay, loanDaysLeft } from '../systems/LoanSystem';
 import { resprayCar, carPaint } from '../systems/GarageSystem';
 import { fogLevel, sightMultiplier } from '../systems/WeatherSystem';
 import { hireHandler, tickHandler } from '../systems/HandlerSystem';
@@ -2333,6 +2333,8 @@ export class Game implements GameAPI {
     if (!s.flags.starterTaken) return 'Open the STARTER BOX in your back room.';
     const pending = pendingOrders(s);
     if (pending.length) return `Pager: ${pending.length} new order${pending.length > 1 ? 's' : ''}. Press P to accept or decline.`;
+    if (s.loan && loanDaysLeft(s.loan, this.clock.day) <= 0) return `Pawn shop marker ${loanDaysLeft(s.loan, this.clock.day) < 0 ? 'OVERDUE' : 'due today'}: pay $${s.loan.owed} at Sol Palma Pawn.`;
+    if (s.heat >= 60 && s.vehicle?.owned && !this.hiding) return `Hot. Break line of sight, hide in a dumpster, or get the sedan resprayed at Rojas ($${RESPRAY_PRICE}, heat -30).`;
     const active = activeOrders(s).filter((o) => o.status === 'accepted');
     if (active.length) {
       const o = active[0];
@@ -2349,12 +2351,14 @@ export class Game implements GameAPI {
     const looseNow = looseProductsInInventory(s);
     if (looseNow.length && countItem(s, 'baggies') > 0) return `Package your ${recipeDisplayName(s, looseNow[0].key)} at the PACKAGING table.`;
     if (['pulp_sunset', 'wax_velvet', 'gel_neon'].some((id) => countItem(s, id) > 0) && s.stats.produced === 0) return 'Prep your Sunset Pulp at the PREP TABLE while you wait for a page.';
+    if (s.cash < 30 && !s.loan && s.stats.sales >= 1 && !['pulp_sunset', 'wax_velvet', 'gel_neon'].some((id) => countItem(s, id) > 0) && packagedInInventory(s).length === 0) return 'Broke? Sol Palma Pawn writes a $300 marker — pay it back within 3 days.';
     if (countItem(s, 'baggies') < 3) return 'Stock up on baggies at Quick Stop 24. Wait for the next page.';
     if (s.cash >= WAREHOUSE_PRICE && !s.properties.includes('warehouse')) return `You can afford WAREHOUSE 7 ($${WAREHOUSE_PRICE}) at the docks.`;
     if (s.cash >= RUNNER_HIRE_PRICE && !s.runner?.hired && s.stats.sales >= 4) return `Hire Dizzy the runner near the Ocean View Motel ($${RUNNER_HIRE_PRICE}).`;
     if (s.properties.includes('warehouse') && !s.worker?.hired && s.cash >= WORKER_HIRE_PRICE) return `Hire Marisol (production worker) at the Port Authority ($${WORKER_HIRE_PRICE}).`;
     if (!s.dealer?.hired && s.cash >= DEALER_HIRE_PRICE && Object.values(s.customers).filter((c) => c.unlocked).length >= 5) return `Hire Vince as a dealer near Neptune Arcade ($${DEALER_HIRE_PRICE}) to offload customers.`;
     if (s.dealer?.hired && dealerStockCount(s) === 0 && s.dealer.customers.length > 0) return 'Vince is out of stock: bring him packaged product at Neptune Arcade.';
+    if (s.dealer?.hired && s.properties.includes('warehouse') && !s.handler?.hired && s.cash >= HANDLER_HIRE_PRICE + 200) return `Hire Teddy in the Warehouse 7 office ($${HANDLER_HIRE_PRICE}) to keep Vince stocked from the warehouse.`;
     if (s.dealer?.hired && s.dealer.cash >= 200) return `Vince is holding $${Math.round(s.dealer.cash)} for you. Swing by Neptune Arcade.`;
     if (s.worker?.hired && !s.worker.recipeKey) return 'Assign Marisol a recipe at a PREP TABLE and stock the warehouse storage.';
     if (s.cash >= 220 && !s.upgrades.includes('eq_mixer')) return 'Buy a Turbo Mixer at Sol Palma Pawn ($220) to prep faster.';
