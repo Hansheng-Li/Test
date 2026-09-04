@@ -33,9 +33,13 @@ export function decayHeat(state: GameState, dtSeconds: number, opts: { atSafehou
   state.suspicion = Math.max(0, state.suspicion - 0.01 * dtSeconds);
 }
 
-/** A police officer saw a transaction. Bigger deals and higher suspicion are noticed harder. */
+/**
+ * A police officer saw a transaction. Bigger deals and higher suspicion are noticed harder.
+ * A witnessed deal of $60 or more lands at 40+: the officer comes over for a stop-and-search
+ * unless you break line of sight, so being seen is a moment, not a number.
+ */
 export function witnessedDeal(state: GameState, dealValue: number): number {
-  const base = 28 + Math.min(22, dealValue / 10);
+  const base = 34 + Math.min(22, dealValue / 10);
   const susp = 1 + state.suspicion / 200;
   addHeat(state, base * susp);
   state.suspicion = Math.min(100, state.suspicion + 4);
