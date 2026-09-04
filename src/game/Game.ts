@@ -1271,7 +1271,7 @@ export class Game implements GameAPI {
     this.expectUnlock = true;
     this.input.releaseLock();
     this.panels[id].open();
-    this.audio.play('open');
+    this.audio.play(id === 'pager-panel' ? 'page' : 'open');
   }
 
   closePanel(): void {
@@ -1503,6 +1503,7 @@ export class Game implements GameAPI {
     s.storage.warehouse = s.storage.warehouse ?? [];
     this.audio.play('jingle_property');
     this.hud.flash('WAREHOUSE 7 IS YOURS', '#ffd166');
+    this.establishingShot('warehouse', 'WAREHOUSE 7', 'storage · equipment · your crew');
     this.toast('YOU OWN WAREHOUSE 7. Buy station kits at the pawn shop and place them inside (walk in with a kit, press B).', 'cash', 8000);
     if (!s.crewName) this.toast('Name your operation at the fax/ledger in your back room — it goes up in neon on the warehouse.', 'info', 7000);
     this.updateWarehouseSign();
@@ -1681,6 +1682,7 @@ export class Game implements GameAPI {
     spendCash(s, FRONT_PRICE);
     s.properties.push('laundromat');
     this.audio.play('jingle_property');
+    this.establishingShot('laundromat', 'LUCKY LAUNDROMAT', 'clean money every morning');
     this.toast('You are now a legitimate businessman. Allegedly. The laundromat pays out every morning and cools your reputation.', 'cash', 8000);
     const sign = this.city.objects.find((o) => o.kind === 'front_sign');
     if (sign) sign.mesh.visible = false;
@@ -1700,6 +1702,7 @@ export class Game implements GameAPI {
     s.properties.push('motel');
     s.storage.motel = s.storage.motel ?? [];
     this.audio.play('jingle_property');
+    this.establishingShot('motel', 'OCEAN VIEW MOTEL · ROOM 6', 'beach-side stash · no cops inside');
     this.toast('Room 6 is yours: a stash by the beach strip, a bed to rest in, and no cops inside.', 'cash', 7000);
     const sign = this.city.objects.find((o) => o.kind === 'motel_sign');
     if (sign) sign.mesh.visible = false;
@@ -1718,6 +1721,9 @@ export class Game implements GameAPI {
     spendCash(s, VEHICLE_PRICE);
     s.vehicle = { owned: true, x: CAR_SALE_SPOT.x, z: CAR_SALE_SPOT.z + 4, yaw: CAR_SALE_SPOT.yaw };
     this.audio.play('jingle_property');
+    const cx = CAR_SALE_SPOT.x;
+    const cz = CAR_SALE_SPOT.z + 4;
+    this.playShots([{ from: [cx + 9, 3.5, cz + 9], to: [cx + 5, 2, cz + 4.5], lookFrom: [cx, 0.8, cz], dur: 4, text: "'88 SEDAN", sub: 'yours · E to get in · N radio' }]);
     this.toast("You own a car. W/S drive · A/D steer · SHIFT brake · SPACE horn · E get out. It saves where you leave it.", 'cash', 8000);
     this.syncVehicle();
     this.save();
@@ -2081,17 +2087,35 @@ export class Game implements GameAPI {
     // the neon goes up: a short establishing shot of the sign (only once the warehouse is yours)
     const sign = this.city.objects.find((x) => x.kind === 'crew_sign');
     if (sign && this.state.properties.includes('warehouse')) {
-      if (this.openPanelId) this.closePanel();
       const sp = sign.position;
-      this.hud.setVisible(false);
-      this.cutscene.play(
-        [{ from: [sp.x + 18, 3, sp.z + 14], to: [sp.x + 9, 4.2, sp.z + 3], lookFrom: [sp.x, sp.y, sp.z], dur: 4.5, text: clean, sub: 'WAREHOUSE 7 · SOL PALMA' }],
-        () => {
-          this.hud.setVisible(true);
-          this.input.requestLock();
-        },
-      );
+      this.playShots([{ from: [sp.x + 18, 3, sp.z + 14], to: [sp.x + 9, 4.2, sp.z + 3], lookFrom: [sp.x, sp.y, sp.z], dur: 4.5, text: clean, sub: 'WAREHOUSE 7 · SOL PALMA' }]);
     }
+  }
+
+  /** Run an in-game cutscene: closes panels, hides the HUD and hands control back afterwards. */
+  private playShots(shots: Shot[]): void {
+    if (this.openPanelId) this.closePanel();
+    this.hud.setVisible(false);
+    this.cutscene.play(shots, () => {
+      this.hud.setVisible(true);
+      this.input.requestLock();
+    });
+  }
+
+  /** A four-second exterior of a building you just bought, seen from outside its front door. */
+  private establishingShot(id: string, text: string, sub: string): void {
+    const b = this.city.buildings.get(id);
+    if (!b) return;
+    const dir = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] }[b.spec.facing];
+    const perp = [-dir[1], dir[0]];
+    const cx = (b.box.min.x + b.box.max.x) / 2;
+    const cz = (b.box.min.z + b.box.max.z) / 2;
+    const h = b.box.max.y - b.box.min.y;
+    const size = Math.max(b.spec.w, b.spec.d);
+    const d = b.doorPos;
+    const from: [number, number, number] = [d.x + dir[0] * size * 0.9 + perp[0] * size * 0.5, h * 0.8 + 3, d.z + dir[1] * size * 0.9 + perp[1] * size * 0.5];
+    const to: [number, number, number] = [d.x + dir[0] * size * 0.6 + perp[0] * size * 0.2, h * 0.45 + 2, d.z + dir[1] * size * 0.6 + perp[1] * size * 0.2];
+    this.playShots([{ from, to, lookFrom: [cx, h * 0.4, cz], dur: 4, text, sub }]);
   }
 
   private refreshCrewSign(): void {
