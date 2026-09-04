@@ -22,7 +22,7 @@ import { InteractionSystem, Interactable } from '../systems/InteractionSystem';
 import { addItem, countItem, removeItem, resolveItem, depositToStorage, withdrawFromStorage, packagedInInventory, looseProductsInInventory } from '../systems/InventorySystem';
 import { buyFromShop, buyDelivered, spendCash, PurchaseResult } from '../systems/EconomySystem';
 import { executePrep, executePackage, nameRecipe, recipeDisplayName, PrepPlan, PrepResult, PackageResult } from '../systems/ProductionSystem';
-import { generateOrder, acceptOrder, declineOrder, activeOrders, pendingOrders, completeSale, expireOrders, findFulfillingItem, describeRequest, counterOffer, rollTrend } from '../systems/OrderSystem';
+import { generateOrder, acceptOrder, declineOrder, activeOrders, pendingOrders, completeSale, expireOrders, findFulfillingItem, describeRequest, counterOffer, rollTrend, LATE_GRACE_MINUTES } from '../systems/OrderSystem';
 import { decayHeat, witnessedDeal, applyArrest, addHeat, heatLevel } from '../systems/HeatSystem';
 import { hireRunner, assignRunner, tickRunner, runnerPickupProperty } from '../systems/RunnerSystem';
 import { hireWorker, assignWorkerRecipe, tickWorker } from '../systems/WorkerSystem';
@@ -696,6 +696,8 @@ export class Game implements GameAPI {
     this.checkCancellations();
 
     // runner
+    const runnerOrder = s.runner?.activeOrderId !== null && s.runner ? s.orders.find((o) => o.id === s.runner!.activeOrderId) : undefined;
+    const runnerTierBefore = runnerOrder ? relationshipTier(s.customers[runnerOrder.customerId]?.relationship ?? 0) : null;
     const rr = tickRunner(s, dt);
     if (rr.mishap) {
       const c = CUSTOMER_MAP[rr.mishap.order.customerId];
@@ -710,6 +712,7 @@ export class Game implements GameAPI {
       this.audio.play('cash');
       this.toast(`Dizzy delivered to ${c.name.split(' ')[0]}: +$${rr.completed.earned} (Dizzy kept $${rr.completed.cut})`, 'cash');
       for (const id of rr.completed.unlocked) this.announceUnlock(id);
+      if (runnerTierBefore) this.announceTier(rr.completed.order.customerId, runnerTierBefore);
       this.despawnCustomer(rr.completed.order.id);
       this.save();
     }
@@ -2121,7 +2124,7 @@ export class Game implements GameAPI {
         const have = findFulfillingItem(s, o);
         const tag = o.status === 'runner' ? `<span class="runner">RUNNER ${Math.round((o.runnerProgress ?? 0) * 100)}%</span>` : have ? '<span style="color:#7dff9a">READY</span>' : '<span style="color:#ffb3c1">NEED PRODUCT</span>';
         const left = Math.round(o.windowEnd - this.clock.totalMinutes);
-        const timeTag = o.status === 'runner' ? '' : left < 0 ? ' · <span style="color:#ffb3c1">LATE</span>' : ` · ${left} min left`;
+        const timeTag = o.status === 'runner' ? '' : left < 0 ? ` · <span style="color:#ffb3c1">LATE · 30% off · leaves in ${Math.max(0, LATE_GRACE_MINUTES + left)} min</span>` : ` · ${left} min left`;
         return `${c.name.split(' ')[0]} · ${o.qty}x ${describeRequest(s, o)} · $${o.price}${o.vip ? ' · <span style="color:#ffd166">VIP</span>' : ''}<br/>${landmarkName(o.locationId)} · by ${GameClock.formatMinutes(o.windowEnd)}${timeTag} · ${tag}`;
       })
       .join('<hr style="border:0;border-top:1px solid #444;margin:4px 0"/>');

@@ -115,7 +115,7 @@ export function describeEvent(ev: WorldEvent | null): string | null {
     case 'club_night':
       return 'CLUB NIGHT at the beach: beach customers pay +30% after dark.';
     case 'inspection':
-      return 'PORT AUTHORITY INSPECTION at Warehouse 7 this morning: a quarter of any product on the shelves was seized.';
+      return 'PORT AUTHORITY INSPECTION at Warehouse 7: a quarter of any product on the shelves was seized.';
     case 'rival':
       return `RIVAL CREW: Sal's people are working ${CUSTOMERS.find((c) => c.id === ev.param)?.name ?? 'one of your customers'} today. No pages from them until you show up in person with a deal.`;
     default:
