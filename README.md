@@ -43,13 +43,13 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | `N` | Radio: cycles SOL PALMA FM → THE WAVE → FUNK CITY → SIGNAL ZERO → off (walkman on foot, car stereo while driving) |
 | any key | Skips a cutscene (Escape pauses instead) |
 | `H` | Hide/show the HUD (screenshot mode) |
-
-A compass at the top of the screen points at the current target (the waiting customer, Rico when you need
-supplies, the right table when you need to prep or bag, or Vince when he is holding cash).
 | `W S A D` / `Shift` / `Space` | In the car: drive / brake / horn |
 | `R` | Rotate equipment in placement mode |
 | `Esc` | Close panel / pause menu (save, how to play, settings: sensitivity & volumes) |
 | `F3` | Performance overlay (fps, draw calls, triangles) |
+
+A compass at the top of the screen points at the current target (the waiting customer, Rico when you need
+supplies, the right table when you need to prep or bag, or Vince when he is holding cash).
 
 ## The first five minutes
 
