@@ -51,6 +51,7 @@ import { AudioSystem, SfxName } from '../audio/Audio';
 import { HUD } from '../ui/HUD';
 import { Menu } from '../ui/Menu';
 import { Dialogue } from '../ui/Dialogue';
+import { Minimap } from '../ui/Minimap';
 import { STORY_CARDS } from '../data/story';
 import { storyStep, ordersAllowed, claimStoryCard, markStorySeen } from '../systems/StorySystem';
 import { Panel } from '../ui/Panel';
@@ -96,6 +97,8 @@ export class Game implements GameAPI {
   hud: HUD;
   menu: Menu;
   dialogue: Dialogue;
+  minimap: Minimap;
+  private minimapTimer = 0;
   interaction = new InteractionSystem();
   panels: Record<string, Panel> = {};
   pager: PagerUI;
@@ -264,6 +267,7 @@ export class Game implements GameAPI {
 
     this.hud = new HUD(root);
     this.dialogue = new Dialogue(root);
+    this.minimap = new Minimap(this.hud.root);
     this.pager = new PagerUI(root, this);
     this.inventoryUI = new InventoryUI(root, this);
     this.shopUI = new ShopUI(root, this);
@@ -1263,6 +1267,11 @@ export class Game implements GameAPI {
     this.hud.speedText = this.driving && this.ride ? `${Math.round(this.ride.mph)} MPH` : null;
     this.hud.stamina = this.player.stamina;
     this.updateCompass();
+    this.minimapTimer -= this.uiDt;
+    if (this.minimapTimer <= 0) {
+      this.minimapTimer = 0.1;
+      this.updateMinimap();
+    }
     this.hudTextTimer -= dt;
     if (this.hudTextTimer <= 0) {
       this.hudTextTimer = 0.2;
@@ -2654,6 +2663,30 @@ export class Game implements GameAPI {
     }
     if (s.dealer?.hired && s.dealer.cash >= 200) return { label: `Vince · $${Math.round(s.dealer.cash)} waiting`, x: 154, z: 100 };
     return null;
+  }
+
+  /** Radar feed: nearby cops (all of them with the scanner), waiting customers, parked cars, the runner. */
+  private updateMinimap(): void {
+    const px = this.player.position.x;
+    const pz = this.player.position.z;
+    const scanner = this.hasScanner();
+    const police: { x: number; z: number }[] = [];
+    for (const p of this.police) if (scanner || p.alarmed || p.distanceTo(px, pz) < 30) police.push({ x: p.position.x, z: p.position.z });
+    for (const c of this.cruisers) if (scanner || c === this.pursuer || c.distanceTo(px, pz) < 30) police.push({ x: c.position.x, z: c.position.z });
+    const customers = [...this.customers.values()].map((c) => ({ x: c.position.x, z: c.position.z }));
+    const cars = [this.vehicle, this.starterCar].filter((v): v is Vehicle => !!v && v !== this.ride).map((v) => ({ x: v.position.x, z: v.position.z }));
+    const target = this.compassTarget();
+    this.minimap.update(this.state, {
+      px,
+      pz,
+      yaw: this.driving && this.ride ? this.ride.cameraYaw : this.player.yaw,
+      target: target ? { x: target.x, z: target.z } : null,
+      police,
+      customers,
+      cars,
+      runner: this.runnerNPC ? { x: this.runnerNPC.position.x, z: this.runnerNPC.position.z } : null,
+      night: this.clock.isNight,
+    });
   }
 
   private updateCompass(): void {
