@@ -141,6 +141,8 @@ export interface GameState {
   /** The starter hatchback: where it was left. Always present. */
   starterCar: { x: number; z: number; yaw: number };
   /** Cars taken off the street: which parking spot they came from, what they look like, where they sit now. */
+  /** What the compass follows: the chapter, one order, one goal, or a place (map marker / GUIDE ME). */
+  tracked: { kind: 'step' | 'order' | 'goal' | 'place'; id?: string; orderId?: number; x?: number; z?: number; label?: string } | null;
   stolenCars: { spot: number; model: string; paint?: string; x: number; z: number; yaw: number }[];
   vehicle: { owned: boolean; x: number; z: number; yaw: number; /** Body colour hex from CAR_PAINTS; unset = as sold. */ paint?: string } | null;
   /** Player-chosen name for the operation; shows on the warehouse sign and the ledger. */

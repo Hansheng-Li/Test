@@ -40,6 +40,7 @@ export function createNewState(): GameState {
     vehicle: null,
     starterCar: { x: STARTER_CAR_SPOT.x, z: STARTER_CAR_SPOT.z, yaw: STARTER_CAR_SPOT.yaw },
     stolenCars: [],
+    tracked: null,
     player: { x: SPAWN.x, y: SPAWN.y, z: SPAWN.z, yaw: SPAWN.yaw },
     stats: { sales: 0, earned: 0, arrests: 0, declined: 0, produced: 0, playSeconds: 0, earnedAtDayStart: 0, salesAtDayStart: 0, lastDay: 1 },
     flags: {},
@@ -154,6 +155,19 @@ export function deserialize(json: string): GameState | null {
     : null;
   const rb = r.starterCar as { x?: unknown; z?: unknown; yaw?: unknown } | undefined;
   state.starterCar = rb && typeof rb === 'object' ? { x: num(rb.x, STARTER_CAR_SPOT.x), z: num(rb.z, STARTER_CAR_SPOT.z), yaw: num(rb.yaw, STARTER_CAR_SPOT.yaw) } : { x: STARTER_CAR_SPOT.x, z: STARTER_CAR_SPOT.z, yaw: STARTER_CAR_SPOT.yaw };
+  const tr = r.tracked as { kind?: unknown; id?: unknown; orderId?: unknown; x?: unknown; z?: unknown; label?: unknown } | null | undefined;
+  state.tracked = tr && typeof tr === 'object' && (tr.kind === 'step' || tr.kind === 'order' || tr.kind === 'goal' || tr.kind === 'place')
+    ? {
+        kind: tr.kind,
+        ...(typeof tr.id === 'string' ? { id: tr.id.slice(0, 40) } : {}),
+        ...(Number.isInteger(tr.orderId) ? { orderId: tr.orderId as number } : {}),
+        ...(isFiniteNum(tr.x) && isFiniteNum(tr.z) ? { x: tr.x, z: tr.z } : {}),
+        ...(typeof tr.label === 'string' ? { label: tr.label.slice(0, 60) } : {}),
+      }
+    : null;
+  if (state.tracked?.kind === 'place' && state.tracked.x === undefined) state.tracked = null;
+  if (state.tracked?.kind === 'order' && state.tracked.orderId === undefined) state.tracked = null;
+  if (state.tracked?.kind === 'goal' && !state.tracked.id) state.tracked = null;
   const seenSpots = new Set<number>();
   state.stolenCars = (Array.isArray(r.stolenCars) ? (r.stolenCars as unknown[]) : [])
     .filter((c): c is { spot: number; model: string; paint?: unknown; x: unknown; z: unknown; yaw: unknown } => !!c && typeof c === 'object' && Number.isInteger((c as { spot: unknown }).spot) && (c as { spot: number }).spot >= 0 && typeof (c as { model: unknown }).model === 'string')

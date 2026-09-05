@@ -44,8 +44,8 @@ export class HUD {
       <div id="hud-cash" class="hud-box"><small class="i18n-cash">CASH</small><span class="val">$0</span></div>
       <div id="hud-clock" class="hud-box">DAY 1 · 15:30</div>
       <div id="hud-heat" class="hud-box"><div class="label"><span class="i18n-heat">HEAT</span><span class="lvl">CALM</span></div><div class="bar"><div></div></div><div class="stamina"><div></div></div></div>
-      <div id="hud-objective" class="hud-box"><div class="title i18n-objective">OBJECTIVE</div><div class="steps"></div><div class="text"></div><div class="keys i18n-keys"></div></div>
-      <div id="hud-order" class="hud-box"><div class="title i18n-order">CURRENT ORDER</div><div class="obody"></div></div>
+      <div id="hud-right"><div id="hud-objective" class="hud-box"><div class="title i18n-objective">OBJECTIVE</div><div class="steps"></div><div class="text"></div><div class="keys i18n-keys"></div></div>
+      <div id="hud-order" class="hud-box"><div class="title i18n-order">CURRENT ORDER</div><div class="obody"></div></div></div>
       <div id="hud-item" class="hud-box"></div>
       <div id="crosshair"></div>
       <div id="prompt"></div>

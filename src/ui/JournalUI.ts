@@ -91,9 +91,21 @@ export class JournalUI extends Panel {
     parent.appendChild(h);
   }
 
+  private trackButton(kind: 'step' | 'order' | 'goal', id: string | number | undefined, on: boolean): HTMLButtonElement {
+    return this.button(on ? t('STOP TRACKING') : t('TRACK'), () => { this.api.track(on ? null : kind, id); this.render(); }, on ? '' : 'cyan');
+  }
+
   private renderTasks(body: HTMLElement): void {
     const st = this.api.state;
-    this.h3(body, t('CHAPTER ONE'));
+    const tr = st.tracked;
+    const head = document.createElement('div');
+    head.className = 'step-row';
+    const h = document.createElement('h3');
+    h.textContent = t('CHAPTER ONE');
+    h.style.flex = '1';
+    head.appendChild(h);
+    if (prologueActive(st)) head.appendChild(this.trackButton('step', undefined, tr?.kind === 'step'));
+    body.appendChild(head);
     if (prologueActive(st)) {
       for (const c of storyChecklist(st)) {
         const row = document.createElement('div');
@@ -110,28 +122,30 @@ export class JournalUI extends Panel {
     this.h3(body, t('RIGHT NOW'));
     const now = document.createElement('div');
     now.className = 'objective-now';
-    now.textContent = this.api.objective();
+    now.textContent = this.api.objective() + (tr ? ` · ${t('TRACKING')}: ${tr.kind === 'place' ? tr.label ?? '' : tr.kind === 'step' ? t('CHAPTER ONE') : tr.kind === 'order' ? t('an order') : t('a goal')}` : '');
     body.appendChild(now);
     const orders = activeOrders(st);
     if (orders.length) {
       this.h3(body, t('ACTIVE ORDERS'));
       for (const o of orders) {
         const c = CUSTOMER_MAP[o.customerId];
-        const l = LANDMARKS.find((x) => x.id === o.locationId);
+        const on = tr?.kind === 'order' && tr.orderId === o.id;
         const row = document.createElement('div');
-        row.className = 'dir-row';
+        row.className = 'dir-row' + (on ? ' tracked' : '');
         row.innerHTML = `${faceImg(c.id, c.shirt)}<div class="txt"><span class="line1"><b>${c.name}</b> · ${o.qty}× ${esc(describeRequest(st, o))} · $${o.price}</span><span class="meta">${t('MEET: {place} · WINDOW {from}-{to}', { place: landmarkName(o.locationId), from: GameClock.formatMinutes(o.windowStart), to: GameClock.formatMinutes(o.windowEnd) })}${o.status === 'runner' ? ' · ' + t('RUNNER ON THE WAY') : ''}</span></div>`;
-        if (l && o.status === 'accepted') row.appendChild(this.guideButton(l.x, l.z, `${c.name.split(' ')[0]} · ${landmarkName(o.locationId)}`));
+        if (o.status === 'accepted') row.appendChild(this.trackButton('order', o.id, on));
         body.appendChild(row);
       }
     }
-    const goals = MILESTONES.filter((m) => !milestoneDone(st, m.id)).slice(0, 5);
+    const goals = MILESTONES.filter((m) => !milestoneDone(st, m.id)).slice(0, 6);
     if (goals.length) {
       this.h3(body, t('NEXT GOALS'));
       for (const m of goals) {
+        const on = tr?.kind === 'goal' && tr.id === m.id;
         const row = document.createElement('div');
-        row.className = 'dir-row';
+        row.className = 'dir-row' + (on ? ' tracked' : '');
         row.innerHTML = `<span class="swatch" style="background:#ffd166"></span><div class="txt"><span class="line1"><b>${t(m.title)}</b></span><span class="meta">${t(m.hint)}</span></div><span class="price">+$${m.reward}</span>`;
+        row.appendChild(this.trackButton('goal', m.id, on));
         body.appendChild(row);
       }
     }

@@ -38,7 +38,7 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | `P` | Pager (accept / decline / haggle, send the runner) |
 | `Y` / `X` | Accept / decline the newest page without opening the pager |
 | `J` | Journal: chapter checklist and goals, a directory of places and people (GUIDE ME sets the compass), the key table |
-| `M` | Paper map of Sol Palma (the radar in the corner is always on) |
+| `M` | Paper map of Sol Palma (click anywhere on it to drop a marker the compass and radar point at) |
 | `1`–`8` | Select hotbar slot |
 | Left click | Swing the baseball bat / fire the pistol (whichever is the selected hotbar item) |
 | `B` | Place equipment (inside your warehouse, with a station kit in your backpack) |
@@ -205,7 +205,9 @@ Design rules that shaped the code:
   objective box until the chapter is done), what to do right now, active orders and the next goals; a
   directory of every key place and customer hangout with what it is for, the price of what it sells and
   the distance to it; every contact with their face, role, price and hire status, plus the customers you
-  know; and the full key table. GUIDE ME on any row points the compass and the radar at it until you arrive.
+  know; and the full key table. GUIDE ME on any row points the compass and the radar at it until you arrive,
+  and every task (the chapter, an order, a goal) has a TRACK button: the compass follows the tracked one,
+  and tracking is saved with the run.
 - A radar in the bottom-right corner: heading-up, roads and blocks, your property in green, shops in
   gold, waiting customers, parked cars, the runner, and cops (nearby or alarmed ones; every one of them
   with the scanner). The objective shows as a diamond, or an arrow on the rim when it is out of range,

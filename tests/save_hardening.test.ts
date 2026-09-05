@@ -176,3 +176,23 @@ describe('stolen cars in saves', () => {
     expect(deserialize(JSON.stringify(raw))!.stolenCars).toEqual([]);
   });
 });
+
+describe('tracked task in saves', () => {
+  it('keeps a valid tracker and drops broken ones', async () => {
+    const { createNewState, serialize, deserialize } = await import('../src/systems/SaveSystem');
+    const base = JSON.parse(serialize(createNewState()));
+    const load = (tracked: unknown) => deserialize(JSON.stringify({ ...base, tracked }))!.tracked;
+    expect(load({ kind: 'goal', id: 'runner' })).toEqual({ kind: 'goal', id: 'runner' });
+    expect(load({ kind: 'order', orderId: 3 })).toEqual({ kind: 'order', orderId: 3 });
+    expect(load({ kind: 'place', x: 1, z: 2, label: 'Map marker' })).toEqual({ kind: 'place', x: 1, z: 2, label: 'Map marker' });
+    expect(load({ kind: 'step' })).toEqual({ kind: 'step' });
+    expect(load({ kind: 'place', label: 'no coords' })).toBeNull();
+    expect(load({ kind: 'order' })).toBeNull();
+    expect(load({ kind: 'goal' })).toBeNull();
+    expect(load({ kind: 'nope', id: 'x' })).toBeNull();
+    expect(load('garbage')).toBeNull();
+    expect(load(undefined)).toBeNull();
+    const long = load({ kind: 'place', x: 0, z: 0, label: 'x'.repeat(500) }) as { label: string };
+    expect(long.label.length).toBe(60);
+  });
+});

@@ -53,7 +53,9 @@ export interface GameAPI {
   hasScanner(): boolean;
   setCrewName(name: string): void;
   /** Point the compass and the radar at a place until the player gets there. */
-  setWaypoint(x: number, z: number, label: string): void;
+  setWaypoint(x: number, z: number, label: string, closePanel?: boolean): void;
+  /** Follow the chapter, one order or one goal with the compass; null clears. */
+  track(kind: 'step' | 'order' | 'goal' | null, id?: string | number): void;
   /** The HUD objective line. */
   objective(): string;
 }

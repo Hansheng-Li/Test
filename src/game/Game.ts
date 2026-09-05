@@ -18,7 +18,7 @@ import { DayNight } from '../world/DayNight';
 import { PropBuilder } from '../world/Props';
 import { buildPlacedStation, InteriorContext } from '../world/Interiors';
 import { WorldObject } from '../world/WorldTypes';
-import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT, PROPERTY_ANCHORS, SUPPLIER_SPOT, STARTER_CAR_SPOT, zoneAt } from '../data/city';
+import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT, PROPERTY_ANCHORS, SUPPLIER_SPOT, STARTER_CAR_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT, DEALER_CONTACT_SPOT, HANDLER_CONTACT_SPOT, RESPRAY_SPOT, zoneAt } from '../data/city';
 import { swingTargets, BAT_STUN_SECONDS, BAT_HEAT_COP, BAT_HEAT_CIVILIAN } from '../systems/MeleeSystem';
 import { pickShot, SHOT_STUN_SECONDS, SHOT_HEAT_COP, SHOT_HEAT_CIVILIAN, SHOT_HEAT_NOISE, SHOT_PANIC_RADIUS, SHOT_ALARM_RADIUS, MAGAZINE } from '../systems/ShootSystem';
 import { makeFigure, makeLabel } from '../world/Interiors';
@@ -38,7 +38,7 @@ import { hireWorker, assignWorkerRecipe, tickWorker } from '../systems/WorkerSys
 import { hireDealer, giveDealerStock, takeDealerStock, assignDealerCustomer, unassignDealerCustomer, collectDealerCash, tickDealer, dealerStockCount } from '../systems/DealerSystem';
 import { DealerUI } from '../ui/DealerUI';
 import { LedgerUI } from '../ui/LedgerUI';
-import { checkMilestones } from '../systems/MilestoneSystem';
+import { checkMilestones, milestoneDone } from '../systems/MilestoneSystem';
 import { takeLoan, repayLoan, tickLoanDay, loanDaysLeft, LOAN_TIERS, LOAN_DAYS } from '../systems/LoanSystem';
 import { resprayCar, carPaint } from '../systems/GarageSystem';
 import { fogLevel, sightMultiplier } from '../systems/WeatherSystem';
@@ -101,9 +101,6 @@ export class Game implements GameAPI {
   dialogue: Dialogue;
   minimap: Minimap;
   journalUI: JournalUI;
-  /** A place the player asked the journal to point at; cleared on arrival. */
-  private waypoint: { x: number; z: number; label: string } | null = null;
-  private minimapTimer = 0;
   interaction = new InteractionSystem();
   panels: Record<string, Panel> = {};
   pager: PagerUI;
@@ -377,7 +374,6 @@ export class Game implements GameAPI {
     this.applyStateToWorld();
     this.orderTimer = 40;
     this.dialogue.clear();
-    this.waypoint = null;
     this.tips = [
       t('WASD to move · SHIFT to sprint · E to interact · TAB backpack · P pager · M map'),
       t('1-8 picks the hotbar slot: that is what you hand over as a free sample or a street deal.'),
@@ -1290,11 +1286,7 @@ export class Game implements GameAPI {
     this.hud.speedText = this.driving && this.ride ? `${Math.round(this.ride.mph)} MPH · ${t('NITRO')} ${'▮'.repeat(Math.round(this.ride.nitro * 5))}${'▯'.repeat(5 - Math.round(this.ride.nitro * 5))}${this.ride.drifting ? ' · ' + t('DRIFT') : ''}` : this.player.sprintOn ? t('SPRINT') : null;
     this.hud.stamina = this.player.stamina;
     this.updateCompass();
-    this.minimapTimer -= this.uiDt;
-    if (this.minimapTimer <= 0) {
-      this.minimapTimer = 0.1;
-      this.updateMinimap();
-    }
+    this.updateMinimap();
     this.hudTextTimer -= dt;
     if (this.hudTextTimer <= 0) {
       this.hudTextTimer = 0.2;
@@ -2746,11 +2738,145 @@ export class Game implements GameAPI {
   // ------------------------------------------------------------------ HUD helpers
 
   /** Where the player should be heading right now, if the game can tell. */
-  setWaypoint(x: number, z: number, label: string): void {
-    this.waypoint = { x, z, label };
-    this.closePanel();
+  setWaypoint(x: number, z: number, label: string, closePanel = true): void {
+    this.state.tracked = { kind: 'place', x, z, label };
+    if (closePanel) this.closePanel();
     this.audio.play('confirm');
     this.toast(t('Compass set: {label}', { label }), 'info', 3000);
+  }
+
+  track(kind: 'step' | 'order' | 'goal' | null, id?: string | number): void {
+    if (!kind) {
+      this.state.tracked = null;
+      this.toast(t('Tracking off. The compass follows whatever is most urgent.'), 'info', 3000);
+      return;
+    }
+    this.state.tracked = kind === 'order' ? { kind, orderId: id as number } : kind === 'goal' ? { kind, id: id as string } : { kind };
+    this.audio.play('confirm');
+    const target = this.trackedTarget();
+    this.toast(target ? t('Tracking: {label}', { label: target.label }) : t('Tracking set. Nothing to walk to yet: the compass returns when there is.'), 'info', 3500);
+  }
+
+  /** Where an accepted order sends you: the customer once you hold the goods, else the next step of making them. */
+  private orderTarget(o: Order): { label: string; x: number; z: number } | null {
+    const s = this.state;
+    const c = CUSTOMER_MAP[o.customerId];
+    if (o.status !== 'accepted') return null;
+    if (findFulfillingItem(s, o)) {
+      const npc = this.customers.get(o.id);
+      const l = LANDMARKS.find((x) => x.id === o.locationId);
+      return { label: `${c.name.split(' ')[0]} · ${landmarkName(o.locationId)}`, x: npc ? npc.position.x : l?.x ?? 0, z: npc ? npc.position.z : l?.z ?? 0 };
+    }
+    const hasBase = ['pulp_sunset', 'wax_velvet', 'gel_neon'].some((id) => countItem(s, id) > 0);
+    const loose = looseProductsInInventory(s).length > 0;
+    if (!hasBase && !loose) return { label: t('Rico (supplies)'), x: SUPPLIER_SPOT.x, z: SUPPLIER_SPOT.z };
+    return this.stationTarget(loose ? 'pack_table' : 'prep_table');
+  }
+
+  private stationTarget(kind: 'prep_table' | 'pack_table'): { label: string; x: number; z: number } | null {
+    const prop = this.state.properties.includes('warehouse') && this.playerInsideBuilding('warehouse') ? 'warehouse' : 'safehouse';
+    const station = [...this.city.objects, ...this.placedObjects].find((o) => o.kind === kind && o.property === prop);
+    return station ? { label: t(kind === 'pack_table' ? 'Packaging table' : 'Prep table'), x: station.position.x, z: station.position.z } : null;
+  }
+
+  /** Where the current chapter-one step sends you (null while waiting on the pager). */
+  private stepTarget(): { label: string; x: number; z: number } | null {
+    const s = this.state;
+    switch (storyStep(s)) {
+      case 'box': {
+        const box = this.city.objects.find((o) => o.kind === 'starter_box');
+        return box ? { label: t('Starter box'), x: box.position.x, z: box.position.z } : null;
+      }
+      case 'prep':
+        return this.stationTarget('prep_table');
+      case 'pack':
+        return this.stationTarget('pack_table');
+      case 'deliver': {
+        const o = activeOrders(s).find((x) => x.status === 'accepted');
+        return o ? this.orderTarget(o) : null;
+      }
+      case 'restock':
+        return { label: t('Rico (supplies)'), x: SUPPLIER_SPOT.x, z: SUPPLIER_SPOT.z };
+      default:
+        return null;
+    }
+  }
+
+  /** The place a milestone is earned at, when it has one. */
+  private goalTarget(id: string): { label: string; x: number; z: number } | null {
+    const at = (label: string, x: number, z: number): { label: string; x: number; z: number } => ({ label: tn(label), x, z });
+    const nearest = <T extends { x: number; z: number }>(list: T[]): T | null => list.reduce<T | null>((best, p) => (!best || Math.hypot(p.x - this.player.position.x, p.z - this.player.position.z) < Math.hypot(best.x - this.player.position.x, best.z - this.player.position.z) ? p : best), null);
+    switch (id) {
+      case 'first_sale': {
+        const o = activeOrders(this.state).find((x) => x.status === 'accepted');
+        return o ? this.orderTarget(o) : null;
+      }
+      case 'named':
+      case 'mixed':
+      case 'combo':
+        return this.stationTarget('prep_table');
+      case 'equipment':
+      case 'marker':
+        return at('Sol Palma Pawn', -27, -40);
+      case 'runner':
+        return at('Ocean View Motel', RUNNER_CONTACT_SPOT.x, RUNNER_CONTACT_SPOT.z);
+      case 'warehouse':
+        return at('Warehouse 7', PROPERTY_ANCHORS.warehouse.x, PROPERTY_ANCHORS.warehouse.z);
+      case 'worker':
+        return at('Port Authority', WORKER_CONTACT_SPOT.x, WORKER_CONTACT_SPOT.z);
+      case 'dealer':
+      case 'dice':
+        return at('Neptune Arcade', DEALER_CONTACT_SPOT.x, DEALER_CONTACT_SPOT.z);
+      case 'handler':
+        return at('Warehouse 7 office', HANDLER_CONTACT_SPOT.x, HANDLER_CONTACT_SPOT.z);
+      case 'respray':
+        return at('Rojas Auto Repair', RESPRAY_SPOT.x, RESPRAY_SPOT.z);
+      case 'dumpster': {
+        const d = nearest(this.city.objects.filter((o) => o.kind === 'dumpster').map((o) => ({ x: o.position.x, z: o.position.z })));
+        return d ? { label: t('Nearest dumpster'), x: d.x, z: d.z } : null;
+      }
+      case 'bus': {
+        const b = nearest(BUS_STOPS);
+        return b ? at(b.name, b.x, b.z) : null;
+      }
+      default:
+        return null;
+    }
+  }
+
+  /** The compass target the player chose, or null when nothing is tracked (or it is done). */
+  private trackedTarget(): { label: string; x: number; z: number } | null {
+    const s = this.state;
+    const tr = s.tracked;
+    if (!tr) return null;
+    if (tr.kind === 'place') {
+      if (Math.hypot((tr.x ?? 0) - this.player.position.x, (tr.z ?? 0) - this.player.position.z) < 6) {
+        this.toast(t('You are here: {label}', { label: tr.label ?? '' }), 'info', 3000);
+        s.tracked = null;
+        return null;
+      }
+      return { label: tr.label ?? '', x: tr.x ?? 0, z: tr.z ?? 0 };
+    }
+    if (tr.kind === 'order') {
+      const o = s.orders.find((x) => x.id === tr.orderId);
+      if (!o || (o.status !== 'accepted' && o.status !== 'pending')) {
+        s.tracked = null;
+        return null;
+      }
+      return this.orderTarget(o);
+    }
+    if (tr.kind === 'goal') {
+      if (!tr.id || milestoneDone(s, tr.id)) {
+        s.tracked = null;
+        return null;
+      }
+      return this.goalTarget(tr.id);
+    }
+    if (!prologueActive(s)) {
+      s.tracked = null;
+      return null;
+    }
+    return this.stepTarget();
   }
 
   objective(): string {
@@ -2759,30 +2885,13 @@ export class Game implements GameAPI {
 
   private compassTarget(): { label: string; x: number; z: number } | null {
     const s = this.state;
-    if (this.waypoint) {
-      if (Math.hypot(this.waypoint.x - this.player.position.x, this.waypoint.z - this.player.position.z) < 6) {
-        this.toast(t('You are here: {label}', { label: this.waypoint.label }), 'info', 3000);
-        this.waypoint = null;
-      } else return this.waypoint;
-    }
+    const tracked = this.trackedTarget();
+    if (tracked) return tracked;
     if (!s.flags.starterTaken) return null;
     const active = activeOrders(s).filter((o) => o.status === 'accepted');
     if (active.length) {
-      const o = active[0];
-      const c = CUSTOMER_MAP[o.customerId];
-      if (findFulfillingItem(s, o)) {
-        const npc = this.customers.get(o.id);
-        const l = LANDMARKS.find((x) => x.id === o.locationId);
-        const x = npc ? npc.position.x : l?.x ?? 0;
-        const z = npc ? npc.position.z : l?.z ?? 0;
-        return { label: `${c.name.split(' ')[0]} · ${landmarkName(o.locationId)}`, x, z };
-      }
-      const hasBase = ['pulp_sunset', 'wax_velvet', 'gel_neon'].some((id) => countItem(s, id) > 0);
-      const loose = looseProductsInInventory(s).length > 0;
-      if (!hasBase && !loose) return { label: 'Rico (supplies)', x: SUPPLIER_SPOT.x, z: SUPPLIER_SPOT.z };
-      const prop = s.properties.includes('warehouse') && this.playerInsideBuilding('warehouse') ? 'warehouse' : 'safehouse';
-      const station = [...this.city.objects, ...this.placedObjects].find((o) => o.kind === (loose ? 'pack_table' : 'prep_table') && o.property === prop);
-      if (station) return { label: loose ? 'Packaging table' : 'Prep table', x: station.position.x, z: station.position.z };
+      const target = this.orderTarget(active[0]);
+      if (target) return target;
     }
     if (s.dealer?.hired && s.dealer.cash >= 200) return { label: `Vince · $${Math.round(s.dealer.cash)} waiting`, x: 154, z: 100 };
     return null;

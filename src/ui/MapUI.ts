@@ -27,7 +27,19 @@ export class MapUI extends Panel {
     this.canvas.width = (MAP_MAX_X - MAP_MIN_X) * this.scale;
     this.canvas.height = (MAP_MAX_Z - MAP_MIN_Z) * this.scale;
     this.canvas.style.width = '100%';
+    this.canvas.addEventListener('click', (e) => {
+      const r = this.canvas.getBoundingClientRect();
+      const x = ((e.clientX - r.left) / r.width) * this.canvas.width / this.scale + MAP_MIN_X;
+      const z = ((e.clientY - r.top) / r.height) * this.canvas.height / this.scale + MAP_MIN_Z;
+      this.api.setWaypoint(Math.round(x), Math.round(z), t('Map marker'), false);
+      this.render();
+    });
     this.body.appendChild(this.canvas);
+    const hint = document.createElement('div');
+    hint.className = 'meta map-hint';
+    hint.style.marginTop = '6px';
+    hint.textContent = t('Click anywhere on the map to drop a marker; the radar and compass point at it.');
+    this.body.appendChild(hint);
   }
 
   private px(x: number): number {
@@ -171,6 +183,24 @@ export class MapUI extends Panel {
     if (this.api.hasScanner()) for (const p of this.api.policeXZ()) dot(p.x, p.z, '#1e88e5', '', 3.5);
     const r = this.api.runnerXZ();
     if (r) dot(r.x, r.z, '#00c2a8', 'DIZZY');
+    // the marker set by clicking (or GUIDE ME): a gold diamond
+    const tr = st.tracked;
+    if (tr?.kind === 'place' && tr.x !== undefined && tr.z !== undefined) {
+      const mx = this.px(tr.x);
+      const mz = this.pz(tr.z);
+      g.beginPath();
+      g.moveTo(mx, mz - 12);
+      g.lineTo(mx + 10, mz);
+      g.lineTo(mx, mz + 12);
+      g.lineTo(mx - 10, mz);
+      g.closePath();
+      g.fillStyle = '#ffd166';
+      g.fill();
+      g.strokeStyle = '#3a2a00';
+      g.lineWidth = 2;
+      g.stroke();
+      this.text(g, tr.label ?? '', mx, mz - 20, 14, '#5a3a00');
+    }
     // player
     const p = this.api.playerXZ();
     g.fillStyle = 'rgba(213,0,0,0.25)';
@@ -181,6 +211,7 @@ export class MapUI extends Panel {
     this.text(g, t('YOU'), this.px(p.x), this.pz(p.z) - 9 * s, 16, '#b71c1c');
     // legend: swatches, not bullets
     const items: [string, string, 'dot' | 'box'][] = [['#d50000', 'you', 'dot'], ['#e91e63', 'customer waiting', 'dot'], ['#00c2a8', 'runner', 'dot'], ['#ffd166', 'shops', 'box'], ['#8ef0a5', 'your property', 'box'], ['#1e6fd9', 'payphone', 'box'], ['#e67e22', 'bus stop (B)', 'box'], ['#1e88e5', 'police (scanner)', 'dot']];
+    // (click anywhere on the map to drop a marker; the hint sits under the legend)
     const lh = 22;
     const lw = 250;
     const lx = 14;
