@@ -1320,6 +1320,33 @@ export class Game implements GameAPI {
       c.update(ldt, { playerX: px, playerZ: pz, night: this.clock.isNight, gossip: this.gossip });
       if (d2 < 200 * 200) c.syncVisual(ldt);
     }
+    // pedestrians do not stand inside each other: a gentle push apart for anyone closer than a shoulder width
+    const crowd: Civilian[] = peds.concat([...this.wanderers.values()]);
+    for (let i = 0; i < crowd.length; i++) {
+      const a = crowd[i];
+      if (a.state === 'FLEE') continue;
+      for (let j = i + 1; j < crowd.length; j++) {
+        const b = crowd[j];
+        if (b.state === 'FLEE') continue;
+        const dx = b.position.x - a.position.x;
+        const dz = b.position.z - a.position.z;
+        const d = Math.hypot(dx, dz);
+        if (d >= 0.8 || d > 0 === false) {
+          if (d === 0) {
+            a.position.x -= 0.2;
+            b.position.x += 0.2;
+          }
+          continue;
+        }
+        const push = (0.8 - d) * 0.5;
+        const nx = dx / d;
+        const nz = dz / d;
+        a.position.x -= nx * push;
+        a.position.z -= nz * push;
+        b.position.x += nx * push;
+        b.position.z += nz * push;
+      }
+    }
     const holding = this.state.inventory.some((st) => st && (st.id.startsWith('pkg:') || st.id.startsWith('prod:')));
     for (const p of this.police) {
       const crack = heatMultiplier(this.state, zoneAt(p.position.x)) > 1;

@@ -69,6 +69,9 @@ export function instanceModel(model: THREE.Group, opts: { paint?: string; scale?
 export const CAR_SCALE = 1.55;
 
 let wheelGeo: THREE.BufferGeometry | null = null;
+let hubGeo: THREE.BufferGeometry | null = null;
+let tireMat: THREE.MeshLambertMaterial | null = null;
+let hubMat: THREE.MeshLambertMaterial | null = null;
 /** Low-poly stand-in for the Kenney wheel (axle along x, same 0.3 radius). */
 function parkedWheelGeometry(): THREE.BufferGeometry {
   if (!wheelGeo) {
@@ -76,6 +79,19 @@ function parkedWheelGeometry(): THREE.BufferGeometry {
     wheelGeo.rotateZ(Math.PI / 2);
   }
   return wheelGeo;
+}
+/** A lighter hub cap slightly proud of the tire so the wheel reads as a wheel, not a grey disc. */
+function parkedHubGeometry(): THREE.BufferGeometry {
+  if (!hubGeo) {
+    hubGeo = new THREE.CylinderGeometry(0.16, 0.16, 0.27, 8);
+    hubGeo.rotateZ(Math.PI / 2);
+  }
+  return hubGeo;
+}
+function parkedWheelMaterials(): { tire: THREE.MeshLambertMaterial; hub: THREE.MeshLambertMaterial } {
+  tireMat ??= new THREE.MeshLambertMaterial({ color: '#1e1e22', name: 'parkedTire' });
+  hubMat ??= new THREE.MeshLambertMaterial({ color: '#b9bcc4', name: 'parkedHub' });
+  return { tire: tireMat, hub: hubMat };
 }
 const PARKED_VARIANTS = ['sedan', 'sedanSports', 'hatchbackSports', 'suv', 'suvLuxury', 'taxi', 'van', 'delivery'];
 
@@ -104,14 +120,22 @@ export async function upgradeParkedCars(city: CityResult, exclude: ReadonlySet<n
       if (o.name.startsWith('wheel')) wheels.push(o);
     });
     for (const w of wheels) {
-      // a wheel node is a Group of primitives (tire + hub) or a single mesh; either way keep the tire material
-      let mat: THREE.Material | null = null;
-      w.traverse((o) => { if (!mat && o instanceof THREE.Mesh) mat = Array.isArray(o.material) ? o.material[0] : o.material; });
-      if (!mat) continue;
+      // a wheel node is a Group of primitives (tire + hub) or a single mesh: replace it with a dark tire and a light hub
+      const { tire, hub } = parkedWheelMaterials();
+      if (w instanceof THREE.Mesh) w.visible = false;
       w.clear();
-      const m = new THREE.Mesh(parkedWheelGeometry(), mat);
+      const m = new THREE.Mesh(parkedWheelGeometry(), tire);
+      const h = new THREE.Mesh(parkedHubGeometry(), hub);
       m.castShadow = false;
-      w.add(m);
+      h.castShadow = false;
+      w.add(m, h);
+      if (w instanceof THREE.Mesh) {
+        // a mesh wheel hides its own geometry but must stay in the tree for the children
+        w.visible = true;
+        w.geometry = parkedWheelGeometry();
+        w.material = tire;
+        w.remove(m);
+      }
     }
     car.position.set(spec.x, 0.15, spec.z);
     // box cars are built along local x; the (flipped) models face +z

@@ -164,6 +164,40 @@ const REACT_LINES = ['Whoa!', 'Hey, watch it!', 'Is that guy okay?', 'Sol Palma,
 /** Ambient pedestrian with a tiny state machine. */
 export class Civilian extends NPC {
   private waitTimer = 0;
+  /** Stuck detection: walking but not getting anywhere re-anchors the path to the nearest node. */
+  private stuckTimer = 0;
+  private stuckX = 0;
+  private stuckZ = 0;
+
+  /** True when this pedestrian has been trying to walk for a while without moving. */
+  private checkStuck(dt: number): boolean {
+    if (this.state !== 'WANDER' && this.state !== 'FLEE') {
+      this.stuckTimer = 0;
+      return false;
+    }
+    const moved = Math.hypot(this.position.x - this.stuckX, this.position.z - this.stuckZ);
+    if (moved > 0.35) {
+      this.stuckTimer = 0;
+      this.stuckX = this.position.x;
+      this.stuckZ = this.position.z;
+      return false;
+    }
+    this.stuckTimer += dt;
+    if (this.stuckTimer < 1.6) return false;
+    this.stuckTimer = 0;
+    // step sideways a little and pick a fresh path from wherever we actually are
+    const a = Math.random() * Math.PI * 2;
+    this.position.x += Math.cos(a) * 0.6;
+    this.position.z += Math.sin(a) * 0.6;
+    this.stuckX = this.position.x;
+    this.stuckZ = this.position.z;
+    if (this.graph) {
+      this.currentNode = this.graph.nearest(this.position.x, this.position.z).id;
+      this.path = [];
+      this.pickRandomNextNode();
+    }
+    return true;
+  }
 
   constructor(id: string, x: number, z: number, shirt: string, skin: string, pants: string, world: CollisionWorld, graph: WaypointGraph) {
     super(id, x, z, shirt, skin, pants, world, graph);
@@ -174,6 +208,7 @@ export class Civilian extends NPC {
 
   update(dt: number, ctx: { playerX: number; playerZ: number; night: boolean; gossip?: string[] }): void {
     this.stateTime += dt;
+    if (this.checkStuck(dt) && this.state === 'FLEE') this.state = 'WANDER';
     switch (this.state) {
       case 'WANDER':
         if (this.followPath(dt)) {

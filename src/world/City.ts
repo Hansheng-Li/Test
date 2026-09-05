@@ -15,6 +15,7 @@ import { WorldObject, NightToggle } from './WorldTypes';
 import { WaypointGraph } from './Waypoints';
 import { seeded } from '../utils/math';
 import { mergeStaticMeshes } from './StaticMerge';
+import { clearOfRoads } from '../systems/RoadGrid';
 
 const SLAB = 0.15;
 
@@ -158,7 +159,8 @@ export function buildCity(): CityResult {
       if (ROADS_Z.some((rz) => Math.abs(rz - z) < 9)) continue;
       lightPositions.push({ x: x - half - 1, z }, { x: x + half + 1, z: z + 14 });
     }
-  const lampPositions = lightPositions.filter((p) => p.x > CANAL_X + 4 && p.z < CANAL_Z - 4);
+  // the paired lamp 14 m along the block can land in a cross street: keep every pole off the asphalt
+  const lampPositions = lightPositions.filter((p) => p.x > CANAL_X + 4 && p.z < CANAL_Z - 4 && clearOfRoads(p.x, p.z, 0.5));
   const lights = buildStreetLights(group, colliders, lampPositions);
   night.emissive.push(lights.bulbMaterial);
 
@@ -175,7 +177,8 @@ export function buildCity(): CityResult {
     [-20, 118], [30, 118], [-100, 118], [-60, 118], [140, 118], [-10, 44], [-10, 10],
   ];
   for (const [x, z] of lotPalms) palms.push({ x: x + (rnd() - 0.5) * 2, z: z + (rnd() - 0.5) * 2 });
-  buildPalms(group, colliders, palms);
+  // beach palms are scattered at random and lot palms are hand-placed: none may stand on a road
+  buildPalms(group, colliders, palms.filter((p) => clearOfRoads(p.x, p.z, 1.2)));
 
   // benches / trash along sidewalks
   const benchSpots = [[-70, -38.5], [-10, -38.5], [70, -38.5], [-70, 31.5], [-10, 31.5], [50, 31.5], [-70, 101.5], [-10, 101.5], [90, 101.5], [152, -20], [152, 30], [152, 70], [152, -100]];

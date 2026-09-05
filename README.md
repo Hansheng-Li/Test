@@ -212,6 +212,9 @@ Design rules that shaped the code:
   gold, waiting customers, parked cars, the runner, and cops (nearby or alarmed ones; every one of them
   with the scanner). The objective shows as a diamond, or an arrow on the rim when it is out of range,
   and a cyan N marks north.
+- Street furniture obeys the road grid: no palm or lamp post stands on the asphalt, pedestrians who walk
+  into a corner step aside and re-plan after a second and a half, and a crowd never stacks into one spot
+  (a gentle push keeps them a shoulder apart). Parked cars wear dark tires with light hub caps.
 - Any car parked on the street can be taken: walk up, E, and it is yours (GTA rules). A cop with a view
   adds heat 25, otherwise 8; you keep up to four stolen cars, the oldest gets towed, and they save where
   you leave them. Cruisers outside the station and the taxis keep their livery.

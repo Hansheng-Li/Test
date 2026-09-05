@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { roadDistance, onRoadGrid, clampToRoad } from '../src/systems/RoadGrid';
+import { roadDistance, onRoadGrid, clampToRoad, clearOfRoads } from '../src/systems/RoadGrid';
 import { ROADS_X, ROADS_Z, ROAD_WIDTH } from '../src/data/city';
 
 describe('road grid', () => {
@@ -18,5 +18,17 @@ describe('road grid', () => {
     expect(clampToRoad(-20, 14)).toEqual({ x: -20, z: 35.5 });
     const d = clampToRoad(36, 20);
     expect(d).toEqual({ x: 34.5, z: 20 });
+  });
+});
+
+describe('street furniture stays off the asphalt', () => {
+  it('clearOfRoads rejects points on a road and accepts the sidewalk', () => {
+    const z = ROADS_Z[1];
+    expect(clearOfRoads(-100, z)).toBe(false); // road centre
+    expect(clearOfRoads(-100, z + ROAD_WIDTH / 2 - 0.2)).toBe(false); // on the edge
+    expect(clearOfRoads(-100, z + ROAD_WIDTH / 2 + 1)).toBe(true); // sidewalk
+    expect(clearOfRoads(ROADS_X[1] + 2, 12)).toBe(false); // in a cross street
+    expect(clearOfRoads(ROADS_X[1] + ROAD_WIDTH / 2 + 2, 12, 1.2)).toBe(true);
+    expect(clearOfRoads(ROADS_X[1] + ROAD_WIDTH / 2 + 0.8, 12, 1.2)).toBe(false);
   });
 });

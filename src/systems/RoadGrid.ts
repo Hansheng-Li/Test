@@ -7,6 +7,11 @@ export function roadDistance(x: number, z: number): number {
   return Math.max(0, Math.min(dx, dz) - ROAD_WIDTH / 2);
 }
 
+/** Street furniture rule: nothing solid within `margin` metres of the asphalt edge. */
+export function clearOfRoads(x: number, z: number, margin = 0.5): boolean {
+  return roadDistance(x, z) >= margin;
+}
+
 /** On (or within `margin` of) the road grid: where a cruiser can follow you. */
 export function onRoadGrid(x: number, z: number, margin = 3): boolean {
   return roadDistance(x, z) <= margin;
