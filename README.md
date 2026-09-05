@@ -39,6 +39,7 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | `Y` / `X` | Accept / decline the newest page without opening the pager |
 | `M` | Paper map of Sol Palma |
 | `1`–`8` | Select hotbar slot |
+| Left click | Swing the baseball bat (when it is the selected hotbar item) |
 | `B` | Place equipment (inside your warehouse, with a station kit in your backpack) |
 | `N` | Radio: cycles SOL PALMA FM → THE WAVE → FUNK CITY → SIGNAL ZERO → off (walkman on foot, car stereo while driving) |
 | any key | Skips a cutscene (Escape pauses instead) |
@@ -190,6 +191,11 @@ Design rules that shaped the code:
 - Teddy the handler (Warehouse 7 office, needs Vince): every hour he carries up to 20 packaged units from
   warehouse storage to Vince's corner, so Marisol → Teddy → Vince runs while you work the street. One trip
   in twenty meets a patrol and the bag is lost. The cash pickup from Vince stays yours.
+- You start with wheels and a weapon: a bicycle leans on the wall outside the back-room door (E to ride,
+  W pedal, A/D steer, SHIFT brake; slower than the sedan, no trunk, no stereo, cruisers do not chase it,
+  and it stays where you leave it), and the starter box holds a baseball bat. Select the bat on the hotbar
+  and left-click to swing: a cop in the arc goes down for four seconds and cannot arrest you (heat +18,
+  and he comes up chasing), civilians scatter (heat +6), the rest of the block takes notice.
 - Chapter one is paced by hand: Rico's note on the pager, prep and bag the starter pulp, Tasha's first
   page (only after the product is bagged), the first sale, a restock trip to Rico at the Container Yard,
   then the second sale; only then does the pager open up. Story beats arrive as dialogue cards (the

@@ -119,3 +119,25 @@ describe('save hardening: round trips keep legitimate state', () => {
     expect(deserialize(JSON.stringify(lost))!.runner!.queue).toEqual([o2.id]);
   });
 });
+
+describe('bicycle in saves', () => {
+  it('a new run parks the bicycle outside the back room', async () => {
+    const { createNewState } = await import('../src/systems/SaveSystem');
+    const { BIKE_SPOT } = await import('../src/data/city');
+    expect(createNewState().bike).toEqual({ x: BIKE_SPOT.x, z: BIKE_SPOT.z, yaw: BIKE_SPOT.yaw });
+  });
+
+  it('saves without a bicycle, or with a broken one, get it back at the door', async () => {
+    const { createNewState, serialize, deserialize } = await import('../src/systems/SaveSystem');
+    const { BIKE_SPOT } = await import('../src/data/city');
+    const s = createNewState();
+    const raw = JSON.parse(serialize(s));
+    delete raw.bike;
+    expect(deserialize(JSON.stringify(raw))!.bike).toEqual({ x: BIKE_SPOT.x, z: BIKE_SPOT.z, yaw: BIKE_SPOT.yaw });
+    raw.bike = { x: 'nope', z: 12, yaw: null };
+    const b = deserialize(JSON.stringify(raw))!.bike;
+    expect(b.x).toBe(BIKE_SPOT.x);
+    expect(b.z).toBe(12);
+    expect(b.yaw).toBe(BIKE_SPOT.yaw);
+  });
+});

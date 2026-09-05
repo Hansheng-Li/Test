@@ -18,6 +18,10 @@ export class Input {
       if (['Space', 'Tab'].includes(e.code)) e.preventDefault();
     });
     window.addEventListener('keyup', (e) => this.down.delete(e.code));
+    // mouse buttons only count while the pointer is captured (otherwise they are UI clicks)
+    window.addEventListener('mousedown', (e) => {
+      if (this.locked) this.pressed.add('Mouse' + e.button);
+    });
     window.addEventListener('blur', () => this.down.clear());
     document.addEventListener('mousemove', (e) => {
       if (!this.locked) return;

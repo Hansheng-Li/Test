@@ -157,6 +157,8 @@ export const PROPERTY_ANCHORS: Record<string, { x: number; z: number }> = {
 
 export const SPAWN = { x: -22, y: 0, z: 16, yaw: -0.51 };
 export const SAFEHOUSE_DOOR = { x: -13, z: 14 };
+/** The starter bicycle leans on the wall outside the back-room door. */
+export const BIKE_SPOT = { x: -8, z: 13, yaw: Math.PI };
 export const SUPPLIER_SPOT = { x: -158, z: 22, name: 'Rico' };
 export const RUNNER_CONTACT_SPOT = { x: 154, z: -84, name: 'Dizzy' };
 export const WORKER_CONTACT_SPOT = { x: -152, z: 86, name: 'Marisol' };

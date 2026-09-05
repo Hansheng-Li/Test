@@ -18,7 +18,8 @@ import { DayNight } from '../world/DayNight';
 import { PropBuilder } from '../world/Props';
 import { buildPlacedStation, InteriorContext } from '../world/Interiors';
 import { WorldObject } from '../world/WorldTypes';
-import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT, PROPERTY_ANCHORS, SUPPLIER_SPOT, zoneAt } from '../data/city';
+import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT, PROPERTY_ANCHORS, SUPPLIER_SPOT, BIKE_SPOT, zoneAt } from '../data/city';
+import { swingTargets, BAT_STUN_SECONDS, BAT_HEAT_COP, BAT_HEAT_CIVILIAN } from '../systems/MeleeSystem';
 import { makeFigure, makeLabel } from '../world/Interiors';
 import { CUSTOMER_MAP } from '../data/customers';
 import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, HANDLER_HIRE_PRICE, VEHICLE_PRICE, MOTEL_PRICE, FRONT_PRICE, FRONT_DAILY_INCOME, FRONT_DAILY_SUSPICION, ITEMS } from '../data/items';
@@ -68,7 +69,7 @@ import { Vehicle } from '../player/Vehicle';
 import { CUSTOMERS } from '../data/customers';
 import { offerSample } from '../systems/CustomerSystem';
 import { streetSale, canStreetSell, streetUnitPrice } from '../systems/OrderSystem';
-import { lambert, boxGeo } from '../world/Materials';
+import { lambert, boxGeo, cylGeo } from '../world/Materials';
 import { signTexture } from '../world/Textures';
 
 const CIVILIAN_COLORS = ['#e91e63', '#9c27b0', '#3f51b5', '#03a9f4', '#009688', '#8bc34a', '#ffeb3b', '#ff9800', '#795548', '#ffffff', '#f44336', '#00bcd4'];
@@ -139,6 +140,14 @@ export class Game implements GameAPI {
   private runnerTripFor: number | null = null;
   workerFigure: THREE.Group | null = null;
   vehicle: Vehicle | null = null;
+  /** The starter bicycle (always present). */
+  bike: Vehicle | null = null;
+  /** Whichever vehicle is being driven right now. */
+  ride: Vehicle | null = null;
+  /** First-person bat, a child of the camera. */
+  private batView: THREE.Group;
+  /** Swing animation progress, 1 → 0. */
+  private swingT = 0;
   boomboxOn = false;
   /** Car stereo stays on between rides unless you switch it off. */
   carRadioOn = true;
@@ -209,6 +218,23 @@ export class Game implements GameAPI {
     void dressInteriors(this.scene, this.city);
     void upgradeParkedCars(this.city);
     this.scene.add(this.dynamicGroup);
+    this.scene.add(this.camera);
+    this.batView = new THREE.Group();
+    {
+      const wood = lambert('#c9a060');
+      const barrel = new THREE.Mesh(cylGeo(0.045, 0.028, 0.7, 10), wood);
+      barrel.position.y = 0.42;
+      const grip = new THREE.Mesh(cylGeo(0.026, 0.03, 0.22, 8), lambert('#2a1a10'));
+      grip.position.y = -0.03;
+      const knob = new THREE.Mesh(cylGeo(0.04, 0.04, 0.03, 8), lambert('#2a1a10'));
+      knob.position.y = -0.15;
+      this.batView.add(barrel, grip, knob);
+      this.batView.position.set(0.36, -0.44, -0.8);
+      this.batView.rotation.set(0.55, 0.1, -0.4);
+      this.batView.scale.setScalar(0.8);
+      this.batView.visible = false;
+      this.camera.add(this.batView);
+    }
     this.dayNight = new DayNight(this.scene, this.city.night);
     this.dayNight.setLampPositions(this.city.lampPositions);
     this.player = new PlayerController(this.camera, this.input, this.city.colliders);
@@ -437,11 +463,16 @@ export class Game implements GameAPI {
     }, 300);
   }
 
+  /** Driving the sedan (not the bicycle): engine, stereo and cruiser pursuits only apply here. */
+  get inCar(): boolean {
+    return this.driving && !!this.ride && this.ride === this.vehicle;
+  }
+
   /** N: off → station 1 → … → last station → off. Works for the walkman on foot and the car stereo. */
   cycleRadio(): void {
     this.audio.init();
     const radio = this.audio.radio;
-    const on = this.driving ? this.carRadioOn : this.boomboxOn;
+    const on = this.inCar ? this.carRadioOn : this.boomboxOn;
     let nowOn: boolean;
     if (!on) {
       nowOn = true;
@@ -454,16 +485,16 @@ export class Game implements GameAPI {
       radio.next();
       this.applySetting('radioStation', radio.station);
     }
-    if (this.driving) this.carRadioOn = nowOn;
+    if (this.inCar) this.carRadioOn = nowOn;
     else this.boomboxOn = nowOn;
     this.audio.play('switch');
     if (!nowOn) {
       radio.stop();
-      this.toast(this.driving ? 'Car stereo OFF' : 'Walkman OFF');
+      this.toast(this.inCar ? 'Car stereo OFF' : 'Walkman OFF');
     } else {
       radio.start();
       const st = radio.current;
-      this.toast(t('{v0} · {v1} {v2} (N: next station)', { v0: this.driving ? 'Car stereo' : 'Walkman', v1: st.name, v2: st.freq }));
+      this.toast(t('{v0} · {v1} {v2} (N: next station)', { v0: this.inCar ? 'Car stereo' : 'Walkman', v1: st.name, v2: st.freq }));
     }
   }
 
@@ -507,6 +538,7 @@ export class Game implements GameAPI {
     if (s.runner?.hired) this.createRunnerNPC();
     this.updateWorkerFigure();
     this.driving = false;
+    this.ride = null;
     this.hiding = null;
     this.hud.hiddenMode = false;
     this.hud.arrestMode = false;
@@ -514,6 +546,7 @@ export class Game implements GameAPI {
     this.cutscene.cancel();
     this.wasRaining = this.isRaining(); // the shower notice only fires on a transition inside this game
     this.syncVehicle();
+    this.syncBike();
     // placed stations
     const stale: import('../physics/Colliders').AABB[] = [];
     for (const o of this.placedObjects) {
@@ -754,7 +787,7 @@ export class Game implements GameAPI {
     if (this.pursuer && !this.cruisers.includes(this.pursuer)) this.pursuer = null;
     const v = this.vehicle;
     if (!this.pursuer) {
-      if (!this.driving || !v || this.state.heat < 60 || this.pursuitCooldown > 0 || this.arrested) return;
+      if (!this.inCar || !v || this.state.heat < 60 || this.pursuitCooldown > 0 || this.arrested) return;
       const spotter = this.cruiserSeeing(v.position.x, v.position.z, 34);
       if (!spotter) return;
       this.pursuer = spotter;
@@ -767,7 +800,7 @@ export class Game implements GameAPI {
       return;
     }
     const c = this.pursuer;
-    if (!this.driving || !v || this.arrested) {
+    if (!this.inCar || !v || this.arrested) {
       // on foot again: the cruiser parks and the foot patrols take it from here
       this.endPursuit(3, 15);
       return;
@@ -903,7 +936,7 @@ export class Game implements GameAPI {
     s.clockMinutes = this.clock.totalMinutes;
     s.stats.playSeconds += dt;
     if (this.cutscene.active) this.input.consumeMouse();
-    else if (this.driving && this.vehicle) this.updateDriving(dt, uiOpen);
+    else if (this.driving && this.ride) this.updateDriving(dt, uiOpen);
     else {
       this.player.update(dt);
       if (this.player.stepped && !this.hiding) this.audio.play('step');
@@ -914,12 +947,12 @@ export class Game implements GameAPI {
 
     // interaction
     const target = this.driving || this.hiding || this.cutscene.active ? null : this.interaction.update(this.camera, this.camera.position);
-    this.hud.setPrompt(uiOpen || this.arrested ? null : this.hiding ? t('[E] CLIMB OUT') : this.driving ? (Math.abs(this.vehicle!.speed) < 1 ? t('[E] GET OUT · SPACE HORN · SHIFT BRAKE') : null) : target ? target.prompt() : this.placement ? '[CLICK] PLACE · [R] ROTATE · [ESC] CANCEL' : null);
+    this.hud.setPrompt(uiOpen || this.arrested ? null : this.hiding ? t('[E] CLIMB OUT') : this.driving ? (Math.abs(this.ride!.speed) < 1 ? t(this.inCar ? '[E] GET OUT · SPACE HORN · SHIFT BRAKE' : '[E] GET OFF · SHIFT BRAKE') : null) : target ? target.prompt() : this.placement ? '[CLICK] PLACE · [R] ROTATE · [ESC] CANCEL' : null);
     if (this.hiding) this.updateHiding(dt);
     // E works whenever no panel or menu is up, locked or not: closing a panel with Escape leaves the mouse free
     if (!uiOpen && !this.arrested && !this.menu.visible && this.input.wasPressed('KeyE')) {
       if (this.hiding) this.leaveDumpster();
-      else if (this.driving) this.exitCar();
+      else if (this.driving) this.dismount();
       else if (target) {
         this.audio.play('click');
         target.onInteract();
@@ -1085,8 +1118,8 @@ export class Game implements GameAPI {
     const club = BUILDINGS.find((b) => b.id === 'club')!;
     const dClub = Math.hypot(this.player.position.x - club.x, this.player.position.z - club.z);
     this.audio.update(dt, { club: Math.max(0, 1 - dClub / 45), beach: Math.max(0, Math.min(1, (this.player.position.x - 140) / 40)), night: this.clock.isNight, insideClub: this.playerInsideBuilding('club'), heat: this.state.heat });
-    this.audio.setEngine(this.driving, this.vehicle ? Math.abs(this.vehicle.speed) / this.vehicle.maxSpeed : 0);
-    this.audio.setRain(this.weather.intensity * (this.playerInsideAnyInterior() || this.driving ? 0.3 : 1));
+    this.audio.setEngine(this.inCar, this.ride ? Math.abs(this.ride.speed) / this.ride.maxSpeed : 0);
+    this.audio.setRain(this.weather.intensity * (this.playerInsideAnyInterior() || this.inCar ? 0.3 : 1));
     const raining = this.rainNow;
     if (raining !== this.wasRaining) {
       this.wasRaining = raining;
@@ -1099,11 +1132,11 @@ export class Game implements GameAPI {
     }
 
     // radio: car stereo while driving, walkman when toggled
-    const wantRadio = this.driving ? this.carRadioOn : this.boomboxOn;
+    const wantRadio = this.inCar ? this.carRadioOn : this.boomboxOn;
     if (wantRadio && !this.audio.radio.playing) this.audio.radio.start();
     if (!wantRadio && this.audio.radio.playing) this.audio.radio.stop();
     if (this.audio.radio.playing) {
-      this.audio.radio.setLevel(this.driving ? 1 : 0.7);
+      this.audio.radio.setLevel(this.inCar ? 1 : 0.7);
       this.audio.radio.update(this.uiDt);
     }
     // dancers + beach night crowd only at night
@@ -1138,6 +1171,16 @@ export class Game implements GameAPI {
         this.hud.selectedSlot = i;
         this.audio.play('tick');
       }
+    }
+
+    // the bat: shown when selected, left click swings (pointer must be captured)
+    const batOut = !uiOpen && !this.driving && !this.hiding && !this.arrested && !this.cutscene.active && !this.menu.visible && this.state.inventory[this.hud.selectedSlot]?.id === 'bat';
+    this.batView.visible = batOut;
+    if (batOut && !this.placement && this.swingT <= 0 && this.input.locked && this.input.wasPressed('Mouse0')) this.swingBat();
+    if (this.swingT > 0) {
+      this.swingT = Math.max(0, this.swingT - dt * 3.2);
+      const k = Math.sin((1 - this.swingT) * Math.PI);
+      this.batView.rotation.set(0.55 - k * 1.6, 0.1 - k * 0.5, -0.4 - k * 0.7);
     }
 
     // placement ghost
@@ -1182,7 +1225,7 @@ export class Game implements GameAPI {
     }
 
     this.hud.setClickHint(!this.input.locked && !uiOpen && !this.arrested);
-    this.hud.speedText = this.driving && this.vehicle ? `${Math.round(this.vehicle.mph)} MPH` : null;
+    this.hud.speedText = this.driving && this.ride ? `${Math.round(this.ride.mph)} MPH` : null;
     this.hud.stamina = this.player.stamina;
     this.updateCompass();
     this.hudTextTimer -= dt;
@@ -1985,18 +2028,20 @@ export class Game implements GameAPI {
     if (s.flags.starterTaken) return;
     const leftPulp = addItem(s, 'pulp_sunset', 3);
     const leftBags = addItem(s, 'baggies', 6);
-    if (leftPulp > 0 || leftBags > 0) {
+    const leftBat = addItem(s, 'bat', 1);
+    if (leftPulp > 0 || leftBags > 0 || leftBat > 0) {
       // not enough room: take back only what the box managed to add and let the player make space
       removeItem(s, 'pulp_sunset', 3 - leftPulp);
       removeItem(s, 'baggies', 6 - leftBags);
+      removeItem(s, 'bat', 1 - leftBat);
       this.audio.play('error');
-      this.toast(t('Your backpack is full. Make room for 3 Sunset Pulp and 6 baggies first.'), 'warn');
+      this.toast(t('Your backpack is full. Make room for 3 Sunset Pulp, 6 baggies and a bat first.'), 'warn');
       return;
     }
     s.flags.starterTaken = true;
     this.syncStarterBox();
     this.audio.play('unlock');
-    this.toast(t('Starter box: 3x Sunset Pulp, 6x Zip Baggies. Prep the pulp at the PREP TABLE, then bag it at PACKAGING.'), 'cash', 7000);
+    this.toast(t('Starter box: 3x Sunset Pulp, 6x Zip Baggies, 1x Baseball Bat. Prep the pulp at the PREP TABLE, then bag it at PACKAGING.'), 'cash', 7000);
   }
 
   placeStation(kind: 'prep_table' | 'pack_table' | 'storage'): boolean {
@@ -2079,7 +2124,27 @@ export class Game implements GameAPI {
       radius: 4,
       aimY: 0.8,
       prompt: () => (this.driving ? null : t('[E] ENTER CAR · [F] TRUNK')),
-      onInteract: () => this.enterCar(),
+      onInteract: () => this.mount(this.vehicle!),
+    });
+  }
+
+  private syncBike(): void {
+    if (this.bike) {
+      this.dynamicGroup.remove(this.bike.mesh);
+      this.interaction.remove('bike');
+      this.bike = null;
+    }
+    const b = this.state.bike ?? BIKE_SPOT;
+    const bike = new Vehicle(b.x, b.z, b.yaw, this.city.colliders, 'bike');
+    this.bike = bike;
+    this.dynamicGroup.add(bike.mesh);
+    this.interaction.add({
+      id: 'bike',
+      position: bike.position,
+      radius: 3,
+      aimY: 0.6,
+      prompt: () => (this.driving ? null : t('[E] RIDE BICYCLE')),
+      onInteract: () => this.mount(bike),
     });
   }
 
@@ -2177,28 +2242,47 @@ export class Game implements GameAPI {
     this.openPanel('inventory-panel');
   }
 
-  private enterCar(): void {
-    if (!this.vehicle || this.driving || this.hiding || this.arrested || this.cutscene.active) return;
+  /** Get into the sedan or onto the bicycle. */
+  private mount(v: Vehicle): void {
+    if (this.driving || this.hiding || this.arrested || this.cutscene.active) return;
+    this.ride = v;
     this.driving = true;
     this.player.pitch = 0;
-    this.player.yaw = this.vehicle.cameraYaw;
-    this.audio.play('door');
+    this.player.yaw = v.cameraYaw;
+    this.audio.play(v.kind === 'bike' ? 'tick' : 'door');
     this.cancelPlacement();
+    if (v.kind === 'bike' && !this.state.flags.rodeBike) {
+      this.state.flags.rodeBike = true;
+      this.toast(t('Bike: W pedal · A/D steer · SHIFT brake · E get off. It stays where you leave it.'), 'info', 6000);
+    }
   }
 
-  private exitCar(): void {
-    if (!this.vehicle || !this.driving) return;
-    if (Math.abs(this.vehicle.speed) > 1) return;
+  /** Write the ridden vehicle's resting place into the state. */
+  private storeRide(): void {
+    const v = this.ride;
+    if (!v) return;
+    if (v === this.vehicle) this.state.vehicle = { owned: true, x: v.position.x, z: v.position.z, yaw: v.yaw, paint: this.state.vehicle?.paint };
+    else if (v === this.bike) this.state.bike = { x: v.position.x, z: v.position.z, yaw: v.yaw };
+  }
+
+  private dismount(): void {
+    const v = this.ride;
+    if (!v || !this.driving) return;
+    if (Math.abs(v.speed) > 1) return;
     this.driving = false;
-    this.audio.play('door');
-    const spot = this.vehicle.exitSpot();
-    this.player.teleport(spot.x, this.vehicle.position.y + 0.3, spot.z, this.vehicle.cameraYaw);
-    this.state.vehicle = { owned: true, x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw, paint: this.state.vehicle?.paint };
+    this.ride = null;
+    this.audio.play(v.kind === 'bike' ? 'tick' : 'door');
+    const spot = v.exitSpot();
+    this.player.teleport(spot.x, v.position.y + 0.3, spot.z, v.cameraYaw);
+    this.ride = v;
+    this.storeRide();
+    this.ride = null;
     this.save();
   }
 
   private updateDriving(dt: number, uiOpen: boolean): void {
-    const v = this.vehicle!;
+    const v = this.ride!;
+    const bike = v.kind === 'bike';
     const r = uiOpen ? null : v.update(dt, this.input);
     v.setNight(this.clock.isNight);
     // player rides along so every other system (police, customers, map) sees the car position
@@ -2216,8 +2300,8 @@ export class Game implements GameAPI {
     // chase camera: sits behind the car, orbits with the mouse, pulls in when a wall is in the way
     const yaw = this.player.yaw;
     const look = this.carLook.set(v.position.x, v.position.y + 1.1, v.position.z);
-    const dist = 7.5;
-    const camY = Math.max(0.7, 2.6 - this.player.pitch * 4);
+    const dist = bike ? 4.2 : 7.5;
+    const camY = Math.max(0.7, (bike ? 1.9 : 2.6) - this.player.pitch * 4);
     const desired = this.carEye.set(look.x + Math.sin(yaw) * dist, camY, look.z + Math.cos(yaw) * dist);
     let t = 1;
     for (; t > 0.35; t -= 0.1) {
@@ -2236,7 +2320,8 @@ export class Game implements GameAPI {
         addHeat(this.state, 3);
       }
     }
-    if (r === 'horn') {
+    if (r === 'horn' && bike) this.audio.play('tick');
+    else if (r === 'horn') {
       this.audio.play('horn');
       for (const c of this.pedestrians()) if (c.distanceTo(v.position.x, v.position.z) < 12) c.reactTo(v.position.x, v.position.z, false);
       for (const w of this.wanderers.values()) if (w.distanceTo(v.position.x, v.position.z) < 12) w.say('HEY! I am walking here!', '#ffd166', 2);
@@ -2244,12 +2329,44 @@ export class Game implements GameAPI {
     // pedestrians scatter from a moving car
     if (Math.abs(v.speed) > 3) {
       for (const c of this.pedestrians()) {
-        if (c.state !== 'FLEE' && c.distanceTo(v.position.x, v.position.z) < 3.5) {
+        if (c.state !== 'FLEE' && c.distanceTo(v.position.x, v.position.z) < (bike ? 1.6 : 3.5)) {
           c.reactTo(v.position.x, v.position.z, true);
-          addHeat(this.state, 4);
+          if (!bike) addHeat(this.state, 4);
         }
       }
     }
+  }
+
+  /** Left click with the bat out: cops in the arc go down for a few seconds, civilians scatter, heat climbs. */
+  private swingBat(): void {
+    this.swingT = 1;
+    const s = this.state;
+    const px = this.player.position.x;
+    const pz = this.player.position.z;
+    const yaw = this.player.yaw;
+    let hit = false;
+    for (const i of swingTargets(px, pz, yaw, this.police.map((p) => p.position))) {
+      const p = this.police[i];
+      if (p.stunned) continue;
+      p.stun(BAT_STUN_SECONDS);
+      addHeat(s, BAT_HEAT_COP);
+      this.hud.flash(t('OFFICER DOWN'), '#ff5c5c');
+      this.toast(t('You clubbed an officer. Run: District 3 will not forget that.'), 'warn', 6000);
+      hit = true;
+    }
+    const peds: Civilian[] = [...this.pedestrians(), ...this.wanderers.values()];
+    for (const i of swingTargets(px, pz, yaw, peds.map((c) => c.position))) {
+      const c = peds[i];
+      if (c.state === 'FLEE') continue;
+      c.reactTo(px, pz, true);
+      addHeat(s, BAT_HEAT_CIVILIAN);
+      hit = true;
+    }
+    if (hit) {
+      this.audio.play('thud');
+      // a beating in the street clears the block
+      for (const c of peds) if (c.state !== 'FLEE' && c.distanceTo(px, pz) < 12) c.reactTo(px, pz, Math.random() < 0.5);
+    } else this.audio.play('switch');
   }
 
   // ------------------------------------------------------------------ placement mode (warehouse)
@@ -2349,11 +2466,14 @@ export class Game implements GameAPI {
   // ------------------------------------------------------------------ police / arrest
 
   private beginArrest(): void {
-    if (this.driving && this.vehicle) {
-      this.vehicle.speed = 0;
+    if (this.driving && this.ride) {
+      const v = this.ride;
+      v.speed = 0;
+      this.storeRide();
       this.driving = false;
-      const spot = this.vehicle.exitSpot();
-      this.player.teleport(spot.x, 0.3, spot.z, this.vehicle.cameraYaw);
+      this.ride = null;
+      const spot = v.exitSpot();
+      this.player.teleport(spot.x, 0.3, spot.z, v.cameraYaw);
     }
     this.arrested = true;
     this.arrestTimer = 6.2;
@@ -2734,10 +2854,12 @@ export class Game implements GameAPI {
     this.state.clockMinutes = this.clock.totalMinutes;
     if (this.vehicle && this.state.vehicle) this.state.vehicle = { owned: true, x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw, paint: this.state.vehicle.paint };
     if (this.hiding) this.state.player = { x: this.hiding.exitX, y: 0.15, z: this.hiding.exitZ, yaw: this.player.yaw };
-    if (this.driving) {
+    if (this.bike && this.ride !== this.bike) this.state.bike = { x: this.bike.position.x, z: this.bike.position.z, yaw: this.bike.yaw };
+    if (this.driving && this.ride) {
       // never save the player "inside" the car: put them next to it
-      const spot = this.vehicle!.exitSpot();
-      this.state.player = { x: spot.x, y: this.vehicle!.position.y, z: spot.z, yaw: this.vehicle!.cameraYaw };
+      this.storeRide();
+      const spot = this.ride.exitSpot();
+      this.state.player = { x: spot.x, y: this.ride.position.y, z: spot.z, yaw: this.ride.cameraYaw };
     }
     saveToSlot(this.state, localStorage, this.activeSlot);
   }

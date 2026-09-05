@@ -45,6 +45,8 @@ export class Police extends NPC {
   private lastStuckX = 0;
   private lastStuckZ = 0;
   private detourTimer = 0;
+  /** Knocked down by the bat: no arrests, no movement, then a furious chase. */
+  private stunTimer = 0;
 
   constructor(id: string, x: number, z: number, world: CollisionWorld, graph: WaypointGraph) {
     super(id, x, z, '#1e3a8a', '#e0ac69', '#0f1e4a', world, graph);
@@ -63,6 +65,17 @@ export class Police extends NPC {
     this.lightMesh = light;
     this.currentNode = graph.nearest(x, z).id;
     this.pickRandomNextNode();
+  }
+
+  get stunned(): boolean {
+    return this.stunTimer > 0;
+  }
+
+  /** Bat hit: down for a few seconds, then straight into a chase. */
+  stun(seconds: number): void {
+    this.stunTimer = seconds;
+    this.velocity.set(0, 0, 0);
+    this.say('OFFICER DOWN!', '#ff5c5c', 2.5);
   }
 
   /** The car they were after just changed colour: drop the pursuit and search instead. */
@@ -109,6 +122,17 @@ export class Police extends NPC {
     this.stateTime += dt;
     this.lineTimer -= dt;
     this.noticeCooldown -= dt;
+    if (this.stunTimer > 0) {
+      this.stunTimer -= dt;
+      this.velocity.set(0, 0, 0);
+      this.mesh.rotation.z = 1.35;
+      if (this.stunTimer <= 0) {
+        this.mesh.rotation.z = 0;
+        this.lastSeen.set(ctx.playerX, 0, ctx.playerZ);
+        this.enter('CHASE', ['You are DONE, punk!', 'Assault on an officer!', 'Nobody swings at District 3!']);
+      }
+      return null;
+    }
     const d = this.distanceTo(ctx.playerX, ctx.playerZ);
     const eyeY = this.position.y + 1.6;
     const canSee = d < 32 * (ctx.sight ?? 1) && !ctx.playerSafe && ctx.los(this.position.x, eyeY, this.position.z, ctx.playerX, ctx.playerY + 1.2, ctx.playerZ);

@@ -15,9 +15,9 @@ export const STORY_CARDS: Record<string, StoryCard[]> = {
     {
       speaker: 'RICO · PAGER', face: 'rico', color: '#f39c12',
       lines: [
-        'Kid. Welcome to Sol Palma. The box in your back room is on me: three Sunset Pulp and six baggies.',
+        'Kid. Welcome to Sol Palma. The box in your back room is on me: three Sunset Pulp, six baggies and an old bat.',
         'Prep the pulp at the PREP TABLE, bag it at PACKAGING. Keep the beeper on. Sal\'s crew owns the streets, so stay small and stay quiet.',
-        'Need more pulp? Container Yard, docks. Ask for Rico. Bring cash.',
+        'Need more pulp? Container Yard, docks. Take the bicycle outside your door. Ask for Rico. Bring cash.',
       ],
     },
   ],
