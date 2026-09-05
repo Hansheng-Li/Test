@@ -4,10 +4,21 @@ import { BUS_STOPS, PAYPHONES, BUILDINGS, LANDMARKS, ROADS_X, ROADS_Z, MAP_MIN_X
 import { activeOrders } from '../systems/OrderSystem';
 import { CUSTOMER_MAP } from '../data/customers';
 
-/** "Paper map" of Sol Palma drawn on a canvas. */
+/** Short map names: what fits on a block at a readable size. Anything not listed keeps its full name. */
+const SHORT: Record<string, string> = {
+  coralarms: 'CORAL ARMS', palmcourt: 'PALM COURT', seagrass: 'SEAGRASS APTS', palmetto: 'PALMETTO APTS', police: 'POLICE DEPT', busdepot: 'BUS DEPOT',
+  fishmarket: 'FISH MARKET', boatrepair: 'BOAT REPAIR', storage: 'SELF STORAGE', pagercity: 'PAGER CITY', records: 'DEL MAR RECORDS', lotus: 'GOLDEN LOTUS',
+  tropicmart: 'TROPIC MART', video: 'VIDEO PALACE', laundromat: 'LAUNDROMAT', pawn: 'PAWN SHOP', store: 'QUICK STOP 24', safehouse: 'BACK ROOM',
+  warehouse: 'WAREHOUSE 7', port: 'PORT AUTHORITY', motel: 'OCEAN VIEW MOTEL', club: 'CLUB MIRAGE', arcade: 'NEPTUNE ARCADE', icecream: 'SANDBAR ICE CREAM',
+  garage: 'PARK & GO', azure: 'AZURE PALMS', rojas: 'ROJAS AUTO', bank: 'SUN COAST BANK', diner: 'FLAMINGO DINER', canalbar: 'CANAL SIDE BAR', bait: 'BAIT & TACKLE', cinema: 'BAY CINEMA',
+};
+/** Apartments and the like: drawn, labelled small and grey so the places you go stand out. */
+const QUIET = new Set(['coralarms', 'palmcourt', 'seagrass', 'palmetto', 'azure', 'storage', 'bait', 'canalbar']);
+
+/** "Paper map" of Sol Palma drawn on a canvas: only the places that matter get a bold label. */
 export class MapUI extends Panel {
   private canvas: HTMLCanvasElement;
-  private scale = 2.2;
+  private scale = 2.6;
 
   constructor(parent: HTMLElement, private api: GameAPI) {
     super('map-panel', 'SOL PALMA · TOURIST MAP', parent);
@@ -25,100 +36,173 @@ export class MapUI extends Panel {
     return (z - MAP_MIN_Z) * this.scale;
   }
 
+  /** Text with a light halo so it reads on any ground colour. */
+  private text(g: CanvasRenderingContext2D, txt: string, x: number, y: number, size: number, color: string, align: CanvasTextAlign = 'center', bold = true): void {
+    g.font = `${bold ? 'bold ' : ''}${size}px 'Segoe UI', Arial, sans-serif`;
+    g.textAlign = align;
+    g.textBaseline = 'middle';
+    g.lineJoin = 'round';
+    g.lineWidth = Math.max(3, size * 0.35);
+    g.strokeStyle = 'rgba(255,250,235,0.92)';
+    g.strokeText(txt, x, y);
+    g.fillStyle = color;
+    g.fillText(txt, x, y);
+  }
+
+  /** Split a label into at most two lines that fit `maxW` at `size` px. */
+  private wrap(g: CanvasRenderingContext2D, txt: string, size: number, maxW: number): string[] {
+    g.font = `bold ${size}px 'Segoe UI', Arial, sans-serif`;
+    if (g.measureText(txt).width <= maxW) return [txt];
+    const words = txt.split(' ');
+    const lines: string[] = [];
+    let cur = '';
+    for (const w of words) {
+      const next = cur ? cur + ' ' + w : w;
+      if (g.measureText(next).width <= maxW || !cur) cur = next;
+      else {
+        lines.push(cur);
+        cur = w;
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines.slice(0, 2);
+  }
+
   render(): void {
     const g = this.canvas.getContext('2d')!;
     const s = this.scale;
-    g.fillStyle = '#f4e4c1';
-    g.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    // water
+    const W = this.canvas.width;
+    const H = this.canvas.height;
+    g.fillStyle = '#efdcb8';
+    g.fillRect(0, 0, W, H);
+    // water and sand
     g.fillStyle = '#7fc8e0';
-    g.fillRect(this.px(OCEAN_X), 0, this.canvas.width, this.canvas.height);
-    g.fillRect(0, 0, this.px(CANAL_X), this.canvas.height);
-    g.fillRect(0, this.pz(CANAL_Z), this.canvas.width, this.canvas.height);
+    g.fillRect(this.px(OCEAN_X), 0, W, H);
+    g.fillRect(0, 0, this.px(CANAL_X), H);
+    g.fillRect(0, this.pz(CANAL_Z), W, H);
     g.fillStyle = '#f7e7a8';
-    g.fillRect(this.px(169), 0, this.px(OCEAN_X) - this.px(169), this.canvas.height);
-    // roads
-    g.fillStyle = '#c9b48a';
+    g.fillRect(this.px(169), 0, this.px(OCEAN_X) - this.px(169), H);
+    // roads with a centre line
+    g.fillStyle = '#a8946c';
     for (const z of ROADS_Z) g.fillRect(0, this.pz(z - 6), this.px(OCEAN_X), 12 * s);
     for (const x of ROADS_X) g.fillRect(this.px(x - 6), 0, 12 * s, this.pz(CANAL_Z));
-    // buildings
-    for (const b of BUILDINGS) {
-      g.fillStyle = b.zone === 'beach' ? '#f2a7c3' : b.zone === 'docks' ? '#b0aa9a' : '#d9c3a3';
-      if (b.interior) g.fillStyle = b.id === 'safehouse' ? '#7dff9a' : '#ffd166';
-      g.fillRect(this.px(b.x - b.w / 2), this.pz(b.z - b.d / 2), b.w * s, b.d * s);
-      g.strokeStyle = '#5a3a20';
-      g.lineWidth = 1;
-      g.strokeRect(this.px(b.x - b.w / 2), this.pz(b.z - b.d / 2), b.w * s, b.d * s);
-      if (b.w >= 26) {
-        g.fillStyle = '#3a2a1a';
-        g.font = `bold ${Math.max(9, 4.5 * s)}px Arial`;
-        g.textAlign = 'center';
-        g.fillText(b.name.toUpperCase().slice(0, 18), this.px(b.x), this.pz(b.z) + 3);
-      }
+    g.strokeStyle = 'rgba(255,240,200,0.55)';
+    g.lineWidth = 1.5;
+    g.setLineDash([6, 8]);
+    for (const z of ROADS_Z) {
+      g.beginPath();
+      g.moveTo(0, this.pz(z));
+      g.lineTo(this.px(OCEAN_X), this.pz(z));
+      g.stroke();
     }
-    // landmarks with active orders
+    for (const x of ROADS_X) {
+      g.beginPath();
+      g.moveTo(this.px(x), 0);
+      g.lineTo(this.px(x), this.pz(CANAL_Z));
+      g.stroke();
+    }
+    g.setLineDash([]);
+    // districts
+    for (const [name, x] of [['DOCKS', -160], ['DOWNTOWN', 30], ['BEACH', 140]] as const) this.text(g, name, this.px(x), this.pz(MAP_MIN_Z + 14), 22, 'rgba(90,60,30,0.55)');
+    // buildings
     const st = this.api.state;
-    const orders = activeOrders(st);
-    g.font = `bold ${6 * s}px Arial`;
-    g.fillStyle = '#1e6fd9';
-    for (const p of PAYPHONES) g.fillRect(this.px(p.x) - 2 * s, this.pz(p.z) - 2 * s, 4 * s, 4 * s);
+    for (const b of BUILDINGS) {
+      const quiet = QUIET.has(b.id);
+      const owned = st.properties.includes(b.id) || b.id === 'safehouse';
+      g.fillStyle = owned ? '#8ef0a5' : b.interior ? '#ffd166' : quiet ? '#d4c2a6' : b.zone === 'beach' ? '#f4b6cf' : b.zone === 'docks' ? '#b9b3a4' : '#dcc7a6';
+      const x0 = this.px(b.x - b.w / 2);
+      const z0 = this.pz(b.z - b.d / 2);
+      g.fillRect(x0, z0, b.w * s, b.d * s);
+      g.strokeStyle = owned ? '#1b5e20' : '#5a3a20';
+      g.lineWidth = owned ? 3 : 1.5;
+      g.strokeRect(x0, z0, b.w * s, b.d * s);
+      if (b.w < 22) continue;
+      const label = (SHORT[b.id] ?? b.name).toUpperCase();
+      const size = quiet ? 10 : 12;
+      const lines = this.wrap(g, label, size, b.w * s - 8);
+      const cy = this.pz(b.z) - ((lines.length - 1) * (size + 2)) / 2;
+      lines.forEach((ln, i) => this.text(g, ln, this.px(b.x), cy + i * (size + 2), size, quiet ? '#6b5a48' : '#2b1a0c'));
+    }
+    // payphones and bus stops
+    for (const p of PAYPHONES) {
+      g.fillStyle = '#1e6fd9';
+      g.fillRect(this.px(p.x) - 2.5 * s, this.pz(p.z) - 2.5 * s, 5 * s, 5 * s);
+    }
     for (const b of BUS_STOPS) {
       g.fillStyle = '#e67e22';
-      g.fillRect(this.px(b.x) - 3 * s, this.pz(b.z) - 3 * s, 6 * s, 6 * s);
-      g.fillStyle = '#fff';
-      g.fillText('B', this.px(b.x) - 2 * s, this.pz(b.z) + 2 * s);
+      g.fillRect(this.px(b.x) - 4 * s, this.pz(b.z) - 4 * s, 8 * s, 8 * s);
+      this.text(g, 'B', this.px(b.x), this.pz(b.z) + 1, 12, '#fff');
     }
+    // meeting spots (dots), customers waiting (pins with a name)
+    const orders = activeOrders(st);
     for (const l of LANDMARKS) {
       const o = orders.find((x) => x.locationId === l.id);
       g.beginPath();
-      g.arc(this.px(l.x), this.pz(l.z), o ? 5 * s : 2 * s, 0, Math.PI * 2);
-      g.fillStyle = o ? (o.status === 'runner' ? '#00c2a8' : '#e91e63') : '#6a4a2a';
+      g.arc(this.px(l.x), this.pz(l.z), o ? 6 * s : 2.2 * s, 0, Math.PI * 2);
+      g.fillStyle = o ? (o.status === 'runner' ? '#00c2a8' : '#e91e63') : '#7a5a3a';
       g.fill();
       if (o) {
-        g.fillStyle = '#7a0030';
-        g.textAlign = 'left';
-        g.fillText(`${CUSTOMER_MAP[o.customerId].name.split(' ')[0]} · ${l.name}`, this.px(l.x) + 7 * s, this.pz(l.z) + 3);
+        g.strokeStyle = '#fff';
+        g.lineWidth = 2.5;
+        g.stroke();
+        this.text(g, `${CUSTOMER_MAP[o.customerId].name.split(' ')[0]} · ${l.name}`, this.px(l.x) + 8 * s, this.pz(l.z), 14, '#7a0030', 'left');
       }
     }
     // key spots
-    const dot = (x: number, z: number, color: string, label: string): void => {
+    const dot = (x: number, z: number, color: string, label: string, r = 4.5): void => {
       g.fillStyle = color;
       g.beginPath();
-      g.arc(this.px(x), this.pz(z), 4 * s, 0, Math.PI * 2);
+      g.arc(this.px(x), this.pz(z), r * s, 0, Math.PI * 2);
       g.fill();
-      g.fillStyle = '#222';
-      g.textAlign = 'left';
-      g.fillText(label, this.px(x) + 6 * s, this.pz(z) + 3);
+      g.strokeStyle = '#fff';
+      g.lineWidth = 2;
+      g.stroke();
+      if (label) this.text(g, label, this.px(x) + (r + 3) * s, this.pz(z), 14, '#1e1208', 'left');
     };
-    dot(SAFEHOUSE_DOOR.x, SAFEHOUSE_DOOR.z, '#2e7d32', 'BACK ROOM');
-    dot(SUPPLIER_SPOT.x, SUPPLIER_SPOT.z, '#ff9800', 'RICO');
+    dot(SAFEHOUSE_DOOR.x, SAFEHOUSE_DOOR.z, '#2e7d32', 'BACK ROOM (home)');
+    dot(SUPPLIER_SPOT.x, SUPPLIER_SPOT.z, '#ff9800', 'RICO · supplies');
     if (st.properties.includes('warehouse')) dot(PROPERTY_ANCHORS.warehouse.x, PROPERTY_ANCHORS.warehouse.z, '#2e7d32', 'YOUR WAREHOUSE');
     if (st.properties.includes('motel')) dot(PROPERTY_ANCHORS.motel.x, PROPERTY_ANCHORS.motel.z, '#2e7d32', 'ROOM 6');
     if (st.properties.includes('laundromat')) dot(-27, -22, '#2e7d32', 'YOUR LAUNDROMAT');
-    dot(DEALER_CONTACT_SPOT.x, DEALER_CONTACT_SPOT.z, '#8e24aa', st.dealer?.hired ? `VINCE ($${Math.round(st.dealer.cash)})` : 'VINCE (dealer)');
-    if (!st.runner?.hired) dot(RUNNER_CONTACT_SPOT.x, RUNNER_CONTACT_SPOT.z, '#00838f', 'DIZZY (runner)');
-    if (!st.worker?.hired) dot(WORKER_CONTACT_SPOT.x, WORKER_CONTACT_SPOT.z, '#6a1b9a', 'MARISOL (worker)');
-    if (this.api.hasScanner()) for (const p of this.api.policeXZ()) dot(p.x, p.z, '#1e88e5', '');
+    dot(DEALER_CONTACT_SPOT.x, DEALER_CONTACT_SPOT.z, '#8e24aa', st.dealer?.hired ? `VINCE · holding $${Math.round(st.dealer.cash)}` : 'VINCE · dealer for hire');
+    if (!st.runner?.hired) dot(RUNNER_CONTACT_SPOT.x, RUNNER_CONTACT_SPOT.z, '#00838f', 'DIZZY · runner for hire');
+    if (!st.worker?.hired) dot(WORKER_CONTACT_SPOT.x, WORKER_CONTACT_SPOT.z, '#6a1b9a', 'MARISOL · worker for hire');
+    if (this.api.hasScanner()) for (const p of this.api.policeXZ()) dot(p.x, p.z, '#1e88e5', '', 3.5);
     const r = this.api.runnerXZ();
-    if (r) dot(r.x, r.z, '#00c2a8', 'RUNNER');
+    if (r) dot(r.x, r.z, '#00c2a8', 'DIZZY');
     // player
     const p = this.api.playerXZ();
-    g.fillStyle = '#d50000';
+    g.fillStyle = 'rgba(213,0,0,0.25)';
     g.beginPath();
-    g.arc(this.px(p.x), this.pz(p.z), 5 * s, 0, Math.PI * 2);
+    g.arc(this.px(p.x), this.pz(p.z), 11 * s, 0, Math.PI * 2);
     g.fill();
-    g.strokeStyle = '#fff';
-    g.lineWidth = 2;
-    g.stroke();
-    g.fillStyle = '#222';
-    g.font = `bold ${7 * s}px Arial`;
-    g.textAlign = 'left';
-    g.fillText('YOU', this.px(p.x) + 7 * s, this.pz(p.z) - 6);
-    // legend
-    g.fillStyle = 'rgba(255,255,255,0.75)';
-    g.fillRect(8, this.canvas.height - 26 * s, 340 * s, 22 * s);
-    g.fillStyle = '#222';
-    g.font = `${6 * s}px Arial`;
-    g.fillText('● RED: you   ● PINK: customer waiting   ● TEAL: runner   ● YELLOW: shops   ● GREEN: your property   ■ BLUE: payphone   ■ B: bus stop', 14, this.canvas.height - 12 * s);
+    dot(p.x, p.z, '#d50000', '', 5.5);
+    this.text(g, 'YOU', this.px(p.x), this.pz(p.z) - 9 * s, 16, '#b71c1c');
+    // legend: swatches, not bullets
+    const items: [string, string, 'dot' | 'box'][] = [['#d50000', 'you', 'dot'], ['#e91e63', 'customer waiting', 'dot'], ['#00c2a8', 'runner', 'dot'], ['#ffd166', 'shops', 'box'], ['#8ef0a5', 'your property', 'box'], ['#1e6fd9', 'payphone', 'box'], ['#e67e22', 'bus stop (B)', 'box'], ['#1e88e5', 'police (scanner)', 'dot']];
+    const lh = 22;
+    const lw = 250;
+    const lx = 14;
+    const ly = H - 14 - lh * 4 - 10;
+    g.fillStyle = 'rgba(255,252,240,0.9)';
+    g.fillRect(lx, ly, lw * 2 + 10, lh * 4 + 10);
+    g.strokeStyle = '#8a5a33';
+    g.lineWidth = 1.5;
+    g.strokeRect(lx, ly, lw * 2 + 10, lh * 4 + 10);
+    items.forEach(([color, label, kind], i) => {
+      const x = lx + 12 + (i % 2) * lw;
+      const y = ly + 5 + lh * Math.floor(i / 2) + lh / 2;
+      g.fillStyle = color;
+      if (kind === 'dot') {
+        g.beginPath();
+        g.arc(x + 7, y, 6, 0, Math.PI * 2);
+        g.fill();
+      } else g.fillRect(x + 1, y - 6, 12, 12);
+      g.font = "14px 'Segoe UI', Arial, sans-serif";
+      g.fillStyle = '#2b1a0c';
+      g.textAlign = 'left';
+      g.textBaseline = 'middle';
+      g.fillText(label, x + 22, y);
+    });
   }
 }

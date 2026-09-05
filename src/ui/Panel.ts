@@ -2,13 +2,19 @@
 export abstract class Panel {
   el: HTMLDivElement;
   isOpen = false;
+  /** Set by the game: the header's CLOSE button and ESC both go through here. */
+  onCloseRequest: (() => void) | null = null;
 
   constructor(public id: string, title: string, parent: HTMLElement) {
     this.el = document.createElement('div');
     this.el.className = 'panel';
     this.el.id = id;
-    this.el.innerHTML = `<h2>${title}<span class="close-hint">[ESC] CLOSE</span></h2><div class="body"></div>`;
+    this.el.innerHTML = `<h2>${title}<button type="button" class="close-hint" title="Close (Esc)">✕ CLOSE · ESC</button></h2><div class="body"></div>`;
     parent.appendChild(this.el);
+    (this.el.querySelector('.close-hint') as HTMLButtonElement).addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.onCloseRequest?.();
+    });
   }
 
   get body(): HTMLDivElement {

@@ -1,5 +1,6 @@
 import { GameState } from '../game/GameState';
 import { resolveItem } from '../systems/InventorySystem';
+import { iconFor } from './Icons';
 import { heatLevel } from '../systems/HeatSystem';
 import { ToastKind } from './UIContext';
 
@@ -70,7 +71,8 @@ export class HUD {
     for (let i = 0; i < 8; i++) {
       const s = document.createElement('div');
       s.className = 'slot';
-      s.innerHTML = `<span class="key">${i + 1}</span><span class="name"></span><span class="qty"></span>`;
+      s.innerHTML = `<span class="key">${i + 1}</span><img class="icon" alt="" draggable="false" style="display:none"><span class="name"></span><span class="qty"></span>`;
+      (s.querySelector('img') as HTMLImageElement).addEventListener('error', () => { (s.querySelector('img') as HTMLImageElement).style.display = 'none'; });
       this.slotsEl.appendChild(s);
     }
   }
@@ -130,15 +132,23 @@ export class HUD {
       const st = state.inventory[i];
       const nameEl = el.querySelector('.name') as HTMLElement;
       const qtyEl = el.querySelector('.qty') as HTMLElement;
+      const img = el.querySelector('img') as HTMLImageElement;
       el.className = 'slot' + (i === this.selectedSlot ? ' selected' : '');
       if (st) {
         const def = resolveItem(state, st.id);
         nameEl.textContent = def.name;
         qtyEl.textContent = 'x' + st.qty;
         el.classList.add(def.category);
+        const src = iconFor(st.id);
+        if (!img.getAttribute('src')?.endsWith(src)) {
+          img.style.display = '';
+          img.src = src;
+        }
       } else {
         nameEl.textContent = '';
         qtyEl.textContent = '';
+        img.style.display = 'none';
+        img.removeAttribute('src');
       }
     }
     if (this.pagerTimer > 0) {
@@ -160,7 +170,7 @@ export class HUD {
     }
     el.style.display = 'flex';
     (el.querySelector('.arrow') as HTMLElement).style.transform = `rotate(${(angleRad * 180) / Math.PI}deg)`;
-    (el.querySelector('.label') as HTMLElement).textContent = `${label} · ${Math.round(meters)}m`;
+    (el.querySelector('.label') as HTMLElement).innerHTML = `${label} <b>${Math.round(meters)} m</b>`;
   }
 
   private radioTimer = 0;

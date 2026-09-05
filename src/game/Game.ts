@@ -114,6 +114,8 @@ export class Game implements GameAPI {
     return this.cruisers[0] ?? null;
   }
   private radioCooldown = 0;
+  /** Pointer-lock changes before this time stamp do not open the pause menu (a panel just closed). */
+  private lockGraceUntil = 0;
   /** Cruiser pursuit of the sedan: who is chasing, how long they have not seen you, off-grid time, and how long you have sat still in reach. */
   private pursuer: Cruiser | null = null;
   private pursuitLost = 0;
@@ -215,7 +217,10 @@ export class Game implements GameAPI {
     this.ledgerUI = new LedgerUI(root, this);
     this.busUI = new BusUI(root, this);
     this.diceUI = new DiceUI(root, this);
-    for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI, this.dealerUI, this.ledgerUI, this.busUI, this.diceUI]) this.panels[p.id] = p;
+    for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI, this.dealerUI, this.ledgerUI, this.busUI, this.diceUI]) {
+      this.panels[p.id] = p;
+      p.onCloseRequest = () => this.closePanel();
+    }
     this.cutscene = new Cutscene(root);
     this.menu = new Menu(root, {
       newGame: () => this.startNewGame(true),
@@ -262,7 +267,7 @@ export class Game implements GameAPI {
     });
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === this.renderer.domElement;
-      if (!locked && this.running && !this.openPanelId && !this.expectUnlock && !this.menu.visible) this.pause();
+      if (!locked && this.running && !this.openPanelId && !this.expectUnlock && !this.menu.visible && performance.now() > this.lockGraceUntil) this.pause();
       this.expectUnlock = false;
     });
     window.addEventListener('keydown', (e) => this.onKey(e));
@@ -879,7 +884,8 @@ export class Game implements GameAPI {
     const target = this.driving || this.hiding || this.cutscene.active ? null : this.interaction.update(this.camera, this.camera.position);
     this.hud.setPrompt(uiOpen || this.arrested ? null : this.hiding ? '[E] CLIMB OUT' : this.driving ? (Math.abs(this.vehicle!.speed) < 1 ? '[E] GET OUT · SPACE HORN · SHIFT BRAKE' : null) : target ? target.prompt() : this.placement ? '[CLICK] PLACE · [R] ROTATE · [ESC] CANCEL' : null);
     if (this.hiding) this.updateHiding(dt);
-    if (!uiOpen && !this.arrested && this.input.wasPressed('KeyE') && this.input.locked) {
+    // E works whenever no panel or menu is up, locked or not: closing a panel with Escape leaves the mouse free
+    if (!uiOpen && !this.arrested && !this.menu.visible && this.input.wasPressed('KeyE')) {
       if (this.hiding) this.leaveDumpster();
       else if (this.driving) this.exitCar();
       else if (target) {
@@ -1574,14 +1580,20 @@ export class Game implements GameAPI {
     this.audio.play(id === 'pager-panel' ? 'page' : 'open');
   }
 
-  closePanel(): void {
+  /**
+   * Close the open panel. Escape cannot grant pointer lock in browsers, so a close by Escape leaves the
+   * mouse free (the CLICK TO CAPTURE hint shows) instead of firing a request that fails; the short grace
+   * keeps a lock change around the close from opening the pause menu.
+   */
+  closePanel(relock = true): void {
     if (!this.openPanelId) return;
     this.panels[this.openPanelId].close();
     this.openPanelId = null;
     this.audio.play('close');
     this.inventoryUI.storageProperty = null;
     this.input.uiCaptured = false;
-    this.input.requestLock();
+    this.lockGraceUntil = performance.now() + 1200;
+    if (relock) this.input.requestLock();
   }
 
   sendRunner(id: number): void {
@@ -2672,7 +2684,8 @@ export class Game implements GameAPI {
       const panel = this.panels[this.openPanelId];
       if (e.code === 'Escape' || (e.code === 'Tab' && this.openPanelId === 'inventory-panel') || (e.code === 'KeyP' && this.openPanelId === 'pager-panel') || (e.code === 'KeyM' && this.openPanelId === 'map-panel')) {
         e.preventDefault();
-        this.closePanel();
+        e.stopPropagation();
+        this.closePanel(e.code !== 'Escape');
         return;
       }
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
@@ -2680,6 +2693,9 @@ export class Game implements GameAPI {
       return;
     }
     if (this.arrested) return;
+    // a movement key re-captures a mouse a panel let go of (Escape never counts as activation in browsers;
+    // keys that open panels are left alone so the lock cannot land on top of a freshly opened panel)
+    if (!this.input.locked && !this.placement && ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'Space'].includes(e.code)) this.input.requestLock();
     switch (e.code) {
       case 'Tab':
         e.preventDefault();

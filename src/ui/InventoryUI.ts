@@ -1,6 +1,7 @@
 import { Panel } from './Panel';
 import { GameAPI, esc } from './UIContext';
 import { resolveItem, storageOf, storageCapacity, storageUsed } from '../systems/InventorySystem';
+import { iconImg } from './Icons';
 import { CUSTOMERS } from '../data/customers';
 import { relationshipTier } from '../systems/CustomerSystem';
 
@@ -34,7 +35,7 @@ export class InventoryUI extends Panel {
       cell.className = 'inv-slot';
       if (s) {
         const def = resolveItem(st, s.id);
-        cell.innerHTML = `<span class="qty">x${s.qty}</span><b>${esc(def.name)}</b><span class="meta">${def.category.replace('_', ' ')}${def.desc ? ' · ' + def.desc : ''}</span>`;
+        cell.innerHTML = `<span class="qty">x${s.qty}</span>${iconImg(s.id)}<b>${esc(def.name)}</b><span class="meta">${def.category.replace('_', ' ')}${def.desc ? ' · ' + def.desc : ''}</span>`;
         if (this.storageProperty) {
           const b = this.button('STORE', () => { this.api.deposit(this.storageProperty!, s.id, s.qty); this.render(); });
           b.style.marginTop = '4px';
@@ -54,7 +55,7 @@ export class InventoryUI extends Panel {
         const def = resolveItem(st, s.id);
         const row = document.createElement('div');
         row.className = 'row';
-        row.innerHTML = `<span class="name"><b>${esc(def.name)}</b> x${s.qty}<span class="desc">${def.desc}</span></span>`;
+        row.innerHTML = `${iconImg(s.id, 'icon row-icon')}<span class="name"><b>${esc(def.name)}</b> x${s.qty}<span class="desc">${def.desc}</span></span>`;
         const b1 = this.button('TAKE 1', () => { this.api.withdraw(this.storageProperty!, s.id, 1); this.render(); });
         const b2 = this.button('TAKE ALL', () => { this.api.withdraw(this.storageProperty!, s.id, s.qty); this.render(); });
         row.appendChild(b1);

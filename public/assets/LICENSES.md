@@ -29,6 +29,11 @@ Fetched from the community mirror https://github.com/ETdoFresh/kenney.nl
 | models/tree_palmTall.glb, tree_palmDetailedTall.glb | Nature Kit 2.1 |
 | models/furniture/*.glb (bookcaseOpen, cabinetTelevision, chair, computerScreen, deskCorner, kitchenFridgeSmall, lampSquareFloor, loungeChair, loungeSofa, plantSmall2, pottedPlant, rugRectangle, speaker, stoolBar, tableCoffee, televisionVintage) | Furniture Kit |
 
+## Icons — Kenney, CC0
+| File | Source pack |
+| --- | --- |
+| icons/items/*.png (pulp_sunset, wax_velvet, gel_neon, mod_*, baggies, pkg, prod, eq_*, kit) | Generic Items (160 assets), renamed per item |
+
 ## Textures — Kenney, CC0
 | File | Source pack |
 | --- | --- |
