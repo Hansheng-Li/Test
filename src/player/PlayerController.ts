@@ -27,7 +27,8 @@ export class PlayerController {
   sprinting = false;
   /** 0..1; sprinting drains it, resting refills it. Makes police chases a real decision. */
   stamina = 1;
-  staminaDrain = 1 / 6;
+  /** Sprinting no longer costs stamina (playtest feedback): the field stays for the HUD bar, which simply never drains. */
+  staminaDrain = 0;
   staminaRegen = 1 / 4;
   private staminaLock = false;
   private forward = new THREE.Vector3();

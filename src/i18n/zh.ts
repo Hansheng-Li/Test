@@ -319,6 +319,7 @@ export const ZH: Record<string, string> = {
   'WASD to move · SHIFT to sprint · E to interact · TAB backpack · P pager · M map': 'WASD 移动 · SHIFT 奔跑 · E 互动 · TAB 背包 · P 呼机 · M 地图',
   '1-8 picks the hotbar slot: that is what you hand over as a free sample or a street deal.': '数字键 1-8 选道具栏：递样品或街头交易时交出去的就是选中的那格。',
   'People have habits: day folks page less after dark. Payphones (blue on the map) call around for work.': '人都有习惯：白天的人天黑后很少呼你。公用电话（地图上的蓝点）可以打听活。',
+  'No new pages to answer. Customers page you when they need something.': '没有待处理的呼叫。顾客需要货时会呼你。',
   // ---- menu
   'SOL PALMA, FLORIDA · 1996': '佛罗里达 · 索尔帕尔马 · 1996',
   CONTINUE: '继续游戏',

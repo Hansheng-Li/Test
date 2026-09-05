@@ -2580,6 +2580,23 @@ export class Game implements GameAPI {
     return paid;
   }
 
+  /** Y accepts / X declines the newest page; says so when there is nothing to answer. */
+  private answerPage(accept: boolean): void {
+    const pending = pendingOrders(this.state);
+    if (!pending.length) {
+      this.toast(t('No new pages to answer. Customers page you when they need something.'), 'info', 3000);
+      this.hud.hidePager();
+      return;
+    }
+    const o = pending[pending.length - 1];
+    if (accept) this.acceptOrder(o.id);
+    else {
+      this.declineOrder(o.id);
+      this.toast(t("Declined {v0}'s order.", { v0: CUSTOMER_MAP[o.customerId].name.split(' ')[0] }));
+    }
+    if (!pendingOrders(this.state).length) this.hud.hidePager();
+  }
+
   /** Sol Palma Transit: a fade, a few minutes, and you are across town. Not with a cop on your heels. */
   rideBus(stopId: string): void {
     const s = this.state;
@@ -2700,6 +2717,12 @@ export class Game implements GameAPI {
         return;
       }
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      // Y / X answer the newest page from inside the pager too
+      if (this.openPanelId === 'pager-panel' && (e.code === 'KeyY' || e.code === 'KeyX')) {
+        this.answerPage(e.code === 'KeyY');
+        panel.render();
+        return;
+      }
       if (panel.onKey(e.code)) e.preventDefault();
       return;
     }
@@ -2726,17 +2749,9 @@ export class Game implements GameAPI {
         this.hud.toggleHidden();
         break;
       case 'KeyY':
-      case 'KeyX': {
-        const pending = pendingOrders(this.state);
-        if (!pending.length) break;
-        const o = pending[pending.length - 1];
-        if (e.code === 'KeyY') this.acceptOrder(o.id);
-        else {
-          this.declineOrder(o.id);
-          this.toast(t("Declined {v0}'s order.", { v0: CUSTOMER_MAP[o.customerId].name.split(' ')[0] }));
-        }
+      case 'KeyX':
+        this.answerPage(e.code === 'KeyY');
         break;
-      }
       case 'KeyN':
         this.cycleRadio();
         break;
