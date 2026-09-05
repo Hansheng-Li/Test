@@ -191,11 +191,11 @@ Design rules that shaped the code:
 - Teddy the handler (Warehouse 7 office, needs Vince): every hour he carries up to 20 packaged units from
   warehouse storage to Vince's corner, so Marisol → Teddy → Vince runs while you work the street. One trip
   in twenty meets a patrol and the bag is lost. The cash pickup from Vince stays yours.
-- You start with wheels and a weapon: a bicycle leans on the wall outside the back-room door (E to ride,
-  W pedal, A/D steer, SHIFT brake; slower than the sedan, no trunk, no stereo, cruisers do not chase it,
-  and it stays where you leave it), and the starter box holds a baseball bat. Select the bat on the hotbar
-  and left-click to swing: a cop in the arc goes down for four seconds and cannot arrest you (heat +18,
-  and he comes up chasing), civilians scatter (heat +6), the rest of the block takes notice.
+- You start with wheels and a weapon: Rico's old hatchback waits in the alley outside the back-room door
+  (E to get in; slower and softer than the '88 sedan, no trunk, and it saves where you leave it), and the
+  starter box holds a baseball bat. Select the bat on the hotbar and left-click to swing: a cop in the arc
+  goes down for four seconds and cannot arrest you (heat +18, and he comes up chasing), civilians scatter
+  (heat +6), the rest of the block takes notice.
 - Chapter one is paced by hand: Rico's note on the pager, prep and bag the starter pulp, Tasha's first
   page (only after the product is bagged), the first sale, a restock trip to Rico at the Container Yard,
   then the second sale; only then does the pager open up. Story beats arrive as dialogue cards (the

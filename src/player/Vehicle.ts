@@ -36,22 +36,8 @@ export class Vehicle {
   /** Half-width of the collision body. */
   private bodyRadius = 1.05;
 
-  constructor(x: number, z: number, yaw: number, private world: CollisionWorld, public kind: 'sedan' | 'bike' = 'sedan') {
+  constructor(x: number, z: number, yaw: number, private world: CollisionWorld, public kind: 'sedan' | 'beater' = 'sedan') {
     this.mesh = new THREE.Group();
-    if (kind === 'bike') {
-      this.buildBike();
-      this.headlights = lambert('#fff7d6');
-      this.maxSpeed = 9;
-      this.reverseMax = -1.5;
-      this.accel = 7;
-      this.brake = 12;
-      this.friction = 2.5;
-      this.bodyRadius = 0.45;
-      this.position.set(x, 0.15, z);
-      this.yaw = yaw;
-      this.sync();
-      return;
-    }
     // local +z is the front of the car; rotation.y = yaw maps it to world (sin yaw, cos yaw)
     const body = new THREE.Mesh(boxGeo(1.9, 0.7, 4.4), lambert('#ff7eb6'));
     this.paintMats.push(body.material as THREE.MeshLambertMaterial);
@@ -85,34 +71,16 @@ export class Vehicle {
     }
     this.position.set(x, 0.15, z);
     this.yaw = yaw;
-    this.sync();
-  }
-
-  /** A box-and-cylinder bicycle: frame, two wheels, handlebar, saddle. Local +z is forward. */
-  private buildBike(): void {
-    const frame = lambert('#2f9e6b');
-    const bar = new THREE.Mesh(boxGeo(0.06, 0.06, 1.1), frame);
-    bar.position.set(0, 0.62, 0);
-    const down = new THREE.Mesh(boxGeo(0.06, 0.55, 0.06), frame);
-    down.position.set(0, 0.45, 0.45);
-    const seatPost = new THREE.Mesh(boxGeo(0.06, 0.4, 0.06), frame);
-    seatPost.position.set(0, 0.5, -0.4);
-    const saddle = new THREE.Mesh(boxGeo(0.18, 0.06, 0.3), lambert('#222'));
-    saddle.position.set(0, 0.86, -0.42);
-    const handle = new THREE.Mesh(boxGeo(0.5, 0.05, 0.05), lambert('#333'));
-    handle.position.set(0, 0.9, 0.5);
-    this.mesh.add(bar, down, seatPost, saddle, handle);
-    const wheelGeo = cylGeo(0.36, 0.36, 0.06, 12);
-    for (const wz of [0.6, -0.6]) {
-      const pivot = new THREE.Group();
-      pivot.rotation.order = 'YXZ';
-      pivot.position.set(0, 0.36, wz);
-      const w = new THREE.Mesh(wheelGeo, lambert('#151515'));
-      w.rotation.z = Math.PI / 2;
-      pivot.add(w);
-      this.mesh.add(pivot);
-      this.wheels.push(pivot as unknown as THREE.Mesh);
+    if (kind === 'beater') {
+      // Rico's old hatchback: slower, softer brakes, rust for paint
+      this.maxSpeed = 11;
+      this.reverseMax = -4;
+      this.accel = 6.5;
+      this.brake = 14;
+      this.bodyRadius = 0.95;
+      this.setPaint('#9a5b34');
     }
+    this.sync();
   }
 
   /** Respray: recolour whichever body the car currently has. */
@@ -228,7 +196,7 @@ export class Vehicle {
 
   /** Where the player stands after getting out (driver side). */
   exitSpot(): { x: number; z: number } {
-    return this.local(this.kind === 'bike' ? -1.1 : -2.3, 0);
+    return this.local(-2.3, 0);
   }
 
   /** Camera yaw that looks along the car's heading (player convention: forward = (-sin, -cos)). */

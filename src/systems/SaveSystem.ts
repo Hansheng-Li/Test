@@ -1,6 +1,6 @@
 import { GameState, INVENTORY_SLOTS, SAVE_VERSION } from '../game/GameState';
 import { STARTING_CASH } from '../data/items';
-import { SPAWN, BIKE_SPOT } from '../data/city';
+import { SPAWN, STARTER_CAR_SPOT } from '../data/city';
 import { initCustomers } from './CustomerSystem';
 import { CUSTOMER_MAP } from '../data/customers';
 import { ITEMS } from '../data/items';
@@ -36,7 +36,7 @@ export function createNewState(): GameState {
     loan: null,
     handler: null,
     vehicle: null,
-    bike: { x: BIKE_SPOT.x, z: BIKE_SPOT.z, yaw: BIKE_SPOT.yaw },
+    starterCar: { x: STARTER_CAR_SPOT.x, z: STARTER_CAR_SPOT.z, yaw: STARTER_CAR_SPOT.yaw },
     player: { x: SPAWN.x, y: SPAWN.y, z: SPAWN.z, yaw: SPAWN.yaw },
     stats: { sales: 0, earned: 0, arrests: 0, declined: 0, produced: 0, playSeconds: 0, earnedAtDayStart: 0, salesAtDayStart: 0, lastDay: 1 },
     flags: {},
@@ -149,8 +149,8 @@ export function deserialize(json: string): GameState | null {
         return { principal, owed: Math.min(Math.ceil(rl.owed), principal * LOAN_CAP_MULT), takenDay: num(rl.takenDay, dueDay - 3), dueDay, lateDays: Math.max(0, Math.floor(num(rl.lateDays, 0))) };
       })()
     : null;
-  const rb = r.bike as { x?: unknown; z?: unknown; yaw?: unknown } | undefined;
-  state.bike = rb && typeof rb === 'object' ? { x: num(rb.x, BIKE_SPOT.x), z: num(rb.z, BIKE_SPOT.z), yaw: num(rb.yaw, BIKE_SPOT.yaw) } : { x: BIKE_SPOT.x, z: BIKE_SPOT.z, yaw: BIKE_SPOT.yaw };
+  const rb = r.starterCar as { x?: unknown; z?: unknown; yaw?: unknown } | undefined;
+  state.starterCar = rb && typeof rb === 'object' ? { x: num(rb.x, STARTER_CAR_SPOT.x), z: num(rb.z, STARTER_CAR_SPOT.z), yaw: num(rb.yaw, STARTER_CAR_SPOT.yaw) } : { x: STARTER_CAR_SPOT.x, z: STARTER_CAR_SPOT.z, yaw: STARTER_CAR_SPOT.yaw };
   const rv = r.vehicle;
   state.vehicle = rv && typeof rv === 'object' && rv.owned ? { owned: true, x: num(rv.x, -70), z: num(rv.z, -32), yaw: num(rv.yaw, 0), ...(typeof rv.paint === 'string' && /^#[0-9a-f]{6}$/i.test(rv.paint) ? { paint: rv.paint } : {}) } : null;
   const cleanName = (v: unknown): string => (typeof v === 'string' ? v.replace(/[<>&"'`]/g, '').slice(0, 24) : '');

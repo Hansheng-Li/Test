@@ -18,7 +18,7 @@ import { DayNight } from '../world/DayNight';
 import { PropBuilder } from '../world/Props';
 import { buildPlacedStation, InteriorContext } from '../world/Interiors';
 import { WorldObject } from '../world/WorldTypes';
-import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT, PROPERTY_ANCHORS, SUPPLIER_SPOT, BIKE_SPOT, zoneAt } from '../data/city';
+import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT, PROPERTY_ANCHORS, SUPPLIER_SPOT, STARTER_CAR_SPOT, zoneAt } from '../data/city';
 import { swingTargets, BAT_STUN_SECONDS, BAT_HEAT_COP, BAT_HEAT_CIVILIAN } from '../systems/MeleeSystem';
 import { makeFigure, makeLabel } from '../world/Interiors';
 import { CUSTOMER_MAP } from '../data/customers';
@@ -140,8 +140,8 @@ export class Game implements GameAPI {
   private runnerTripFor: number | null = null;
   workerFigure: THREE.Group | null = null;
   vehicle: Vehicle | null = null;
-  /** The starter bicycle (always present). */
-  bike: Vehicle | null = null;
+  /** Rico's old hatchback (always present). */
+  starterCar: Vehicle | null = null;
   /** Whichever vehicle is being driven right now. */
   ride: Vehicle | null = null;
   /** First-person bat, a child of the camera. */
@@ -463,9 +463,9 @@ export class Game implements GameAPI {
     }, 300);
   }
 
-  /** Driving the sedan (not the bicycle): engine, stereo and cruiser pursuits only apply here. */
+  /** Behind the wheel of either car: engine, stereo and cruiser pursuits apply. */
   get inCar(): boolean {
-    return this.driving && !!this.ride && this.ride === this.vehicle;
+    return this.driving && !!this.ride;
   }
 
   /** N: off → station 1 → … → last station → off. Works for the walkman on foot and the car stereo. */
@@ -546,7 +546,7 @@ export class Game implements GameAPI {
     this.cutscene.cancel();
     this.wasRaining = this.isRaining(); // the shower notice only fires on a transition inside this game
     this.syncVehicle();
-    this.syncBike();
+    this.syncStarterCar();
     // placed stations
     const stale: import('../physics/Colliders').AABB[] = [];
     for (const o of this.placedObjects) {
@@ -763,7 +763,7 @@ export class Game implements GameAPI {
     const pz = this.player.position.z;
     const alert = this.state.heat >= 60 || curfewExtraPolice(this.state) > 0;
     this.updatePursuit(dt);
-    for (const c of this.cruisers) this.driveCruiser(c, dt, safe, alert, c === this.pursuer && this.vehicle ? { x: this.vehicle.position.x, z: this.vehicle.position.z } : null);
+    for (const c of this.cruisers) this.driveCruiser(c, dt, safe, alert, c === this.pursuer && this.ride ? { x: this.ride.position.x, z: this.ride.position.z } : null);
     this.radioCooldown -= dt;
     if (this.state.heat < 60 || safe || this.hiding || this.arrested || this.radioCooldown > 0) return;
     const spotter = this.cruiserSeeing(px, pz);
@@ -785,7 +785,7 @@ export class Game implements GameAPI {
   private updatePursuit(dt: number): void {
     this.pursuitCooldown -= dt;
     if (this.pursuer && !this.cruisers.includes(this.pursuer)) this.pursuer = null;
-    const v = this.vehicle;
+    const v = this.ride;
     if (!this.pursuer) {
       if (!this.inCar || !v || this.state.heat < 60 || this.pursuitCooldown > 0 || this.arrested) return;
       const spotter = this.cruiserSeeing(v.position.x, v.position.z, 34);
@@ -826,10 +826,10 @@ export class Game implements GameAPI {
     this.pursuitCooldown = cooldown;
   }
 
-  /** Cornered in the sedan: a search of you and the trunk; holding anything means a bust. */
+  /** Cornered in a car: a search of you and the trunk; holding anything means a bust. */
   private pulledOver(): void {
     const s = this.state;
-    const v = this.vehicle;
+    const v = this.ride;
     if (!v) return;
     v.speed = 0;
     const holding = s.inventory.some((st) => st && (st.id.startsWith('pkg:') || st.id.startsWith('prod:'))) || (s.storage.trunk ?? []).some((st) => st.id.startsWith('pkg:') || st.id.startsWith('prod:'));
@@ -855,7 +855,7 @@ export class Game implements GameAPI {
       return along > 0 && along < 8 && Math.abs(ax * f.z - az * f.x) < 3.5;
     };
     // the player on foot (or driving), or their car left in the lane
-    const blockAhead = (!this.hiding && !safe && inLane(px, pz)) || (!!this.vehicle && !this.driving && inLane(this.vehicle.position.x, this.vehicle.position.z));
+    const blockAhead = (!this.hiding && !safe && inLane(px, pz)) || [this.vehicle, this.starterCar].some((car) => !!car && car !== this.ride && inLane(car.position.x, car.position.z));
     c.update(dt, { blockAhead, alert, night: this.clock.isNight, pursue });
   }
 
@@ -2128,23 +2128,26 @@ export class Game implements GameAPI {
     });
   }
 
-  private syncBike(): void {
-    if (this.bike) {
-      this.dynamicGroup.remove(this.bike.mesh);
-      this.interaction.remove('bike');
-      this.bike = null;
+  private syncStarterCar(): void {
+    if (this.starterCar) {
+      this.dynamicGroup.remove(this.starterCar.mesh);
+      this.interaction.remove('starter_car');
+      this.starterCar = null;
     }
-    const b = this.state.bike ?? BIKE_SPOT;
-    const bike = new Vehicle(b.x, b.z, b.yaw, this.city.colliders, 'bike');
-    this.bike = bike;
-    this.dynamicGroup.add(bike.mesh);
+    const b = this.state.starterCar ?? STARTER_CAR_SPOT;
+    const car = new Vehicle(b.x, b.z, b.yaw, this.city.colliders, 'beater');
+    this.starterCar = car;
+    this.dynamicGroup.add(car.mesh);
+    void loadModel('hatchbackSports').then((m) => {
+      if (m && this.starterCar === car) car.applyModel(instanceModel(m, { paint: '#9a5b34', scale: CAR_SCALE }));
+    });
     this.interaction.add({
-      id: 'bike',
-      position: bike.position,
-      radius: 3,
-      aimY: 0.6,
-      prompt: () => (this.driving ? null : t('[E] RIDE BICYCLE')),
-      onInteract: () => this.mount(bike),
+      id: 'starter_car',
+      position: car.position,
+      radius: 4,
+      aimY: 0.8,
+      prompt: () => (this.driving ? null : t('[E] ENTER CAR')),
+      onInteract: () => this.mount(car),
     });
   }
 
@@ -2242,18 +2245,18 @@ export class Game implements GameAPI {
     this.openPanel('inventory-panel');
   }
 
-  /** Get into the sedan or onto the bicycle. */
+  /** Get into the sedan or the hatchback. */
   private mount(v: Vehicle): void {
     if (this.driving || this.hiding || this.arrested || this.cutscene.active) return;
     this.ride = v;
     this.driving = true;
     this.player.pitch = 0;
     this.player.yaw = v.cameraYaw;
-    this.audio.play(v.kind === 'bike' ? 'tick' : 'door');
+    this.audio.play('door');
     this.cancelPlacement();
-    if (v.kind === 'bike' && !this.state.flags.rodeBike) {
-      this.state.flags.rodeBike = true;
-      this.toast(t('Bike: W pedal · A/D steer · SHIFT brake · E get off. It stays where you leave it.'), 'info', 6000);
+    if (v.kind === 'beater' && !this.state.flags.droveStarter) {
+      this.state.flags.droveStarter = true;
+      this.toast(t("Rico's hatchback: W/S drive · A/D steer · SHIFT brake · SPACE horn · E get out. It saves where you leave it."), 'info', 7000);
     }
   }
 
@@ -2262,7 +2265,7 @@ export class Game implements GameAPI {
     const v = this.ride;
     if (!v) return;
     if (v === this.vehicle) this.state.vehicle = { owned: true, x: v.position.x, z: v.position.z, yaw: v.yaw, paint: this.state.vehicle?.paint };
-    else if (v === this.bike) this.state.bike = { x: v.position.x, z: v.position.z, yaw: v.yaw };
+    else if (v === this.starterCar) this.state.starterCar = { x: v.position.x, z: v.position.z, yaw: v.yaw };
   }
 
   private dismount(): void {
@@ -2271,7 +2274,7 @@ export class Game implements GameAPI {
     if (Math.abs(v.speed) > 1) return;
     this.driving = false;
     this.ride = null;
-    this.audio.play(v.kind === 'bike' ? 'tick' : 'door');
+    this.audio.play('door');
     const spot = v.exitSpot();
     this.player.teleport(spot.x, v.position.y + 0.3, spot.z, v.cameraYaw);
     this.ride = v;
@@ -2282,7 +2285,6 @@ export class Game implements GameAPI {
 
   private updateDriving(dt: number, uiOpen: boolean): void {
     const v = this.ride!;
-    const bike = v.kind === 'bike';
     const r = uiOpen ? null : v.update(dt, this.input);
     v.setNight(this.clock.isNight);
     // player rides along so every other system (police, customers, map) sees the car position
@@ -2300,8 +2302,8 @@ export class Game implements GameAPI {
     // chase camera: sits behind the car, orbits with the mouse, pulls in when a wall is in the way
     const yaw = this.player.yaw;
     const look = this.carLook.set(v.position.x, v.position.y + 1.1, v.position.z);
-    const dist = bike ? 4.2 : 7.5;
-    const camY = Math.max(0.7, (bike ? 1.9 : 2.6) - this.player.pitch * 4);
+    const dist = 7.5;
+    const camY = Math.max(0.7, 2.6 - this.player.pitch * 4);
     const desired = this.carEye.set(look.x + Math.sin(yaw) * dist, camY, look.z + Math.cos(yaw) * dist);
     let t = 1;
     for (; t > 0.35; t -= 0.1) {
@@ -2320,8 +2322,7 @@ export class Game implements GameAPI {
         addHeat(this.state, 3);
       }
     }
-    if (r === 'horn' && bike) this.audio.play('tick');
-    else if (r === 'horn') {
+    if (r === 'horn') {
       this.audio.play('horn');
       for (const c of this.pedestrians()) if (c.distanceTo(v.position.x, v.position.z) < 12) c.reactTo(v.position.x, v.position.z, false);
       for (const w of this.wanderers.values()) if (w.distanceTo(v.position.x, v.position.z) < 12) w.say('HEY! I am walking here!', '#ffd166', 2);
@@ -2329,9 +2330,9 @@ export class Game implements GameAPI {
     // pedestrians scatter from a moving car
     if (Math.abs(v.speed) > 3) {
       for (const c of this.pedestrians()) {
-        if (c.state !== 'FLEE' && c.distanceTo(v.position.x, v.position.z) < (bike ? 1.6 : 3.5)) {
+        if (c.state !== 'FLEE' && c.distanceTo(v.position.x, v.position.z) < 3.5) {
           c.reactTo(v.position.x, v.position.z, true);
-          if (!bike) addHeat(this.state, 4);
+          addHeat(this.state, 4);
         }
       }
     }
@@ -2854,7 +2855,7 @@ export class Game implements GameAPI {
     this.state.clockMinutes = this.clock.totalMinutes;
     if (this.vehicle && this.state.vehicle) this.state.vehicle = { owned: true, x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw, paint: this.state.vehicle.paint };
     if (this.hiding) this.state.player = { x: this.hiding.exitX, y: 0.15, z: this.hiding.exitZ, yaw: this.player.yaw };
-    if (this.bike && this.ride !== this.bike) this.state.bike = { x: this.bike.position.x, z: this.bike.position.z, yaw: this.bike.yaw };
+    if (this.starterCar && this.ride !== this.starterCar) this.state.starterCar = { x: this.starterCar.position.x, z: this.starterCar.position.z, yaw: this.starterCar.yaw };
     if (this.driving && this.ride) {
       // never save the player "inside" the car: put them next to it
       this.storeRide();

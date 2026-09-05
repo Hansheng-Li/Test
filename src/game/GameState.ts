@@ -138,8 +138,8 @@ export interface GameState {
   dealer: DealerState | null;
   loan: LoanState | null;
   handler: HandlerState | null;
-  /** The starter bicycle: where it was left. Always present. */
-  bike: { x: number; z: number; yaw: number };
+  /** The starter hatchback: where it was left. Always present. */
+  starterCar: { x: number; z: number; yaw: number };
   vehicle: { owned: boolean; x: number; z: number; yaw: number; /** Body colour hex from CAR_PAINTS; unset = as sold. */ paint?: string } | null;
   /** Player-chosen name for the operation; shows on the warehouse sign and the ledger. */
   crewName: string;
