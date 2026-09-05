@@ -187,6 +187,11 @@ Design rules that shaped the code:
 - Teddy the handler (Warehouse 7 office, needs Vince): every hour he carries up to 20 packaged units from
   warehouse storage to Vince's corner, so Marisol → Teddy → Vince runs while you work the street. One trip
   in twenty meets a patrol and the bag is lost. The cash pickup from Vince stays yours.
+- Car chases: drive past a cruiser while the city is hot and it leaves its loop to pursue the sedan along
+  the road grid (a shade slower than you on the straights, faster in the corners). Sit still within reach
+  and you are pulled over: a clean car costs nothing, contraband in the backpack or trunk is a bust. Lose
+  it by outrunning it, breaking line of sight for eight seconds, or leaving the roads for the alleys
+  (Burnt Rubber milestone).
 - Rojas resprays the sedan for $150 (six colours in a fixed rack, saved with the car): heat drops by
   30 and any officer chasing you loses the trail. Bring the car into the lot, then press E at the sign.
 - A District 3 patrol cruiser (Kenney police model, box fallback) drives a loop around the downtown

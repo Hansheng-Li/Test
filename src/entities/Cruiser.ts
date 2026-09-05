@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { lambert, boxGeo, cylGeo } from '../world/Materials';
+import { clampToRoad } from '../systems/RoadGrid';
 
 export interface CruiserContext {
   /** Something (the player, their car) is in the lane just ahead: brake. */
@@ -7,10 +8,14 @@ export interface CruiserContext {
   /** Lights on: the city is hot or it is curfew. */
   alert: boolean;
   night: boolean;
+  /** Chase this point (the player's car) instead of the loop. */
+  pursue?: { x: number; z: number } | null;
 }
 
 /** Cruising speed in m/s (about 20 mph): fast enough to matter, slow enough to read. */
 const CRUISE = 9;
+/** Pursuit speed: a shade under the sedan's top speed, so straights favour you and corners favour them. */
+const PURSUIT = 13.5;
 const TURN_RATE = 2.2;
 /** A cruiser brakes for a car in its lane, but a car parked there for good is driven around, not waited on. */
 const PATIENCE = 6;
@@ -28,6 +33,7 @@ export class Cruiser {
   speed = 0;
   /** Seconds the cruiser holds still (after a radio call it stops to look). */
   holdTimer = 0;
+  mode: 'patrol' | 'pursuit' = 'patrol';
   /** Seconds spent braked behind the same obstacle; after PATIENCE it drives on. */
   private blockedFor = 0;
   private target = 1;
@@ -129,11 +135,29 @@ export class Cruiser {
     return { x: Math.sin(this.yaw), z: Math.cos(this.yaw) };
   }
 
+  /** Back to the loop at whichever point is nearest. */
+  private resumePatrol(): void {
+    this.mode = 'patrol';
+    let best = 0;
+    let bestD = Infinity;
+    this.route.forEach((p, i) => {
+      const d = Math.hypot(p.x - this.position.x, p.z - this.position.z);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    });
+    this.target = best;
+  }
+
   update(dt: number, ctx: CruiserContext): void {
     if (this.holdTimer > 0) this.holdTimer -= dt;
-    this.blockedFor = ctx.blockAhead ? this.blockedFor + dt : 0;
-    const blocked = ctx.blockAhead && this.blockedFor < PATIENCE;
-    const t = this.route[this.target];
+    if (ctx.pursue) this.mode = 'pursuit';
+    else if (this.mode === 'pursuit') this.resumePatrol();
+    const pursuing = this.mode === 'pursuit' && !!ctx.pursue;
+    this.blockedFor = ctx.blockAhead && !pursuing ? this.blockedFor + dt : 0;
+    const blocked = ctx.blockAhead && !pursuing && this.blockedFor < PATIENCE;
+    const t = pursuing ? ctx.pursue! : this.route[this.target];
     const dx = t.x - this.position.x;
     const dz = t.z - this.position.z;
     const dist = Math.hypot(dx, dz);
@@ -142,14 +166,23 @@ export class Cruiser {
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;
     const turning = Math.abs(diff) > 0.15;
-    this.yaw += Math.max(-TURN_RATE * dt, Math.min(TURN_RATE * dt, diff));
-    const targetSpeed = blocked || this.holdTimer > 0 ? 0 : turning ? CRUISE * 0.45 : dist < 6 ? CRUISE * 0.6 : CRUISE;
+    const turnRate = pursuing ? TURN_RATE * 1.6 : TURN_RATE;
+    this.yaw += Math.max(-turnRate * dt, Math.min(turnRate * dt, diff));
+    let targetSpeed: number;
+    if (blocked || this.holdTimer > 0) targetSpeed = 0;
+    else if (pursuing) targetSpeed = Math.min(PURSUIT, Math.max(0, dist - 4) * 2.5) * (turning ? 0.7 : 1);
+    else targetSpeed = turning ? CRUISE * 0.45 : dist < 6 ? CRUISE * 0.6 : CRUISE;
     if (this.speed < targetSpeed) this.speed = Math.min(targetSpeed, this.speed + 6 * dt);
     else this.speed = Math.max(targetSpeed, this.speed - 12 * dt);
     const f = this.forward();
     this.position.x += f.x * this.speed * dt;
     this.position.z += f.z * this.speed * dt;
-    if (dist < 2.5) this.target = (this.target + 1) % this.route.length;
+    if (pursuing) {
+      // rails, not physics: a chase stays on the road grid
+      const on = clampToRoad(this.position.x, this.position.z);
+      this.position.x = on.x;
+      this.position.z = on.z;
+    } else if (dist < 2.5) this.target = (this.target + 1) % this.route.length;
     for (const w of this.wheels) w.rotation.x += (this.speed * dt) / 0.36;
     // light bar: alternate red / blue four times a second when alert, dark otherwise
     if (ctx.alert) {

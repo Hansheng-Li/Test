@@ -24,6 +24,7 @@ export const MILESTONES: Milestone[] = [
   { id: 'worker', title: 'Production Line', hint: 'Marisol produces 5 units for you.', reward: 200, done: (s) => (s.worker?.produced ?? 0) >= 5 },
   { id: 'dealer', title: 'Network', hint: 'Vince makes 5 sales on his corner.', reward: 250, done: (s) => (s.dealer?.sales ?? 0) >= 5 },
   { id: 'handler', title: 'Supply Chain', hint: 'Teddy carries 20 units to Vince for you.', reward: 300, done: (s) => (s.handler?.moved ?? 0) >= 20 },
+  { id: 'outrun', title: 'Burnt Rubber', hint: 'Lose a cruiser that is chasing the sedan.', reward: 60, done: (s) => !!s.flags.lostCruiser },
   { id: 'escape', title: 'Clean Getaway', hint: 'Get searched by police while carrying nothing.', reward: 40, done: (s) => !!s.flags.cleanSearch },
   { id: 'dumpster', title: 'Trash Panda', hint: 'Hide in a dumpster.', reward: 20, done: (s) => !!s.flags.hidDumpster },
   { id: 'dice', title: 'Hot Hand', hint: 'Be $200 up at street dice, lifetime.', reward: 50, done: (s) => (s.stats.diceNet ?? 0) >= 200 },

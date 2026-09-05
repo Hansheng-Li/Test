@@ -40,6 +40,7 @@ import { checkMilestones } from '../systems/MilestoneSystem';
 import { takeLoan, repayLoan, tickLoanDay, loanDaysLeft, LOAN_TIERS, LOAN_DAYS } from '../systems/LoanSystem';
 import { resprayCar, carPaint } from '../systems/GarageSystem';
 import { fogLevel, sightMultiplier } from '../systems/WeatherSystem';
+import { onRoadGrid } from '../systems/RoadGrid';
 import { hireHandler, tickHandler } from '../systems/HandlerSystem';
 import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent, applyInspection, eventSlot, curfewExtraPolice, crackdownIn } from '../systems/EventSystem';
 import { relationshipTier } from '../systems/CustomerSystem';
@@ -113,6 +114,12 @@ export class Game implements GameAPI {
     return this.cruisers[0] ?? null;
   }
   private radioCooldown = 0;
+  /** Cruiser pursuit of the sedan: who is chasing, how long they have not seen you, off-grid time, and how long you have sat still in reach. */
+  private pursuer: Cruiser | null = null;
+  private pursuitLost = 0;
+  private offGridFor = 0;
+  private corneredFor = 0;
+  private pursuitCooldown = 0;
   private handlerIdleTimer = 0;
   private policeSpawned = 0;
   customers = new Map<number, CustomerNPC>();
@@ -667,8 +674,8 @@ export class Game implements GameAPI {
   }
 
   /** A cruiser is a moving witness: close, and with a clear line to the spot. Returns the one that saw it. */
-  private cruiserSeeing(x: number, z: number): Cruiser | null {
-    for (const c of this.cruisers) if (c.distanceTo(x, z) < 24 * this.sight() && this.city.colliders.lineOfSight(c.position.x, 1.4, c.position.z, x, 1.2, z, 10)) return c;
+  private cruiserSeeing(x: number, z: number, range = 24): Cruiser | null {
+    for (const c of this.cruisers) if (c.distanceTo(x, z) < range * this.sight() && this.city.colliders.lineOfSight(c.position.x, 1.4, c.position.z, x, 1.2, z, 10)) return c;
     return null;
   }
 
@@ -685,20 +692,89 @@ export class Game implements GameAPI {
     const px = this.player.position.x;
     const pz = this.player.position.z;
     const alert = this.state.heat >= 60 || curfewExtraPolice(this.state) > 0;
-    for (const c of this.cruisers) this.driveCruiser(c, dt, safe, alert);
+    this.updatePursuit(dt);
+    for (const c of this.cruisers) this.driveCruiser(c, dt, safe, alert, c === this.pursuer && this.vehicle ? { x: this.vehicle.position.x, z: this.vehicle.position.z } : null);
     this.radioCooldown -= dt;
     if (this.state.heat < 60 || safe || this.hiding || this.arrested || this.radioCooldown > 0) return;
     const spotter = this.cruiserSeeing(px, pz);
     if (!spotter) return;
     this.radioCooldown = 45;
-    spotter.holdTimer = 4;
+    // a cruiser stops to radio only when it is not already chasing you
+    if (spotter !== this.pursuer) spotter.holdTimer = 4;
     const idle = this.police.filter((p) => p.pstate === 'PATROL' || p.pstate === 'RETURN_TO_PATROL').sort((a, b) => a.distanceTo(px, pz) - b.distanceTo(px, pz))[0];
     if (idle) idle.dispatchTo(px, this.player.position.y, pz);
     this.audio.play('siren');
     this.toast(idle ? 'The cruiser radioed your position. A foot patrol is on the way — break line of sight.' : 'The cruiser radioed your position. Every unit is already busy — keep moving.', 'warn', 5000);
   }
 
-  private driveCruiser(c: Cruiser, dt: number, safe: boolean, alert: boolean): void {
+  /**
+   * GTA-style pursuit: a hot driver a cruiser can see gets chased along the road grid.
+   * Sit still in reach and you are pulled over (searched, or busted if holding); lose them by
+   * outrunning, breaking line of sight for 8 s, or leaving the road grid for 4 s.
+   */
+  private updatePursuit(dt: number): void {
+    this.pursuitCooldown -= dt;
+    if (this.pursuer && !this.cruisers.includes(this.pursuer)) this.pursuer = null;
+    const v = this.vehicle;
+    if (!this.pursuer) {
+      if (!this.driving || !v || this.state.heat < 60 || this.pursuitCooldown > 0 || this.arrested) return;
+      const spotter = this.cruiserSeeing(v.position.x, v.position.z, 34);
+      if (!spotter) return;
+      this.pursuer = spotter;
+      this.pursuitLost = 0;
+      this.offGridFor = 0;
+      this.corneredFor = 0;
+      this.audio.play('siren');
+      this.hud.flash('PURSUIT', '#ff5c5c');
+      this.toast('The cruiser is on you. Outrun it, break line of sight, or get off the road grid. Stopping means a search.', 'warn', 6000);
+      return;
+    }
+    const c = this.pursuer;
+    if (!this.driving || !v || this.arrested) {
+      // on foot again: the cruiser parks and the foot patrols take it from here
+      this.endPursuit(3, 15);
+      return;
+    }
+    const sees = c.distanceTo(v.position.x, v.position.z) < 45 && this.city.colliders.lineOfSight(c.position.x, 1.4, c.position.z, v.position.x, 1.0, v.position.z, 10);
+    this.pursuitLost = sees ? 0 : this.pursuitLost + dt;
+    this.offGridFor = onRoadGrid(v.position.x, v.position.z, 6) ? 0 : this.offGridFor + dt;
+    if (this.pursuitLost > 8 || this.offGridFor > 4) {
+      this.state.flags.lostCruiser = true;
+      this.endPursuit(2, 20);
+      this.hud.flash('LOST THEM', '#7dff9a');
+      this.toast(this.offGridFor > 4 ? 'You lost the cruiser in the alleys. It cannot follow you off the roads.' : 'You lost the cruiser.', 'cash', 5000);
+      return;
+    }
+    const cornered = c.distanceTo(v.position.x, v.position.z) < 7 && Math.abs(v.speed) < 2.5;
+    this.corneredFor = cornered ? this.corneredFor + dt : 0;
+    if (this.corneredFor > 1.5) this.pulledOver();
+  }
+
+  private endPursuit(hold: number, cooldown: number): void {
+    if (this.pursuer) this.pursuer.holdTimer = hold;
+    this.pursuer = null;
+    this.pursuitCooldown = cooldown;
+  }
+
+  /** Cornered in the sedan: a search of you and the trunk; holding anything means a bust. */
+  private pulledOver(): void {
+    const s = this.state;
+    const v = this.vehicle;
+    if (!v) return;
+    v.speed = 0;
+    const holding = s.inventory.some((st) => st && (st.id.startsWith('pkg:') || st.id.startsWith('prod:'))) || (s.storage.trunk ?? []).some((st) => st.id.startsWith('pkg:') || st.id.startsWith('prod:'));
+    this.endPursuit(5, 40);
+    if (holding) {
+      this.beginArrest();
+      return;
+    }
+    s.flags.cleanSearch = true;
+    s.heat = Math.max(0, s.heat - 15);
+    this.audio.play('siren');
+    this.toast('Pulled over. They looked through the car and the trunk, found nothing, and let you go (Heat -15).', 'info', 6000);
+  }
+
+  private driveCruiser(c: Cruiser, dt: number, safe: boolean, alert: boolean, pursue: { x: number; z: number } | null = null): void {
     const px = this.player.position.x;
     const pz = this.player.position.z;
     const f = c.forward();
@@ -710,7 +786,7 @@ export class Game implements GameAPI {
     };
     // the player on foot (or driving), or their car left in the lane
     const blockAhead = (!this.hiding && !safe && inLane(px, pz)) || (!!this.vehicle && !this.driving && inLane(this.vehicle.position.x, this.vehicle.position.z));
-    c.update(dt, { blockAhead, alert, night: this.clock.isNight });
+    c.update(dt, { blockAhead, alert, night: this.clock.isNight, pursue });
   }
 
   private createRunnerNPC(): void {
