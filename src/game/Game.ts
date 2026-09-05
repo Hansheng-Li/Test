@@ -26,7 +26,7 @@ import { CUSTOMER_MAP } from '../data/customers';
 import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, HANDLER_HIRE_PRICE, VEHICLE_PRICE, MOTEL_PRICE, FRONT_PRICE, FRONT_DAILY_INCOME, FRONT_DAILY_SUSPICION, ITEMS } from '../data/items';
 import { computeRecipe, parseRecipeKey, Effect } from '../data/products';
 import { GameState, Order, PlacedStation } from './GameState';
-import { createNewState, saveToSlot, loadFromSlot, listSlots, clearSlot, hasAnySave, latestSlot, firstEmptySlot, migrateLegacySave } from '../systems/SaveSystem';
+import { createNewState, saveToSlot, loadFromSlot, listSlots, clearSlot, hasAnySave, latestSlot, firstEmptySlot, migrateLegacySave, MAX_STOLEN_CARS } from '../systems/SaveSystem';
 import { InteractionSystem, Interactable } from '../systems/InteractionSystem';
 import { addItem, countItem, removeItem, resolveItem, depositToStorage, withdrawFromStorage, packagedInInventory, looseProductsInInventory } from '../systems/InventorySystem';
 import { buyFromShop, buyDelivered, spendCash, PurchaseResult } from '../systems/EconomySystem';
@@ -151,6 +151,10 @@ export class Game implements GameAPI {
   vehicle: Vehicle | null = null;
   /** Rico's old hatchback (always present). */
   starterCar: Vehicle | null = null;
+  /** Cars taken off the street, same order as state.stolenCars. */
+  stolenCars: Vehicle[] = [];
+  /** Parking spots whose car is gone (collider removed, model skipped). */
+  private stolenSpots = new Set<number>();
   /** Whichever vehicle is being driven right now. */
   ride: Vehicle | null = null;
   /** First-person bat, a child of the camera. */
@@ -230,7 +234,18 @@ export class Game implements GameAPI {
     this.scene.add(this.city.group);
     this.weather = new Weather(this.scene);
     void dressInteriors(this.scene, this.city);
-    void upgradeParkedCars(this.city);
+    void upgradeParkedCars(this.city, this.stolenSpots);
+    // every parked car can be taken (GTA rules): one prompt per spot
+    this.city.parkedCars.forEach((spec, i) => {
+      this.interaction.add({
+        id: 'parked_' + i,
+        position: new THREE.Vector3(spec.x, 0.15, spec.z),
+        radius: 4.2,
+        aimY: 0.8,
+        prompt: () => (this.driving || this.stolenSpots.has(i) ? null : t('[E] STEAL CAR')),
+        onInteract: () => this.stealCar(i),
+      });
+    });
     this.scene.add(this.dynamicGroup);
     this.scene.add(this.camera);
     this.batView = new THREE.Group();
@@ -580,6 +595,7 @@ export class Game implements GameAPI {
     this.wasRaining = this.isRaining(); // the shower notice only fires on a transition inside this game
     this.syncVehicle();
     this.syncStarterCar();
+    this.syncStolenCars();
     // placed stations
     const stale: import('../physics/Colliders').AABB[] = [];
     for (const o of this.placedObjects) {
@@ -888,7 +904,7 @@ export class Game implements GameAPI {
       return along > 0 && along < 8 && Math.abs(ax * f.z - az * f.x) < 3.5;
     };
     // the player on foot (or driving), or their car left in the lane
-    const blockAhead = (!this.hiding && !safe && inLane(px, pz)) || [this.vehicle, this.starterCar].some((car) => !!car && car !== this.ride && inLane(car.position.x, car.position.z));
+    const blockAhead = (!this.hiding && !safe && inLane(px, pz)) || this.allCars().some((car) => car !== this.ride && inLane(car.position.x, car.position.z));
     c.update(dt, { blockAhead, alert, night: this.clock.isNight, pursue });
   }
 
@@ -2183,6 +2199,85 @@ export class Game implements GameAPI {
     });
   }
 
+  /** Every car the player can drive: the sedan, the hatchback and whatever was taken off the street. */
+  private allCars(): Vehicle[] {
+    return [this.vehicle, this.starterCar, ...this.stolenCars].filter((v): v is Vehicle => !!v);
+  }
+
+  /** A foot patrol with line of sight or a cruiser in range is watching. */
+  private copSeesPlayer(): boolean {
+    const px = this.player.position.x;
+    const pz = this.player.position.z;
+    if (this.cruiserSees(px, pz)) return true;
+    for (const p of this.police) {
+      if (p.distanceTo(px, pz) > 30 * this.sight()) continue;
+      if (this.city.colliders.lineOfSight(p.position.x, p.position.y + 1.6, p.position.z, px, this.player.position.y + 1.2, pz, 10)) return true;
+    }
+    return false;
+  }
+
+  /** Rebuild the street's parked cars without the stolen spots and drop their colliders. */
+  private removeParkedSpot(spot: number): void {
+    if (this.stolenSpots.has(spot)) return;
+    this.stolenSpots.add(spot);
+    const box = this.city.parkedColliders[spot];
+    if (box) this.city.colliders.remove(box);
+  }
+
+  private makeStolenVehicle(entry: GameState['stolenCars'][number]): Vehicle {
+    const v = new Vehicle(entry.x, entry.z, entry.yaw, this.city.colliders, 'sedan');
+    v.setPaint(entry.paint ?? '#f4f6f8');
+    this.dynamicGroup.add(v.mesh);
+    void loadModel(entry.model).then((m) => {
+      if (m && this.stolenCars.includes(v)) v.applyModel(instanceModel(m, { paint: entry.paint, scale: CAR_SCALE }));
+    });
+    this.interaction.add({
+      id: 'stolen_' + entry.spot,
+      position: v.position,
+      radius: 4,
+      aimY: 0.8,
+      prompt: () => (this.driving ? null : t('[E] ENTER CAR')),
+      onInteract: () => this.mount(v),
+    });
+    return v;
+  }
+
+  private syncStolenCars(): void {
+    for (const v of this.stolenCars) this.dynamicGroup.remove(v.mesh);
+    for (const id of Array.from(this.stolenSpots)) this.interaction.remove('stolen_' + id);
+    this.stolenCars = [];
+    const wanted = new Set(this.state.stolenCars.map((c) => c.spot));
+    // spots stolen in this run but not in the loaded save get their car back (colliders were dropped; the box stays)
+    for (const c of this.state.stolenCars) this.removeParkedSpot(c.spot);
+    if (wanted.size !== this.stolenSpots.size || this.city.parkedGroup.parent) void upgradeParkedCars(this.city, this.stolenSpots);
+    for (const entry of this.state.stolenCars) this.stolenCars.push(this.makeStolenVehicle(entry));
+  }
+
+  /** E on a parked car: it is yours now, and somebody may have seen that. */
+  private stealCar(spot: number): void {
+    if (this.driving || this.hiding || this.arrested || this.cutscene.active || this.stolenSpots.has(spot)) return;
+    const spec = this.city.parkedCars[spot];
+    if (!spec) return;
+    const seen = this.copSeesPlayer();
+    addHeat(this.state, seen ? 25 : 8);
+    this.removeParkedSpot(spot);
+    void upgradeParkedCars(this.city, this.stolenSpots);
+    const entry = { spot, model: spec.model ?? 'sedan', ...(spec.model === 'police' || spec.model === 'taxi' ? {} : { paint: spec.color }), x: spec.x, z: spec.z, yaw: spec.rot + Math.PI / 2 };
+    if (this.stolenCars.length >= MAX_STOLEN_CARS) {
+      const old = this.stolenCars.shift()!;
+      const oldEntry = this.state.stolenCars.shift()!;
+      this.dynamicGroup.remove(old.mesh);
+      this.interaction.remove('stolen_' + oldEntry.spot);
+      this.toast(t('Your oldest stolen car got towed.'), 'info', 4000);
+    }
+    this.state.stolenCars.push(entry);
+    const v = this.makeStolenVehicle(entry);
+    this.stolenCars.push(v);
+    this.audio.play('door');
+    this.toast(seen ? t('Someone saw you take that car. Heat up.') : t('You took the car quietly. Somebody will report it eventually.'), seen ? 'warn' : 'info', 5000);
+    this.mount(v);
+  }
+
   private syncStarterCar(): void {
     if (this.starterCar) {
       this.dynamicGroup.remove(this.starterCar.mesh);
@@ -2321,6 +2416,10 @@ export class Game implements GameAPI {
     if (!v) return;
     if (v === this.vehicle) this.state.vehicle = { owned: true, x: v.position.x, z: v.position.z, yaw: v.yaw, paint: this.state.vehicle?.paint };
     else if (v === this.starterCar) this.state.starterCar = { x: v.position.x, z: v.position.z, yaw: v.yaw };
+    else {
+      const i = this.stolenCars.indexOf(v);
+      if (i >= 0 && this.state.stolenCars[i]) Object.assign(this.state.stolenCars[i], { x: v.position.x, z: v.position.z, yaw: v.yaw });
+    }
   }
 
   private dismount(): void {
@@ -2698,7 +2797,7 @@ export class Game implements GameAPI {
     for (const p of this.police) if (scanner || p.alarmed || p.distanceTo(px, pz) < 30) police.push({ x: p.position.x, z: p.position.z });
     for (const c of this.cruisers) if (scanner || c === this.pursuer || c.distanceTo(px, pz) < 30) police.push({ x: c.position.x, z: c.position.z });
     const customers = [...this.customers.values()].map((c) => ({ x: c.position.x, z: c.position.z }));
-    const cars = [this.vehicle, this.starterCar].filter((v): v is Vehicle => !!v && v !== this.ride).map((v) => ({ x: v.position.x, z: v.position.z }));
+    const cars = this.allCars().filter((v) => v !== this.ride).map((v) => ({ x: v.position.x, z: v.position.z }));
     const target = this.compassTarget();
     this.minimap.update(this.state, {
       px,
@@ -2998,6 +3097,7 @@ export class Game implements GameAPI {
     if (this.vehicle && this.state.vehicle) this.state.vehicle = { owned: true, x: this.vehicle.position.x, z: this.vehicle.position.z, yaw: this.vehicle.yaw, paint: this.state.vehicle.paint };
     if (this.hiding) this.state.player = { x: this.hiding.exitX, y: 0.15, z: this.hiding.exitZ, yaw: this.player.yaw };
     if (this.starterCar && this.ride !== this.starterCar) this.state.starterCar = { x: this.starterCar.position.x, z: this.starterCar.position.z, yaw: this.starterCar.yaw };
+    this.stolenCars.forEach((v, i) => { if (v !== this.ride && this.state.stolenCars[i]) Object.assign(this.state.stolenCars[i], { x: v.position.x, z: v.position.z, yaw: v.yaw }); });
     if (this.driving && this.ride) {
       // never save the player "inside" the car: put them next to it
       this.storeRide();

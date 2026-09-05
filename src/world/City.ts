@@ -3,7 +3,7 @@ import {
   BUILDINGS, BuildingSpec, ROADS_X, ROADS_Z, ROAD_WIDTH, SIDEWALK_WIDTH, MAP_MIN_X, MAP_MAX_X, MAP_MIN_Z, MAP_MAX_Z,
   OCEAN_X, CANAL_X, CANAL_Z, PAYPHONES, BUS_STOPS, SUPPLIER_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT, DEALER_CONTACT_SPOT, CAR_SALE_SPOT, RESPRAY_SPOT, RESPRAY_PRICE, WAREHOUSE_SIGN, Facing,
 } from '../data/city';
-import { CollisionWorld, aabbFromBottom } from '../physics/Colliders';
+import { CollisionWorld, aabbFromBottom, AABB } from '../physics/Colliders';
 import { lambert, basic, boxGeo, cylGeo, PALETTE } from './Materials';
 import { facadeTexture, signTexture, asphaltTexture, sidewalkTexture, sandTexture, grassTexture } from './Textures';
 import {
@@ -30,6 +30,8 @@ export interface CityResult {
   /** Box cars parked along the streets (swapped for GLB models when those load). */
   parkedGroup: THREE.Group;
   parkedCars: { x: number; z: number; rot: number; color: string; model?: string }[];
+  /** One collider per parked car, same order as parkedCars (removed when the car is stolen). */
+  parkedColliders: AABB[];
 }
 
 function facingDir(f: Facing): THREE.Vector3 {
@@ -417,7 +419,7 @@ export function buildCity(): CityResult {
   const carStats = mergeStaticMeshes(parkedGroup);
   if (typeof console !== 'undefined') console.info(`[city] static merge: ${stats.before} meshes -> ${stats.after - carStats.before + carStats.after}`);
   const waypoints = new WaypointGraph();
-  return { group, colliders, objects, night, waypoints, water, buildings, lampPositions, parkedGroup, parkedCars };
+  return { group, colliders, objects, night, waypoints, water, buildings, lampPositions, parkedGroup, parkedCars, parkedColliders: pbCars.added.slice() };
 }
 
 // ------------------------------------------------------------------ helpers

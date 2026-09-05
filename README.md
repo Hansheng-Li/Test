@@ -210,6 +210,9 @@ Design rules that shaped the code:
   gold, waiting customers, parked cars, the runner, and cops (nearby or alarmed ones; every one of them
   with the scanner). The objective shows as a diamond, or an arrow on the rim when it is out of range,
   and a cyan N marks north.
+- Any car parked on the street can be taken: walk up, E, and it is yours (GTA rules). A cop with a view
+  adds heat 25, otherwise 8; you keep up to four stolen cars, the oldest gets towed, and they save where
+  you leave them. Cruisers outside the station and the taxis keep their livery.
 - Sol Palma Pawn sells a pistol ($150, comes with a six-round magazine; rounds are $2 apiece). Select it
   and left-click to fire a straight shot: a cop hit goes down for eight seconds (heat +35), a civilian hit
   runs (heat +15), and every shot is heard: heat +6, the block within 25 m scatters, and every officer

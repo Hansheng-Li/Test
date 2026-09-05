@@ -141,3 +141,38 @@ describe('starter car in saves', () => {
     expect(b.yaw).toBe(STARTER_CAR_SPOT.yaw);
   });
 });
+
+describe('stolen cars in saves', () => {
+  it('keeps only well-formed, unique, recent entries', async () => {
+    const { createNewState, serialize, deserialize, MAX_STOLEN_CARS } = await import('../src/systems/SaveSystem');
+    const s = createNewState();
+    const raw = JSON.parse(serialize(s));
+    raw.stolenCars = [
+      { spot: 3, model: 'taxi', x: 1, z: 2, yaw: 0.5 },
+      { spot: 3, model: 'sedan', x: 9, z: 9, yaw: 0 }, // duplicate spot: dropped
+      { spot: -1, model: 'sedan', x: 0, z: 0, yaw: 0 }, // bad spot
+      { spot: 4, model: 7, x: 0, z: 0, yaw: 0 }, // bad model
+      { spot: 5, model: 'van', paint: 'red', x: 'NaN', z: null, yaw: 1 }, // bad paint / numbers
+      null,
+      { spot: 6, model: 'suv', paint: '#123abc', x: 3, z: 4, yaw: 2 },
+      { spot: 7, model: 'suv', x: 3, z: 4, yaw: 2 },
+      { spot: 8, model: 'suv', x: 3, z: 4, yaw: 2 },
+    ];
+    const out = deserialize(JSON.stringify(raw))!.stolenCars;
+    expect(out.length).toBe(MAX_STOLEN_CARS);
+    // 3, 5, 6, 7, 8 survive the filters; only the newest MAX_STOLEN_CARS stay
+    expect(out.map((c) => c.spot)).toEqual([3, 5, 6, 7, 8].slice(-MAX_STOLEN_CARS));
+    const five = out.find((c) => c.spot === 5)!;
+    expect(five.paint).toBeUndefined();
+    expect(five.x).toBe(0);
+    expect(five.z).toBe(0);
+    expect(out.find((c) => c.spot === 6)!.paint).toBe('#123abc');
+  });
+
+  it('a save without the field loads with none', async () => {
+    const { createNewState, serialize, deserialize } = await import('../src/systems/SaveSystem');
+    const raw = JSON.parse(serialize(createNewState()));
+    delete raw.stolenCars;
+    expect(deserialize(JSON.stringify(raw))!.stolenCars).toEqual([]);
+  });
+});

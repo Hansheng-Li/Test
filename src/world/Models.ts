@@ -80,7 +80,7 @@ function parkedWheelGeometry(): THREE.BufferGeometry {
 const PARKED_VARIANTS = ['sedan', 'sedanSports', 'hatchbackSports', 'suv', 'suvLuxury', 'taxi', 'van', 'delivery'];
 
 /** Replace the box cars parked along the streets with Kenney models, merged into a few draw calls. */
-export async function upgradeParkedCars(city: CityResult): Promise<boolean> {
+export async function upgradeParkedCars(city: CityResult, exclude: ReadonlySet<number> = new Set()): Promise<boolean> {
   const models = await Promise.all(PARKED_VARIANTS.map((v) => loadModel(v)));
   const ok = models.filter((m): m is THREE.Group => !!m);
   const special = new Map<string, THREE.Group | null>();
@@ -88,9 +88,12 @@ export async function upgradeParkedCars(city: CityResult): Promise<boolean> {
   if (!ok.length || !city.parkedGroup.parent) return false;
   const rnd = seeded(77);
   const group = new THREE.Group();
-  for (const spec of city.parkedCars) {
+  for (const [i, spec] of city.parkedCars.entries()) {
     const idx = Math.floor(rnd() * ok.length);
     const model = (spec.model ? special.get(spec.model) : null) ?? ok[idx];
+    // remember which body this spot got so a stolen copy looks the same
+    if (!spec.model) spec.model = PARKED_VARIANTS[models.indexOf(model)];
+    if (exclude.has(i)) continue;
     // taxis and police cruisers keep their livery, everything else gets the spot's colour
     const paint = spec.model || PARKED_VARIANTS[models.indexOf(model)] === 'taxi' ? undefined : spec.color;
     const car = instanceModel(model, { paint, scale: CAR_SCALE });

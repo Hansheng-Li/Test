@@ -14,6 +14,8 @@ const isFiniteNum = (v: unknown): v is number => typeof v === 'number' && Number
 const validStack = (x: unknown): x is { id: string; qty: number } => !!x && typeof x === 'object' && typeof (x as { id: unknown }).id === 'string' && isFiniteNum((x as { qty: unknown }).qty) && (x as { qty: number }).qty > 0;
 
 export const SAVE_KEY = 'sunset_syndicate_save_v1';
+/** Stolen cars you can keep at once; the oldest gets towed when a new one is taken. */
+export const MAX_STOLEN_CARS = 4;
 
 export function createNewState(): GameState {
   const state: GameState = {
@@ -37,6 +39,7 @@ export function createNewState(): GameState {
     handler: null,
     vehicle: null,
     starterCar: { x: STARTER_CAR_SPOT.x, z: STARTER_CAR_SPOT.z, yaw: STARTER_CAR_SPOT.yaw },
+    stolenCars: [],
     player: { x: SPAWN.x, y: SPAWN.y, z: SPAWN.z, yaw: SPAWN.yaw },
     stats: { sales: 0, earned: 0, arrests: 0, declined: 0, produced: 0, playSeconds: 0, earnedAtDayStart: 0, salesAtDayStart: 0, lastDay: 1 },
     flags: {},
@@ -151,6 +154,12 @@ export function deserialize(json: string): GameState | null {
     : null;
   const rb = r.starterCar as { x?: unknown; z?: unknown; yaw?: unknown } | undefined;
   state.starterCar = rb && typeof rb === 'object' ? { x: num(rb.x, STARTER_CAR_SPOT.x), z: num(rb.z, STARTER_CAR_SPOT.z), yaw: num(rb.yaw, STARTER_CAR_SPOT.yaw) } : { x: STARTER_CAR_SPOT.x, z: STARTER_CAR_SPOT.z, yaw: STARTER_CAR_SPOT.yaw };
+  const seenSpots = new Set<number>();
+  state.stolenCars = (Array.isArray(r.stolenCars) ? (r.stolenCars as unknown[]) : [])
+    .filter((c): c is { spot: number; model: string; paint?: unknown; x: unknown; z: unknown; yaw: unknown } => !!c && typeof c === 'object' && Number.isInteger((c as { spot: unknown }).spot) && (c as { spot: number }).spot >= 0 && typeof (c as { model: unknown }).model === 'string')
+    .filter((c) => (seenSpots.has(c.spot) ? false : (seenSpots.add(c.spot), true)))
+    .slice(-MAX_STOLEN_CARS)
+    .map((c) => ({ spot: c.spot, model: c.model, ...(typeof c.paint === 'string' && /^#[0-9a-f]{6}$/i.test(c.paint) ? { paint: c.paint } : {}), x: num(c.x, 0), z: num(c.z, 0), yaw: num(c.yaw, 0) }));
   const rv = r.vehicle;
   state.vehicle = rv && typeof rv === 'object' && rv.owned ? { owned: true, x: num(rv.x, -70), z: num(rv.z, -32), yaw: num(rv.yaw, 0), ...(typeof rv.paint === 'string' && /^#[0-9a-f]{6}$/i.test(rv.paint) ? { paint: rv.paint } : {}) } : null;
   const cleanName = (v: unknown): string => (typeof v === 'string' ? v.replace(/[<>&"'`]/g, '').slice(0, 24) : '');
