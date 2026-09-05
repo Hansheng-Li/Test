@@ -5,6 +5,7 @@ import { previewPrep, prepDuration, packagingPerUnitSeconds, recipeDisplayName }
 import { MODIFIER_IDS, BASE_SUPPLY_IDS } from '../data/items';
 import { MAX_MODIFIERS, parseRecipeKey } from '../data/products';
 import { workerNeeds } from '../systems/WorkerSystem';
+import { t, tn } from '../i18n';
 
 /**
  * PREP TABLE: choose input + modifiers, run a short stir minigame, collect product.
@@ -44,41 +45,41 @@ export class PrepUI extends Panel {
     body.innerHTML = '';
     if (this.pendingName) {
       const key = this.pendingName;
-      body.innerHTML = `<h3>NEW PRODUCT CREATED</h3><div>${esc(recipeDisplayName(st, key))} — <span class="desc" style="color:#aaa">${st.recipes[key]?.effects.join(' · ')}</span></div><p>Give it a street name. It will show up on pagers, in your backpack and in sale messages.</p>`;
+      body.innerHTML = `<h3>${t('NEW PRODUCT CREATED')}</h3><div>${esc(recipeDisplayName(st, key))} — <span class="desc" style="color:#aaa">${st.recipes[key]?.effects.map(tn).join(' · ')}</span></div><p>${t('Give it a street name. It will show up on pagers, in your backpack and in sale messages.')}</p>`;
       const inp = document.createElement('input');
       inp.type = 'text';
       inp.maxLength = 24;
-      inp.placeholder = 'e.g. PALM PANIC';
+      inp.placeholder = t('e.g. PALM PANIC');
       inp.value = st.recipes[key]?.customName ?? '';
       body.appendChild(inp);
       const row = document.createElement('div');
       row.className = 'pager-btns';
-      row.appendChild(this.button('NAME IT', () => { if (inp.value.trim()) this.api.nameRecipe(key, inp.value); this.pendingName = null; this.render(); }, 'primary'));
-      row.appendChild(this.button('KEEP DEFAULT', () => { this.pendingName = null; this.render(); }));
+      row.appendChild(this.button(t('NAME IT'), () => { if (inp.value.trim()) this.api.nameRecipe(key, inp.value); this.pendingName = null; this.render(); }, 'primary'));
+      row.appendChild(this.button(t('KEEP DEFAULT'), () => { this.pendingName = null; this.render(); }));
       body.appendChild(row);
       setTimeout(() => inp.focus(), 0);
       inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { if (inp.value.trim()) this.api.nameRecipe(key, inp.value); this.pendingName = null; this.render(); } });
       return;
     }
     if (this.running) {
-      body.innerHTML = `<h3>MIXING…</h3><div class="progress"><div></div></div><div class="sweet"><div class="zone" style="left:${this.zoneStart * 100}%;width:18%"></div><div class="needle"></div></div><p class="status"></p>`;
+      body.innerHTML = `<h3>${t('MIXING…')}</h3><div class="progress"><div></div></div><div class="sweet"><div class="zone" style="left:${this.zoneStart * 100}%;width:18%"></div><div class="needle"></div></div><p class="status"></p>`;
       this.progressEl = body.querySelector('.progress > div');
       this.needleEl = body.querySelector('.needle');
       this.statusEl = body.querySelector('.status');
-      const b = this.button('STIR  [SPACE]', () => this.stir(), 'primary big');
+      const b = this.button(t('STIR  [SPACE]'), () => this.stir(), 'primary big');
       body.appendChild(b);
       return;
     }
     // --- setup screen
     const inputs: { id: string; label: string }[] = [];
-    for (const id of BASE_SUPPLY_IDS) if (countItem(st, id) > 0) inputs.push({ id, label: `${resolveItem(st, id).name} x${countItem(st, id)}` });
+    for (const id of BASE_SUPPLY_IDS) if (countItem(st, id) > 0) inputs.push({ id, label: `${tn(resolveItem(st, id).name)} x${countItem(st, id)}` });
     for (const p of looseProductsInInventory(st)) {
       const parsed = parseRecipeKey(p.key);
-      if (parsed && parsed.mods.length < MAX_MODIFIERS) inputs.push({ id: p.id, label: `${resolveItem(st, p.id).name} x${p.qty} (refine)` });
+      if (parsed && parsed.mods.length < MAX_MODIFIERS) inputs.push({ id: p.id, label: `${resolveItem(st, p.id).name} x${p.qty} ${t('(refine)')}` });
     }
     const sec1 = document.createElement('div');
-    sec1.innerHTML = '<h3>1. INPUT</h3>';
-    if (inputs.length === 0) sec1.innerHTML += '<div style="color:#ffb3c1">You have no base supplies. Buy Sunset Pulp, Velvet Wax or Neon Gel from Rico at the container yard.</div>';
+    sec1.innerHTML = `<h3>${t('1. INPUT')}</h3>`;
+    if (inputs.length === 0) sec1.innerHTML += `<div style="color:#ffb3c1">${t('You have no base supplies. Buy Sunset Pulp, Velvet Wax or Neon Gel from Rico at the container yard.')}</div>`;
     const rowIn = document.createElement('div');
     rowIn.className = 'pager-btns';
     for (const it of inputs) {
@@ -88,13 +89,13 @@ export class PrepUI extends Panel {
     sec1.appendChild(rowIn);
     body.appendChild(sec1);
     const sec2 = document.createElement('div');
-    sec2.innerHTML = '<h3>2. MODIFIERS (optional, order matters)</h3>';
+    sec2.innerHTML = `<h3>${t('2. MODIFIERS (optional, order matters)')}</h3>`;
     const rowMod = document.createElement('div');
     rowMod.className = 'pager-btns';
     for (const m of MODIFIER_IDS) {
       const have = countItem(st, m);
       const idx = this.mods.indexOf(m);
-      const b = this.button(`${idx >= 0 ? idx + 1 + '. ' : ''}${resolveItem(st, m).name} x${have}`, () => {
+      const b = this.button(`${idx >= 0 ? idx + 1 + '. ' : ''}${tn(resolveItem(st, m).name)} x${have}`, () => {
         if (idx >= 0) this.mods.splice(idx, 1);
         else if (this.mods.length < 2) this.mods.push(m);
         this.render();
@@ -105,7 +106,7 @@ export class PrepUI extends Panel {
     sec2.appendChild(rowMod);
     body.appendChild(sec2);
     const sec3 = document.createElement('div');
-    sec3.innerHTML = '<h3>3. BATCH</h3>';
+    sec3.innerHTML = `<h3>${t('3. BATCH')}</h3>`;
     const preview = this.input ? previewPrep(st, { inputItem: this.input, mods: this.mods, units: this.units }) : null;
     if (this.input) {
       let max = countItem(st, this.input);
@@ -116,25 +117,25 @@ export class PrepUI extends Panel {
       rowU.appendChild(this.button('-', () => { this.units = Math.max(1, this.units - 1); this.render(); }));
       const lbl = document.createElement('span');
       lbl.style.padding = '6px 10px';
-      lbl.textContent = `${this.units} unit${this.units > 1 ? 's' : ''} (max ${max})`;
+      lbl.textContent = t('{n} unit(s) (max {max})', { n: this.units, max });
       rowU.appendChild(lbl);
       rowU.appendChild(this.button('+', () => { this.units = Math.min(max, this.units + 1); this.render(); }));
-      rowU.appendChild(this.button('MAX', () => { this.units = max; this.render(); }));
+      rowU.appendChild(this.button(t('MAX'), () => { this.units = max; this.render(); }));
       sec3.appendChild(rowU);
       if (preview?.ok && preview.recipe) {
         const r = preview.recipe;
         const known = st.recipes[r.key];
         const p = document.createElement('div');
         p.style.marginTop = '8px';
-        p.innerHTML = `RESULT: <b style="color:#ff8fd8">${esc(known?.customName ?? r.defaultName)}</b> ${r.effects.map((e) => `<span class="tag effect">${e}</span>`).join('')} <span class="price">$${r.value}/unit</span>` +
-          (known ? '' : ' <span class="tag" style="background:#3a3a1a;color:#ffd166">NEW RECIPE</span>') +
-          `<div class="desc" style="color:#aaa">Takes ${prepDuration(st)}s${st.upgrades.includes('eq_mixer') ? ' · Turbo Mixer: +1 bonus unit' : ''}.</div>`;
+        p.innerHTML = `${t('RESULT:')} <b style="color:#ff8fd8">${esc(known?.customName ?? r.defaultName)}</b> ${r.effects.map((e) => `<span class="tag effect">${tn(e)}</span>`).join('')} <span class="price">${t('${v}/unit', { v: r.value })}</span>` +
+          (known ? '' : ` <span class="tag" style="background:#3a3a1a;color:#ffd166">${t('NEW RECIPE')}</span>`) +
+          `<div class="desc" style="color:#aaa">${t('Takes {s}s', { s: prepDuration(st) })}${st.upgrades.includes('eq_mixer') ? t(' · Turbo Mixer: +1 bonus unit') : ''}.</div>`;
         sec3.appendChild(p);
-        const start = this.button('START MIXING', () => this.start(), 'primary big');
+        const start = this.button(t('START MIXING'), () => this.start(), 'primary big');
         start.style.marginTop = '8px';
         sec3.appendChild(start);
       } else if (preview && !preview.ok) {
-        sec3.innerHTML += `<div style="color:#ffb3c1">${preview.reason === 'too_many_mods' ? 'Too many modifiers on this product.' : 'Cannot prep this.'}</div>`;
+        sec3.innerHTML += `<div style="color:#ffb3c1">${t(preview.reason === 'too_many_mods' ? 'Too many modifiers on this product.' : 'Cannot prep this.')}</div>`;
       }
     }
     body.appendChild(sec3);
@@ -142,22 +143,22 @@ export class PrepUI extends Panel {
     if (st.worker?.hired) {
       const w = st.worker;
       const sec4 = document.createElement('div');
-      sec4.innerHTML = `<h3>WORKER · ${w.name.toUpperCase()} (${w.property})</h3>`;
+      sec4.innerHTML = `<h3>${t('WORKER · {name} ({place})', { name: w.name.toUpperCase(), place: tn(w.property) })}</h3>`;
       const info = document.createElement('div');
       info.className = 'desc';
       info.style.color = '#aaa';
       if (w.recipeKey) {
         const n = workerNeeds(st, w.property, w.recipeKey);
-        const missing = n ? [!n.hasBase ? 'base supply' : '', !n.hasMods ? 'modifiers' : '', !n.hasBags ? 'baggies (will output loose product)' : ''].filter(Boolean) : [];
-        info.innerHTML = `Making <b style="color:#ff8fd8">${esc(recipeDisplayName(st, w.recipeKey))}</b> from ${w.property} storage · ${w.produced} units so far · progress ${Math.round(w.progress * 100)}%` + (missing.length ? `<br/><span style="color:#ffb3c1">Storage is missing: ${missing.join(', ')}</span>` : '');
-      } else info.textContent = 'Not assigned. Pick a recipe below; Marisol pulls supplies from storage and puts packaged product back.';
+        const missing = n ? [!n.hasBase ? t('base supply') : '', !n.hasMods ? t('modifiers') : '', !n.hasBags ? t('baggies (will output loose product)') : ''].filter(Boolean) : [];
+        info.innerHTML = t('Making <b>{what}</b> from {place} storage · {n} units so far · progress {pct}%', { what: `<span style="color:#ff8fd8">${esc(recipeDisplayName(st, w.recipeKey))}</span>`, place: tn(w.property), n: w.produced, pct: Math.round(w.progress * 100) }) + (missing.length ? `<br/><span style="color:#ffb3c1">${t('Storage is missing: {list}', { list: missing.join(', ') })}</span>` : '');
+      } else info.textContent = t('Not assigned. Pick a recipe below; Marisol pulls supplies from storage and puts packaged product back.');
       sec4.appendChild(info);
       const rowW = document.createElement('div');
       rowW.className = 'pager-btns';
       for (const r of Object.values(st.recipes)) {
         rowW.appendChild(this.button((r.customName ?? r.defaultName) + (w.recipeKey === r.key ? ' ✓' : ''), () => { this.api.assignWorker(r.key); this.render(); }, w.recipeKey === r.key ? 'primary' : 'cyan'));
       }
-      if (w.recipeKey) rowW.appendChild(this.button('STOP', () => { this.api.assignWorker(null); this.render(); }));
+      if (w.recipeKey) rowW.appendChild(this.button(t('STOP'), () => { this.api.assignWorker(null); this.render(); }));
       sec4.appendChild(rowW);
       body.appendChild(sec4);
     }
@@ -185,10 +186,10 @@ export class PrepUI extends Panel {
       this.api.sfx('click');
       const z = this.el.querySelector('.zone') as HTMLElement | null;
       if (z) z.style.left = this.zoneStart * 100 + '%';
-      if (this.statusEl) this.statusEl.textContent = this.input?.startsWith('prod:') ? `Nice stir! (${this.hits}) · refining: faster, no bonus units` : `Nice stir! (${this.hits}) · 3 hits = +1 unit, 5 hits = +2 (max one per two units)`;
+      if (this.statusEl) this.statusEl.textContent = t(this.input?.startsWith('prod:') ? 'Nice stir! ({n}) · refining: faster, no bonus units' : 'Nice stir! ({n}) · 3 hits = +1 unit, 5 hits = +2 (max one per two units)', { n: this.hits });
     } else {
       this.api.sfx('error');
-      if (this.statusEl) this.statusEl.textContent = 'Missed the zone.';
+      if (this.statusEl) this.statusEl.textContent = t('Missed the zone.');
     }
   }
 
@@ -215,13 +216,13 @@ export class PrepUI extends Panel {
       if (r.ok && r.recipe) {
         this.api.sfx('unlock');
         const got = r.bonus ?? 0;
-        this.api.toast(`Prepped ${r.units}x ${recipeDisplayName(this.api.state, r.recipe.key)}${got ? ` · smooth batch: +${got} bonus unit${got > 1 ? 's' : ''}!` : this.hits >= 1 ? ' · decent stir.' : ''}`);
+        this.api.toast(t('Prepped {n}x {what}', { n: r.units ?? 0, what: recipeDisplayName(this.api.state, r.recipe.key) }) + (got ? t(' · smooth batch: +{n} bonus unit(s)!', { n: got }) : this.hits >= 1 ? t(' · decent stir.') : ''));
         const isNew = !this.api.state.recipes[r.recipe.key]?.customName;
         if (isNew) this.pendingName = r.recipe.key;
         if (countItem(this.api.state, this.input!) === 0) { this.input = null; this.mods = []; }
       } else {
         this.api.sfx('error');
-        this.api.toast(r.reason === 'no_space' ? 'Backpack is full. Free a slot first.' : 'Prep failed: ' + (r.reason ?? 'unknown'), 'warn');
+        this.api.toast(r.reason === 'no_space' ? t('Backpack is full. Free a slot first.') : t('Prep failed: {reason}', { reason: r.reason ?? 'unknown' }), 'warn');
       }
       this.render();
     }
@@ -251,14 +252,14 @@ export class PackUI extends Panel {
     body.innerHTML = '';
     const loose = looseProductsInInventory(st);
     const bags = countItem(st, 'baggies');
-    body.innerHTML = `<div>BAGGIES: <b style="color:${bags > 0 ? '#ffd166' : '#ffb3c1'}">${bags}</b> <span class="desc" style="color:#999">(Quick Stop 24 sells them, $1 each)</span></div>`;
+    body.innerHTML = `<div>${t('BAGGIES: {n}', { n: `<b style="color:${bags > 0 ? '#ffd166' : '#ffb3c1'}">${bags}</b>` })} <span class="desc" style="color:#999">${t('(Quick Stop 24 sells them, $1 each)')}</span></div>`;
     if (loose.length === 0) {
-      body.innerHTML += '<h3>NOTHING TO PACKAGE</h3><div style="color:#ffb3c1">Prep some product at the PREP TABLE first.</div>';
+      body.innerHTML += `<h3>${t('NOTHING TO PACKAGE')}</h3><div style="color:#ffb3c1">${t('Prep some product at the PREP TABLE first.')}</div>`;
       return;
     }
     if (!this.key || !loose.find((l) => l.key === this.key)) this.key = loose[0].key;
     const sec = document.createElement('div');
-    sec.innerHTML = '<h3>PRODUCT</h3>';
+    sec.innerHTML = `<h3>${t('PRODUCT')}</h3>`;
     const row = document.createElement('div');
     row.className = 'pager-btns';
     for (const l of loose) row.appendChild(this.button(`${resolveItem(st, l.id).name} x${l.qty}`, () => { this.key = l.key; this.render(); }, this.key === l.key ? 'primary' : ''));
@@ -267,8 +268,8 @@ export class PackUI extends Panel {
     const have = loose.find((l) => l.key === this.key)!.qty;
     const can = Math.min(have, bags);
     const sec2 = document.createElement('div');
-    sec2.innerHTML = `<h3>SEAL</h3><div>${can} unit${can === 1 ? '' : 's'} can be packaged now.${st.upgrades.includes('eq_sealer') ? ' Heat Sealer installed: whole batch in one go.' : ' Press SEAL once per unit.'}</div>`;
-    const b = this.button(st.upgrades.includes('eq_sealer') ? `SEAL ALL (${can})  [SPACE]` : 'SEAL ONE  [SPACE]', () => this.seal(), 'primary big');
+    sec2.innerHTML = `<h3>${t('SEAL')}</h3><div>${t('{n} unit(s) can be packaged now.', { n: can })}${t(st.upgrades.includes('eq_sealer') ? ' Heat Sealer installed: whole batch in one go.' : ' Press SEAL once per unit.')}</div>`;
+    const b = this.button(st.upgrades.includes('eq_sealer') ? t('SEAL ALL ({n})  [SPACE]', { n: can }) : t('SEAL ONE  [SPACE]'), () => this.seal(), 'primary big');
     b.disabled = can === 0;
     b.style.marginTop = '8px';
     sec2.appendChild(b);
@@ -307,7 +308,7 @@ export class PackUI extends Panel {
       if (!r.ok) {
         this.sealing = false;
         this.api.sfx('error');
-        this.api.toast(r.reason === 'no_space' ? 'Backpack is full.' : 'Packaging failed.', 'warn');
+        this.api.toast(t(r.reason === 'no_space' ? 'Backpack is full.' : 'Packaging failed.'), 'warn');
         this.render();
         return;
       }
@@ -317,7 +318,7 @@ export class PackUI extends Panel {
         this.api.sfx('bag');
       } else {
         this.sealing = false;
-        this.api.toast(`Packaged ${recipeDisplayName(this.api.state, this.key!)}.`);
+        this.api.toast(t('Packaged {what}.', { what: recipeDisplayName(this.api.state, this.key!) }));
         this.render();
       }
     }

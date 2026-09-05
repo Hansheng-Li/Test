@@ -7,6 +7,7 @@ test('game loads, HUD appears, no startup errors', async ({ page }) => {
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(m.text());
   });
+  await page.addInitScript(() => localStorage.setItem('sunset_syndicate_settings', JSON.stringify({ lang: 0 })));
   await page.goto('/');
   await expect(page.locator('#menu h1')).toHaveText('SUNSET SYNDICATE');
   await page.click('#menu button:has-text("NEW GAME")');

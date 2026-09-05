@@ -8,6 +8,7 @@ import { LANDMARKS } from '../data/city';
 import { customerState, relationshipTier, unlockedCustomers, recordSuccessfulDeal, customerDef, spendingLimit } from './CustomerSystem';
 import { countItem, removeItem, packagedInInventory } from './InventorySystem';
 import { addCash } from './EconomySystem';
+import { t, tn } from '../i18n';
 import { recipeDisplayName } from './ProductionSystem';
 
 export interface OrderGenOptions {
@@ -189,9 +190,9 @@ export function describeRequest(state: GameState, order: Order): string {
   if (order.recipeKey) return recipeDisplayName(state, order.recipeKey);
   if (order.effects.length === 0) {
     const plain = state.recipes[order.base];
-    return plain?.customName ? `${order.base} (your ${plain.customName})` : order.base;
+    return plain?.customName ? t('{base} (your {name})', { base: order.base, name: plain.customName }) : order.base;
   }
-  return `${order.base} (${order.effects.join('+')})`;
+  return `${order.base} (${order.effects.map(tn).join('+')})`;
 }
 
 /** Remember what a customer just bought so repeat purchases can bore them. */
@@ -245,11 +246,11 @@ export function counterOffer(state: GameState, orderId: number, markup: number, 
   const asked = Math.round(o.price * (1 + markup));
   if (markup <= tolerance + 1e-9) {
     o.price = asked;
-    return { outcome: 'accepted', price: o.price, line: pick(rng, ['Fine, fine. You drive a hard bargain.', 'Ugh. Okay. But you owe me.', 'Deal. Do not tell anyone I paid that.']) };
+    return { outcome: 'accepted', price: o.price, line: t(pick(rng, ['Fine, fine. You drive a hard bargain.', 'Ugh. Okay. But you owe me.', 'Deal. Do not tell anyone I paid that.'])) };
   }
   if (markup <= tolerance * 1.8 && rng() < 0.6) {
     o.price = Math.round(o.price * (1 + tolerance));
-    return { outcome: 'countered', price: o.price, line: pick(rng, [`Best I can do is $${o.price}. Take it or leave it.`, `$${o.price}. Final. My rent is due.`]) };
+    return { outcome: 'countered', price: o.price, line: t(pick(rng, ['Best I can do is ${price}. Take it or leave it.', '${price}. Final. My rent is due.']), { price: o.price }) };
   }
   o.status = 'declined';
   customerState(state, o.customerId).relationship = Math.max(0, rel - 2);

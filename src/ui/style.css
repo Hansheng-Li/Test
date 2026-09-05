@@ -5,8 +5,8 @@
   --cream: #fff3d6;
   --purple: #b388ff;
   --panel: rgba(12, 8, 24, 0.86);
-  --font: 'Segoe UI', 'Trebuchet MS', Roboto, Helvetica, Arial, sans-serif;
-  --mono: 'Cascadia Mono', Consolas, 'SF Mono', Menlo, 'DejaVu Sans Mono', 'Liberation Mono', monospace;
+  --font: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Noto Sans CJK SC', 'Source Han Sans SC', Roboto, Helvetica, Arial, sans-serif;
+  --mono: 'Cascadia Mono', Consolas, 'SF Mono', Menlo, 'DejaVu Sans Mono', 'Liberation Mono', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', monospace;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: var(--font); color: var(--cream); }

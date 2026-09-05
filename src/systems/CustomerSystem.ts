@@ -2,6 +2,7 @@ import { GameState, CustomerState } from '../game/GameState';
 import { CUSTOMERS, CUSTOMER_MAP, CustomerDef } from '../data/customers';
 import { parseRecipeKey, computeRecipe } from '../data/products';
 import { countItem, removeItem } from './InventorySystem';
+import { t, tn } from '../i18n';
 
 export const MAX_RELATIONSHIP = 100;
 
@@ -101,8 +102,8 @@ export function offerSample(state: GameState, customerId: string, packagedItemId
   }
   const line = unlocked
     ? matched
-      ? `Oh. OH. This is exactly my thing. I will page you.`
-      : `Not really my taste… but you keep showing up. Fine, page me sometime.`
-    : `Hm. Not my thing. I like ${def.prefBase} with ${def.prefEffects.join(' or ')}.`;
+      ? t('Oh. OH. This is exactly my thing. I will page you.')
+      : t('Not really my taste… but you keep showing up. Fine, page me sometime.')
+    : t('Hm. Not my thing. I like {base} with {effects}.', { base: def.prefBase, effects: def.prefEffects.map(tn).join(t(' or ')) });
   return { ok: true, unlocked, matched, line };
 }

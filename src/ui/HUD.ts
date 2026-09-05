@@ -3,6 +3,7 @@ import { resolveItem } from '../systems/InventorySystem';
 import { iconFor } from './Icons';
 import { heatLevel } from '../systems/HeatSystem';
 import { ToastKind } from './UIContext';
+import { t, tn } from '../i18n';
 
 /** Always-visible HUD: cash, clock, heat, objective, order, hotbar, prompt, toasts. */
 export class HUD {
@@ -31,27 +32,29 @@ export class HUD {
   private lastOrder: string | null = '';
   private lastClock = '';
   private pagerTimer = 0;
+  /** The visible page is an order (not a news flash), so it should vanish with the order. */
+  private pagerIsOrder = false;
   selectedSlot = 0;
 
   constructor(parent: HTMLElement) {
     this.root = document.createElement('div');
     this.root.id = 'hud';
     this.root.innerHTML = `
-      <div id="hud-cash" class="hud-box"><small>CASH</small><span class="val">$0</span></div>
+      <div id="hud-cash" class="hud-box"><small class="i18n-cash">CASH</small><span class="val">$0</span></div>
       <div id="hud-clock" class="hud-box">DAY 1 · 15:30</div>
-      <div id="hud-heat" class="hud-box"><div class="label"><span>HEAT</span><span class="lvl">CALM</span></div><div class="bar"><div></div></div><div class="stamina"><div></div></div></div>
-      <div id="hud-objective" class="hud-box"><div class="title">OBJECTIVE</div><div class="text"></div></div>
-      <div id="hud-order" class="hud-box"><div class="title">CURRENT ORDER</div><div class="obody"></div></div>
+      <div id="hud-heat" class="hud-box"><div class="label"><span class="i18n-heat">HEAT</span><span class="lvl">CALM</span></div><div class="bar"><div></div></div><div class="stamina"><div></div></div></div>
+      <div id="hud-objective" class="hud-box"><div class="title i18n-objective">OBJECTIVE</div><div class="text"></div></div>
+      <div id="hud-order" class="hud-box"><div class="title i18n-order">CURRENT ORDER</div><div class="obody"></div></div>
       <div id="hud-item" class="hud-box"></div>
       <div id="crosshair"></div>
       <div id="prompt"></div>
       <div id="toasts"></div>
-      <div id="pager-notify"><div class="screen"></div><div class="hint">[Y] ACCEPT · [X] DECLINE · [P] PAGER</div></div>
+      <div id="pager-notify"><div class="screen"></div><div class="hint"></div></div>
       <div id="compass"><span class="arrow"></span><span class="label"></span></div>
       <div id="flash"></div>
       <div id="radio"><div class="st"></div><div class="tr"></div><div class="dj"></div></div>
       <div id="vignette"></div>
-      <div id="clickhint" style="display:none;position:absolute;left:50%;top:62%;transform:translateX(-50%);background:var(--panel);border:2px solid var(--cyan);padding:10px 18px;border-radius:6px;font-size:16px;letter-spacing:1px">CLICK TO CAPTURE THE MOUSE</div>`;
+      <div id="clickhint" style="display:none;position:absolute;left:50%;top:62%;transform:translateX(-50%);background:var(--panel);border:2px solid var(--cyan);padding:10px 18px;border-radius:6px;font-size:16px;letter-spacing:1px"></div>`;
     parent.appendChild(this.root);
     this.cashEl = this.root.querySelector('#hud-cash .val')!;
     this.clockEl = this.root.querySelector('#hud-clock')!;
@@ -75,6 +78,18 @@ export class HUD {
       (s.querySelector('img') as HTMLImageElement).addEventListener('error', () => { (s.querySelector('img') as HTMLImageElement).style.display = 'none'; });
       this.slotsEl.appendChild(s);
     }
+    this.relabel();
+  }
+
+  /** Static labels: called on build and after a language switch. */
+  relabel(): void {
+    (this.root.querySelector('.i18n-cash') as HTMLElement).textContent = t('CASH');
+    (this.root.querySelector('.i18n-heat') as HTMLElement).textContent = t('HEAT');
+    (this.root.querySelector('.i18n-objective') as HTMLElement).textContent = t('OBJECTIVE');
+    (this.root.querySelector('.i18n-order') as HTMLElement).textContent = t('CURRENT ORDER');
+    (this.root.querySelector('#clickhint') as HTMLElement).textContent = t('CLICK TO CAPTURE THE MOUSE');
+    this.lastClock = '';
+    this.lastObjective = '';
   }
 
   setVisible(v: boolean): void {
@@ -103,13 +118,13 @@ export class HUD {
       this.cashEl.textContent = '$' + Math.floor(this.shownCash).toLocaleString();
       this.lastCash = this.shownCash;
     }
-    const clockStr = `DAY ${day} · ${clockText}` + (this.speedText ? ` · ${this.speedText}` : '');
+    const clockStr = t('DAY {n} · {time}', { n: day, time: clockText }) + (this.speedText ? ` · ${this.speedText}` : '');
     if (clockStr !== this.lastClock) {
       this.clockEl.textContent = clockStr;
       this.lastClock = clockStr;
     }
     this.heatBar.style.width = state.heat.toFixed(0) + '%';
-    this.heatLabel.textContent = heatLevel(state.heat).toUpperCase() + (state.suspicion > 30 ? ' · KNOWN' : '');
+    this.heatLabel.textContent = t(heatLevel(state.heat)).toUpperCase() + (state.suspicion > 30 ? ' · ' + t('KNOWN') : '');
     this.vignette.className = this.arrestMode ? 'arrest' : this.hiddenMode ? 'hidden' : state.heat >= 60 ? 'hot' : '';
     this.staminaWrap.style.display = this.stamina < 0.999 ? 'block' : 'none';
     this.staminaBar.style.width = (this.stamina * 100).toFixed(0) + '%';
@@ -136,7 +151,7 @@ export class HUD {
       el.className = 'slot' + (i === this.selectedSlot ? ' selected' : '');
       if (st) {
         const def = resolveItem(state, st.id);
-        nameEl.textContent = def.name;
+        nameEl.textContent = tn(def.name);
         qtyEl.textContent = 'x' + st.qty;
         el.classList.add(def.category);
         const src = iconFor(st.id);
@@ -155,6 +170,8 @@ export class HUD {
       this.pagerTimer -= dt;
       if (this.pagerTimer <= 0) this.pagerEl.classList.remove('on');
     }
+    // a page whose order is gone (accepted, declined, expired) must not linger and invite a useless Y
+    if (this.pagerEl.classList.contains('on') && this.pagerIsOrder && !state.orders.some((o) => o.status === 'pending')) this.hidePager();
     if (this.radioTimer > 0) {
       this.radioTimer -= dt;
       if (this.radioTimer <= 0) (this.root.querySelector('#radio .dj') as HTMLElement).classList.remove('show');
@@ -227,11 +244,17 @@ export class HUD {
 
   pagerNotify(text: string, hint = '[Y] ACCEPT · [X] DECLINE · [P] PAGER'): void {
     this.pagerScreen.textContent = text;
-    (this.pagerEl.querySelector('.hint') as HTMLElement).textContent = hint;
+    (this.pagerEl.querySelector('.hint') as HTMLElement).textContent = t(hint);
     this.pagerEl.classList.remove('on');
     void this.pagerEl.offsetWidth; // restart animation
     this.pagerEl.classList.add('on');
     this.pagerTimer = 12;
+    this.pagerIsOrder = hint === '[Y] ACCEPT · [X] DECLINE · [P] PAGER';
+  }
+
+  hidePager(): void {
+    this.pagerEl.classList.remove('on');
+    this.pagerTimer = 0;
   }
 
 }

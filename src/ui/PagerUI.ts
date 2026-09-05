@@ -8,10 +8,11 @@ import { GameClock } from '../core/Time';
 import { relationshipTier } from '../systems/CustomerSystem';
 import { Order } from '../game/GameState';
 import { activeEvent, describeEvent } from '../systems/EventSystem';
+import { t, tn } from '../i18n';
 
 export function landmarkName(id: string): string {
-  if (id === 'street') return 'on the street';
-  return LANDMARKS.find((l) => l.id === id)?.name ?? id;
+  if (id === 'street') return t('on the street');
+  return tn(LANDMARKS.find((l) => l.id === id)?.name ?? id);
 }
 
 export function pagerLine(order: Order, request: string): string {
@@ -19,7 +20,7 @@ export function pagerLine(order: Order, request: string): string {
   const phone = '555-0' + (100 + (order.customerId.charCodeAt(0) * 7 + order.customerId.length * 13) % 900);
   const notes = PAGER_NOTES[order.customerId] ?? [];
   const note = notes.length ? notes[order.id % notes.length] : '';
-  return `${phone}${order.vip ? '  *** VIP RUSH ***' : ''}${order.bored ? '  SOMETHING NEW PLS' : ''}\n${order.qty}x ${request}\n$${order.price}\n${landmarkName(order.locationId).toUpperCase()}\nBY ${GameClock.formatMinutes(order.windowEnd)}  -${c.name.split(' ')[0].toUpperCase()}${note ? '\n' + note : ''}`;
+  return `${phone}${order.vip ? `  *** ${t('VIP RUSH')} ***` : ''}${order.bored ? '  ' + t('SOMETHING NEW PLS') : ''}\n${order.qty}x ${request}\n$${order.price}\n${landmarkName(order.locationId).toUpperCase()}\n${t('BY {time}  -{who}', { time: GameClock.formatMinutes(order.windowEnd), who: c.name.split(' ')[0].toUpperCase() })}${note ? '\n' + tn(note) : ''}`;
 }
 
 /** The pager: incoming orders, accepted orders, runner dispatch. */
@@ -37,15 +38,15 @@ export class PagerUI extends Panel {
     body.appendChild(device);
     const pending = pendingOrders(st);
     const active = activeOrders(st);
-    const h = (t: string): void => {
+    const h = (title: string): void => {
       const e = document.createElement('h3');
-      e.textContent = t;
+      e.textContent = title;
       device.appendChild(e);
     };
     if (st.upgrades.includes('eq_brickphone')) {
       const row = document.createElement('div');
       row.className = 'pager-btns';
-      row.appendChild(this.button('BRICK PHONE · CALL AROUND FOR WORK', () => { this.api.callAround(); this.render(); }, 'cyan'));
+      row.appendChild(this.button(t('BRICK PHONE · CALL AROUND FOR WORK'), () => { this.api.callAround(); this.render(); }, 'cyan'));
       device.appendChild(row);
     }
     const evText = describeEvent(activeEvent(st));
@@ -53,21 +54,21 @@ export class PagerUI extends Panel {
       const e = document.createElement('div');
       e.className = 'pager-screen';
       e.style.background = '#ff8a80';
-      e.textContent = 'NEWS: ' + evText;
+      e.textContent = t('NEWS: {text}', { text: evText });
       device.appendChild(e);
     }
     if (st.trend) {
-      const t = document.createElement('div');
-      t.className = 'pager-screen';
-      t.style.background = '#f4c542';
-      t.textContent = `STREET TALK: ${st.trend.effect} IS HOT TODAY (+25% ON SALES)`;
-      device.appendChild(t);
+      const tr = document.createElement('div');
+      tr.className = 'pager-screen';
+      tr.style.background = '#f4c542';
+      tr.textContent = t('STREET TALK: {effect} IS HOT TODAY (+25% ON SALES)', { effect: tn(st.trend.effect) });
+      device.appendChild(tr);
     }
-    h(`NEW MESSAGES (${pending.length})`);
+    h(t('NEW MESSAGES ({n})', { n: pending.length }));
     if (pending.length === 0) {
       const e = document.createElement('div');
       e.className = 'pager-screen';
-      e.textContent = 'NO NEW PAGES.\nCUSTOMERS PAGE YOU WHEN THEY NEED SOMETHING.';
+      e.textContent = t('NO NEW PAGES.\nCUSTOMERS PAGE YOU WHEN THEY NEED SOMETHING.');
       device.appendChild(e);
     }
     for (const o of pending) {
@@ -80,26 +81,26 @@ export class PagerUI extends Panel {
       screen.textContent = pagerLine(o, describeRequest(st, o));
       card.appendChild(screen);
       const info = document.createElement('div');
-      info.innerHTML = (o.vip ? '<span class="tag" style="background:#5a3a00;color:#ffd166">VIP · BIG MONEY · TIGHT WINDOW</span>' : '') + (o.bored ? '<span class="tag" style="background:#1a3a5a;color:#9ecbff">BORED OF THE USUAL · WANTS ' + o.effects.join('+') + '</span>' : '') + `<span class="tag">${c.personality.toUpperCase()}</span><span class="tag">${relationshipTier(cs.relationship).toUpperCase()}</span><span class="tag">REL ${cs.relationship}</span>` +
-        (o.effects.length ? o.effects.map((e) => `<span class="tag effect">${e}</span>`).join('') : '');
+      info.innerHTML = (o.vip ? `<span class="tag" style="background:#5a3a00;color:#ffd166">${t('VIP · BIG MONEY · TIGHT WINDOW')}</span>` : '') + (o.bored ? `<span class="tag" style="background:#1a3a5a;color:#9ecbff">${t('BORED OF THE USUAL · WANTS {effects}', { effects: o.effects.map(tn).join('+') })}</span>` : '') + `<span class="tag">${tn(c.personality).toUpperCase()}</span><span class="tag">${tn(relationshipTier(cs.relationship)).toUpperCase()}</span><span class="tag">${t('REL {n}', { n: cs.relationship })}</span>` +
+        (o.effects.length ? o.effects.map((e) => `<span class="tag effect">${tn(e)}</span>`).join('') : '');
       card.appendChild(info);
       const actions = document.createElement('div');
       actions.className = 'actions';
-      actions.appendChild(this.button('ACCEPT', () => { this.api.acceptOrder(o.id); this.render(); }, 'primary'));
+      actions.appendChild(this.button(t('ACCEPT'), () => { this.api.acceptOrder(o.id); this.render(); }, 'primary'));
       if (!o.haggled && st.stats.sales >= 2) {
-        for (const m of [0.1, 0.2, 0.35]) actions.appendChild(this.button(`ASK +${Math.round(m * 100)}% ($${Math.round(o.price * (1 + m))})`, () => { this.api.haggle(o.id, m); this.render(); }, 'cyan'));
+        for (const m of [0.1, 0.2, 0.35]) actions.appendChild(this.button(t('ASK +{pct}% (${price})', { pct: Math.round(m * 100), price: Math.round(o.price * (1 + m)) }), () => { this.api.haggle(o.id, m); this.render(); }, 'cyan'));
       } else if (!o.haggled) {
         const hint = document.createElement('span');
         hint.className = 'desc';
         hint.style.fontSize = '11px';
-        hint.textContent = 'haggling unlocks after 2 sales';
+        hint.textContent = t('haggling unlocks after 2 sales');
         actions.appendChild(hint);
       }
-      actions.appendChild(this.button('DECLINE', () => { this.api.declineOrder(o.id); this.render(); }));
+      actions.appendChild(this.button(t('DECLINE'), () => { this.api.declineOrder(o.id); this.render(); }));
       card.appendChild(actions);
       device.appendChild(card);
     }
-    h(`ACTIVE ORDERS (${active.length})`);
+    h(t('ACTIVE ORDERS ({n})', { n: active.length }));
     for (const o of active) {
       const card = document.createElement('div');
       card.className = 'order-card active';
@@ -108,14 +109,14 @@ export class PagerUI extends Panel {
       const stock = storageItemForOrder(st, o);
       const request = esc(describeRequest(st, o));
       card.innerHTML = `<b>${c.name}</b> · ${o.qty}x ${request} · $${o.price}<br/>` +
-        `MEET: ${landmarkName(o.locationId)} · WINDOW ${GameClock.formatMinutes(o.windowStart)}-${GameClock.formatMinutes(o.windowEnd)}<br/>` +
+        `${t('MEET: {place} · WINDOW {from}-{to}', { place: landmarkName(o.locationId), from: GameClock.formatMinutes(o.windowStart), to: GameClock.formatMinutes(o.windowEnd) })}<br/>` +
         (o.status === 'runner'
-          ? (st.runner?.activeOrderId === o.id ? `<span style="color:#7fffd4">RUNNER ON THE WAY · ${Math.round((o.runnerProgress ?? 0) * 100)}%</span>` : `<span style="color:#7fffd4">QUEUED FOR RUNNER</span>`)
-          : have ? `<span style="color:#7dff9a">YOU ARE CARRYING THE GOODS</span>` : `<span style="color:#ffb3c1">YOU DO NOT HAVE ${o.qty}x ${request} YET</span>`);
+          ? (st.runner?.activeOrderId === o.id ? `<span style="color:#7fffd4">${t('RUNNER ON THE WAY · {pct}%', { pct: Math.round((o.runnerProgress ?? 0) * 100) })}</span>` : `<span style="color:#7fffd4">${t('QUEUED FOR RUNNER')}</span>`)
+          : have ? `<span style="color:#7dff9a">${t('YOU ARE CARRYING THE GOODS')}</span>` : `<span style="color:#ffb3c1">${t('YOU DO NOT HAVE {n}x {what} YET', { n: o.qty, what: request })}</span>`);
       const actions = document.createElement('div');
       actions.className = 'actions';
       if (o.status === 'accepted' && st.runner?.hired) {
-        const btn = this.button(stock ? (runnerBusy(st) ? `QUEUE FOR RUNNER (from ${stock.property})` : `SEND RUNNER (from ${stock.property})`) : 'SEND RUNNER (no stock in storage)', () => { this.api.sendRunner(o.id); this.render(); }, 'cyan');
+        const btn = this.button(stock ? t(runnerBusy(st) ? 'QUEUE FOR RUNNER (from {place})' : 'SEND RUNNER (from {place})', { place: tn(stock.property) }) : t('SEND RUNNER (no stock in storage)'), () => { this.api.sendRunner(o.id); this.render(); }, 'cyan');
         btn.disabled = !stock;
         actions.appendChild(btn);
       }
@@ -124,7 +125,7 @@ export class PagerUI extends Panel {
     }
     const done = st.orders.filter((o) => o.status === 'completed').slice(-5).reverse();
     if (done.length) {
-      h('RECENT DEALS');
+      h(t('RECENT DEALS'));
       for (const o of done) {
         const e = document.createElement('div');
         e.className = 'order-card';

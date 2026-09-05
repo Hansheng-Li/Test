@@ -41,6 +41,7 @@ import { takeLoan, repayLoan, tickLoanDay, loanDaysLeft, LOAN_TIERS, LOAN_DAYS }
 import { resprayCar, carPaint } from '../systems/GarageSystem';
 import { fogLevel, sightMultiplier } from '../systems/WeatherSystem';
 import { onRoadGrid } from '../systems/RoadGrid';
+import { t, tn, setLang } from '../i18n';
 import { hireHandler, tickHandler } from '../systems/HandlerSystem';
 import { rollWorldEvent, describeEvent, heatMultiplier, activeEvent, applyInspection, eventSlot, curfewExtraPolice, crackdownIn } from '../systems/EventSystem';
 import { relationshipTier } from '../systems/CustomerSystem';
@@ -184,6 +185,7 @@ export class Game implements GameAPI {
   private uiDt = 0.016;
 
   constructor(root: HTMLElement) {
+    setLang(this.settings.lang >= 0.5 ? 'zh' : 'en');
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -228,7 +230,7 @@ export class Game implements GameAPI {
       continueGame: () => this.continueGame(),
       resetSave: () => clearSave(localStorage),
       resume: () => this.resume(),
-      save: () => { this.save(); this.toast('Game saved.'); },
+      save: () => { this.save(); this.toast(t('Game saved.')); },
       hasSave: () => hasSave(localStorage),
       saveSummary: () => this.saveSummary(),
       runStats: () => (this.running ? this.describeRun(this.state) : null),
@@ -287,10 +289,10 @@ export class Game implements GameAPI {
     this.applyStateToWorld();
     this.orderTimer = 40;
     this.tips = [
-      'Grab the STARTER BOX in your back room. Your pager will go off soon.',
-      'WASD to move · SHIFT to sprint · E to interact · TAB backpack · P pager · M map',
-      '1-8 picks the hotbar slot: that is what you hand over as a free sample or a street deal.',
-      'People have habits: day folks page less after dark. Payphones (blue on the map) call around for work.',
+      t('Grab the STARTER BOX in your back room. Your pager will go off soon.'),
+      t('WASD to move · SHIFT to sprint · E to interact · TAB backpack · P pager · M map'),
+      t('1-8 picks the hotbar slot: that is what you hand over as a free sample or a street deal.'),
+      t('People have habits: day folks page less after dark. Payphones (blue on the map) call around for work.'),
     ];
     this.tipTimer = 0.5;
     this.beginPlay();
@@ -301,8 +303,8 @@ export class Game implements GameAPI {
   private playIntro(): void {
     const shots: Shot[] = [
       { from: [260, 70, 120], to: [200, 45, 40], lookFrom: [40, 0, 0], lookTo: [60, 4, 0], dur: 6, text: 'SOL PALMA, FLORIDA', sub: '1996' },
-      { from: [175, 14, -50], to: [150, 9, 30], lookFrom: [135, 6, 5], lookTo: [110, 4, 20], dur: 5.5, text: 'NEON, SUNSCREEN AND BAD DECISIONS', sub: 'a city that never checks ID' },
-      { from: [30, 26, 60], to: [-2, 5, 22], lookFrom: [-21, 2, 14], dur: 6, text: '$80, A PAGER AND A BACK ROOM', sub: "Sal's crew owns the streets. For now." },
+      { from: [175, 14, -50], to: [150, 9, 30], lookFrom: [135, 6, 5], lookTo: [110, 4, 20], dur: 5.5, text: t('NEON, SUNSCREEN AND BAD DECISIONS'), sub: t('a city that never checks ID') },
+      { from: [30, 26, 60], to: [-2, 5, 22], lookFrom: [-21, 2, 14], dur: 6, text: t('$80, A PAGER AND A BACK ROOM'), sub: t("Sal's crew owns the streets. For now.") },
       { from: [-2, 5, 22], to: [-2, 5, 22], lookFrom: [-21, 2, 14], dur: 1.6, fade: 1, text: 'SUNSET SYNDICATE', sub: '' },
     ];
     this.hud.setVisible(false);
@@ -323,8 +325,8 @@ export class Game implements GameAPI {
     const day = Math.max(1, Math.floor(s.clockMinutes / (24 * 60)));
     const unlocked = Object.values(s.customers).filter((c) => c.unlocked).length;
     const crew = [s.runner?.hired, s.worker?.hired, s.dealer?.hired].filter(Boolean).length;
-    const parts = [`DAY ${day}`, `$${Math.round(s.cash).toLocaleString('en-US')}`, `${s.stats.sales} SALES`, `${unlocked} CUSTOMERS`, `${s.properties.length} ${s.properties.length === 1 ? 'PROPERTY' : 'PROPERTIES'}`];
-    if (crew) parts.push(`${crew} CREW`);
+    const parts = [t('DAY {n}', { n: day }), `$${Math.round(s.cash).toLocaleString('en-US')}`, t('{n} SALES', { n: s.stats.sales }), t('{n} CUSTOMERS', { n: unlocked }), t(s.properties.length === 1 ? '{n} PROPERTY' : '{n} PROPERTIES', { n: s.properties.length })];
+    if (crew) parts.push(t('{n} CREW', { n: crew }));
     if (s.crewName) parts.unshift(s.crewName);
     return parts.join(' · ');
   }
@@ -377,7 +379,7 @@ export class Game implements GameAPI {
     this.applyStateToWorld();
     this.orderTimer = 20;
     this.beginPlay();
-    this.toast('Welcome back to Sol Palma.');
+    this.toast(t('Welcome back to Sol Palma.'));
   }
 
   private beginPlay(): void {
@@ -397,6 +399,15 @@ export class Game implements GameAPI {
     if (key === 'masterVolume') this.audio.setMasterVolume(value);
     if (key === 'radioVolume') this.audio.radio.setVolume(value);
     if (key === 'radioStation') this.audio.radio.tune(value);
+    if (key === 'lang') {
+      setLang(value >= 0.5 ? 'zh' : 'en');
+      this.hud.relabel();
+      this.menu.refresh();
+      if (this.openPanelId) {
+        this.panels[this.openPanelId].setTitle(this.panels[this.openPanelId].title);
+        this.panels[this.openPanelId].render();
+      }
+    }
     if (!persist) return;
     if (this.settingsSaveTimer !== null) clearTimeout(this.settingsSaveTimer);
     this.settingsSaveTimer = window.setTimeout(() => {
@@ -431,7 +442,7 @@ export class Game implements GameAPI {
     } else {
       radio.start();
       const st = radio.current;
-      this.toast(`${this.driving ? 'Car stereo' : 'Walkman'} · ${st.name} ${st.freq} (N: next station)`);
+      this.toast(t('{v0} · {v1} {v2} (N: next station)', { v0: this.driving ? 'Car stereo' : 'Walkman', v1: st.name, v2: st.freq }));
     }
   }
 
@@ -516,73 +527,73 @@ export class Game implements GameAPI {
     const add = (i: Omit<Interactable, 'id' | 'position'>): void => this.interaction.add({ ...base, ...i });
     switch (o.kind) {
       case 'starter_box':
-        add({ prompt: () => (this.state.flags.starterTaken ? null : '[E] OPEN STARTER BOX'), onInteract: () => this.takeStarterBox() });
+        add({ prompt: () => (this.state.flags.starterTaken ? null : t('[E] OPEN STARTER BOX')), onInteract: () => this.takeStarterBox() });
         break;
       case 'prep_table':
-        add({ prompt: () => (owned() ? '[E] USE PREP TABLE' : null), onInteract: () => this.openPanel('prep-panel') });
+        add({ prompt: () => (owned() ? t('[E] USE PREP TABLE') : null), onInteract: () => this.openPanel('prep-panel') });
         break;
       case 'pack_table':
-        add({ prompt: () => (owned() ? '[E] USE PACKAGING TABLE' : null), onInteract: () => this.openPanel('pack-panel') });
+        add({ prompt: () => (owned() ? t('[E] USE PACKAGING TABLE') : null), onInteract: () => this.openPanel('pack-panel') });
         break;
       case 'storage':
-        add({ prompt: () => (owned() ? '[E] OPEN STORAGE' : null), onInteract: () => { this.inventoryUI.storageProperty = o.property ?? 'safehouse'; this.openPanel('inventory-panel'); } });
+        add({ prompt: () => (owned() ? t('[E] OPEN STORAGE') : null), onInteract: () => { this.inventoryUI.storageProperty = o.property ?? 'safehouse'; this.openPanel('inventory-panel'); } });
         break;
       case 'store_counter':
-        add({ prompt: () => '[E] BUY · QUICK STOP 24', onInteract: () => this.openShop('store'), radius: 3.6 });
+        add({ prompt: () => t('[E] BUY · QUICK STOP 24'), onInteract: () => this.openShop('store'), radius: 3.6 });
         break;
       case 'pawn_counter':
-        add({ prompt: () => '[E] BUY · SOL PALMA PAWN', onInteract: () => this.openShop('pawn'), radius: 4.5 });
+        add({ prompt: () => t('[E] BUY · SOL PALMA PAWN'), onInteract: () => this.openShop('pawn'), radius: 4.5 });
         break;
       case 'supplier':
-        add({ prompt: () => "[E] TALK · RICO (SUPPLIER)", onInteract: () => this.openShop('supplier'), radius: 3.5 });
+        add({ prompt: () => t('[E] TALK · RICO (SUPPLIER)'), onInteract: () => this.openShop('supplier'), radius: 3.5 });
         break;
       case 'runner_contact':
-        add({ prompt: () => (this.state.runner?.hired ? null : `[E] TALK · DIZZY (HIRE RUNNER $${RUNNER_HIRE_PRICE})`), onInteract: () => this.talkToDizzy(), radius: 3.5 });
+        add({ prompt: () => (this.state.runner?.hired ? null : t('[E] TALK · DIZZY (HIRE RUNNER ${RUNNER_HIRE_PRICE})', { RUNNER_HIRE_PRICE })), onInteract: () => this.talkToDizzy(), radius: 3.5 });
         break;
       case 'worker_contact':
-        add({ prompt: () => (this.state.worker?.hired ? null : `[E] TALK · MARISOL (HIRE WORKER $${WORKER_HIRE_PRICE})`), onInteract: () => this.talkToMarisol(), radius: 3.5 });
+        add({ prompt: () => (this.state.worker?.hired ? null : t('[E] TALK · MARISOL (HIRE WORKER ${WORKER_HIRE_PRICE})', { WORKER_HIRE_PRICE })), onInteract: () => this.talkToMarisol(), radius: 3.5 });
         break;
       case 'dumpster':
-        add({ prompt: () => (this.hiding ? null : this.state.heat >= 20 ? '[E] HIDE IN DUMPSTER' : '[E] HIDE IN DUMPSTER (nobody is looking for you… yet)'), onInteract: () => this.hideInDumpster(o), radius: 3, aimY: 0.8 });
+        add({ prompt: () => (this.hiding ? null : this.state.heat >= 20 ? t('[E] HIDE IN DUMPSTER') : t('[E] HIDE IN DUMPSTER (nobody is looking for you… yet)')), onInteract: () => this.hideInDumpster(o), radius: 3, aimY: 0.8 });
         break;
       case 'handler_contact':
-        add({ prompt: () => (!owned() || this.state.handler?.hired ? null : `[E] TALK · TEDDY (HIRE HANDLER $${HANDLER_HIRE_PRICE})`), onInteract: () => this.talkToTeddy(), radius: 3.5 });
+        add({ prompt: () => (!owned() || this.state.handler?.hired ? null : t('[E] TALK · TEDDY (HIRE HANDLER ${HANDLER_HIRE_PRICE})', { HANDLER_HIRE_PRICE })), onInteract: () => this.talkToTeddy(), radius: 3.5 });
         break;
       case 'dealer_contact':
-        add({ prompt: () => (this.state.dealer?.hired ? `[E] TALK · VINCE (DEALER · $${Math.round(this.state.dealer.cash)} waiting)` : `[E] TALK · VINCE (HIRE DEALER $${DEALER_HIRE_PRICE})`), onInteract: () => this.talkToVince(), radius: 3.5 });
+        add({ prompt: () => (this.state.dealer?.hired ? t('[E] TALK · VINCE (DEALER · ${v0} waiting)', { v0: Math.round(this.state.dealer.cash) }) : t('[E] TALK · VINCE (HIRE DEALER ${DEALER_HIRE_PRICE})', { DEALER_HIRE_PRICE })), onInteract: () => this.talkToVince(), radius: 3.5 });
         break;
       case 'front_sign':
-        add({ prompt: () => (this.state.properties.includes('laundromat') ? null : `[E] BUY LUCKY LAUNDROMAT ($${FRONT_PRICE}) · legit front`), onInteract: () => this.buyFront(), radius: 3.5 });
+        add({ prompt: () => (this.state.properties.includes('laundromat') ? null : t('[E] BUY LUCKY LAUNDROMAT (${FRONT_PRICE}) · legit front', { FRONT_PRICE })), onInteract: () => this.buyFront(), radius: 3.5 });
         break;
       case 'motel_sign':
-        add({ prompt: () => (this.state.properties.includes('motel') ? null : `[E] RENT ROOM 6 ($${MOTEL_PRICE}) · beach stash + safe spot`), onInteract: () => this.rentMotel(), radius: 3.5 });
+        add({ prompt: () => (this.state.properties.includes('motel') ? null : t('[E] RENT ROOM 6 (${MOTEL_PRICE}) · beach stash + safe spot', { MOTEL_PRICE })), onInteract: () => this.rentMotel(), radius: 3.5 });
         break;
       case 'car_sale':
-        add({ prompt: () => (this.state.vehicle?.owned ? null : `[E] BUY '88 SEDAN ($${VEHICLE_PRICE})`), onInteract: () => this.buyCar(), radius: 4 });
+        add({ prompt: () => (this.state.vehicle?.owned ? null : t("[E] BUY '88 SEDAN (${VEHICLE_PRICE})", { VEHICLE_PRICE })), onInteract: () => this.buyCar(), radius: 4 });
         break;
       case 'respray':
-        add({ prompt: () => (!this.state.vehicle?.owned || this.driving ? null : this.carNearRespray(o) ? `[E] ROJAS RESPRAY ($${RESPRAY_PRICE})` : '[E] ROJAS RESPRAY (bring the sedan here)'), onInteract: () => this.resprayCar(o), radius: 4 });
+        add({ prompt: () => (!this.state.vehicle?.owned || this.driving ? null : this.carNearRespray(o) ? t('[E] ROJAS RESPRAY (${RESPRAY_PRICE})', { RESPRAY_PRICE }) : t('[E] ROJAS RESPRAY (bring the sedan here)')), onInteract: () => this.resprayCar(o), radius: 4 });
         break;
       case 'warehouse_sign':
-        add({ prompt: () => (this.state.properties.includes('warehouse') ? null : `[E] BUY WAREHOUSE 7 ($${WAREHOUSE_PRICE})`), onInteract: () => { this.buyWarehouse(); }, radius: 3.5 });
+        add({ prompt: () => (this.state.properties.includes('warehouse') ? null : t('[E] BUY WAREHOUSE 7 (${WAREHOUSE_PRICE})', { WAREHOUSE_PRICE })), onInteract: () => { this.buyWarehouse(); }, radius: 3.5 });
         break;
       case 'bed':
-        add({ prompt: () => (o.data?.rest || owned() ? '[E] REST UNTIL MORNING' : null), onInteract: () => this.rest(), radius: 3 });
+        add({ prompt: () => (o.data?.rest || owned() ? t('[E] REST UNTIL MORNING') : null), onInteract: () => this.rest(), radius: 3 });
         break;
       case 'dice_table':
-        add({ prompt: () => `[E] STREET DICE · high or low, $${10}-$${200} a throw`, onInteract: () => this.openPanel('dice-panel'), radius: 3 });
+        add({ prompt: () => t('[E] STREET DICE · high or low, ${v0}-${v1} a throw', { v0: 10, v1: 200 }), onInteract: () => this.openPanel('dice-panel'), radius: 3 });
         break;
       case 'bus_stop':
-        add({ prompt: () => `[E] BUS STOP · ride to another district ($${BUS_FARE})`, onInteract: () => { this.busUI.here = String(o.data?.stop ?? ''); this.openPanel('bus-panel'); }, radius: 3.5 });
+        add({ prompt: () => t('[E] BUS STOP · ride to another district (${BUS_FARE})', { BUS_FARE }), onInteract: () => { this.busUI.here = String(o.data?.stop ?? ''); this.openPanel('bus-panel'); }, radius: 3.5 });
         break;
       case 'payphone':
-        add({ prompt: () => (this.payphoneCooldown > 0 ? null : `[E] USE PAYPHONE · CALL AROUND (${this.state.cash < 1 ? 'FREE, you look broke' : '$1'})`), onInteract: () => this.usePayphone(), radius: 2.8 });
+        add({ prompt: () => (this.payphoneCooldown > 0 ? null : t('[E] USE PAYPHONE · CALL AROUND ({v0})', { v0: this.state.cash < 1 ? 'FREE, you look broke' : '$1' })), onInteract: () => this.usePayphone(), radius: 2.8 });
         break;
       case 'club_bar':
-        add({ prompt: () => '[E] ORDER A DRINK ($5)', onInteract: () => this.buyDrink(), radius: 3.5 });
+        add({ prompt: () => t('[E] ORDER A DRINK ($5)'), onInteract: () => this.buyDrink(), radius: 3.5 });
         break;
       case 'fax':
-        add({ prompt: () => '[E] CHECK FAX / LEDGER', onInteract: () => this.openPanel('ledger-panel'), radius: 2.5 });
+        add({ prompt: () => t('[E] CHECK FAX / LEDGER'), onInteract: () => this.openPanel('ledger-panel'), radius: 2.5 });
         break;
       case 'placement_area':
         break;
@@ -644,7 +655,7 @@ export class Game implements GameAPI {
       const p = new Police('cop' + this.policeSpawned++, n.x, n.z, this.city.colliders, this.city.waypoints);
       this.police.push(p);
       this.dynamicGroup.add(p.mesh);
-      if (announce && !curfew) this.toast('District 3 added a patrol. Your name is getting around.', 'warn', 5000);
+      if (announce && !curfew) this.toast(t('District 3 added a patrol. Your name is getting around.'), 'warn', 5000);
     }
     // when the curfew lifts only idle officers clock off: one mid-chase does not vanish
     while (this.police.length > want) {
@@ -730,8 +741,8 @@ export class Game implements GameAPI {
       this.offGridFor = 0;
       this.corneredFor = 0;
       this.audio.play('siren');
-      this.hud.flash('PURSUIT', '#ff5c5c');
-      this.toast('The cruiser is on you. Outrun it, break line of sight, or get off the road grid. Stopping means a search.', 'warn', 6000);
+      this.hud.flash(t('PURSUIT'), '#ff5c5c');
+      this.toast(t('The cruiser is on you. Outrun it, break line of sight, or get off the road grid. Stopping means a search.'), 'warn', 6000);
       return;
     }
     const c = this.pursuer;
@@ -746,7 +757,7 @@ export class Game implements GameAPI {
     if (this.pursuitLost > 8 || this.offGridFor > 4) {
       this.state.flags.lostCruiser = true;
       this.endPursuit(2, 20);
-      this.hud.flash('LOST THEM', '#7dff9a');
+      this.hud.flash(t('LOST THEM'), '#7dff9a');
       this.toast(this.offGridFor > 4 ? 'You lost the cruiser in the alleys. It cannot follow you off the roads.' : 'You lost the cruiser.', 'cash', 5000);
       return;
     }
@@ -776,7 +787,7 @@ export class Game implements GameAPI {
     s.flags.cleanSearch = true;
     s.heat = Math.max(0, s.heat - 15);
     this.audio.play('siren');
-    this.toast('Pulled over. They looked through the car and the trunk, found nothing, and let you go (Heat -15).', 'info', 6000);
+    this.toast(t('Pulled over. They looked through the car and the trunk, found nothing, and let you go (Heat -15).'), 'info', 6000);
   }
 
   private driveCruiser(c: Cruiser, dt: number, safe: boolean, alert: boolean, pursue: { x: number; z: number } | null = null): void {
@@ -882,7 +893,7 @@ export class Game implements GameAPI {
 
     // interaction
     const target = this.driving || this.hiding || this.cutscene.active ? null : this.interaction.update(this.camera, this.camera.position);
-    this.hud.setPrompt(uiOpen || this.arrested ? null : this.hiding ? '[E] CLIMB OUT' : this.driving ? (Math.abs(this.vehicle!.speed) < 1 ? '[E] GET OUT · SPACE HORN · SHIFT BRAKE' : null) : target ? target.prompt() : this.placement ? '[CLICK] PLACE · [R] ROTATE · [ESC] CANCEL' : null);
+    this.hud.setPrompt(uiOpen || this.arrested ? null : this.hiding ? t('[E] CLIMB OUT') : this.driving ? (Math.abs(this.vehicle!.speed) < 1 ? t('[E] GET OUT · SPACE HORN · SHIFT BRAKE') : null) : target ? target.prompt() : this.placement ? '[CLICK] PLACE · [R] ROTATE · [ESC] CANCEL' : null);
     if (this.hiding) this.updateHiding(dt);
     // E works whenever no panel or menu is up, locked or not: closing a panel with Escape leaves the mouse free
     if (!uiOpen && !this.arrested && !this.menu.visible && this.input.wasPressed('KeyE')) {
@@ -899,7 +910,7 @@ export class Game implements GameAPI {
 
     // daily trend + world event
     if (rollTrend(s, this.clock.day)) {
-      this.toast(`STREET TALK: ${s.trend!.effect} is the hot effect today — products with it sell for +25%.`, 'pager', 7000);
+      this.toast(t('STREET TALK: {v0} is the hot effect today — products with it sell for +25%.', { v0: tn(s.trend!.effect) }), 'pager', 7000);
     }
     const ev = rollWorldEvent(s, eventSlot(this.clock.day, this.clock.hour));
     if (ev) {
@@ -922,7 +933,7 @@ export class Game implements GameAPI {
       // ignoring a page is free (declining is); standing up a customer you accepted is not
       if (o.status === 'expired' && o.expiredFrom === 'accepted' && s.customers[o.customerId]) {
         s.customers[o.customerId].relationship = Math.max(0, s.customers[o.customerId].relationship - 2);
-        this.toast(`${c.name.split(' ')[0]} got tired of waiting. Order expired.`, 'warn');
+        this.toast(t('{v0} got tired of waiting. Order expired.', { v0: c.name.split(' ')[0] }), 'warn');
       }
     }
     this.checkCancellations();
@@ -934,15 +945,15 @@ export class Game implements GameAPI {
     if (rr.mishap) {
       const c = CUSTOMER_MAP[rr.mishap.order.customerId];
       this.audio.play('siren');
-      this.hud.flash('DELIVERY LOST', '#ff6b6b');
-      this.toast(`Dizzy got stopped on the way to ${c.name.split(' ')[0]}. Product gone, order lost, HEAT +10. Some runs you walk yourself.`, 'warn', 8000);
+      this.hud.flash(t('DELIVERY LOST'), '#ff6b6b');
+      this.toast(t('Dizzy got stopped on the way to {v0}. Product gone, order lost, HEAT +10. Some runs you walk yourself.', { v0: c.name.split(' ')[0] }), 'warn', 8000);
       this.despawnCustomer(rr.mishap.order.id);
       this.save();
     }
     if (rr.completed) {
       const c = CUSTOMER_MAP[rr.completed.order.customerId];
       this.audio.play('cash');
-      this.toast(`Dizzy delivered to ${c.name.split(' ')[0]}: +$${rr.completed.earned} (Dizzy kept $${rr.completed.cut})`, 'cash');
+      this.toast(t('Dizzy delivered to {v0}: +${v1} (Dizzy kept ${v2})', { v0: c.name.split(' ')[0], v1: rr.completed.earned, v2: rr.completed.cut }), 'cash');
       for (const id of rr.completed.unlocked) this.announceUnlock(id);
       if (runnerTierBefore) this.announceTier(rr.completed.order.customerId, runnerTierBefore);
       this.despawnCustomer(rr.completed.order.id);
@@ -954,21 +965,21 @@ export class Game implements GameAPI {
       this.workerToastTimer -= 1;
       if (this.workerToastTimer <= 0) {
         this.workerToastTimer = 4;
-        this.toast(`Marisol finished ${wr.produced.packaged ? 'a packaged' : 'a loose'} ${recipeDisplayName(s, wr.produced.recipeKey)} (in ${s.worker!.property} storage).`, 'info', 3000);
+        this.toast(t('Marisol finished {v0} {v1} (in {v2} storage).', { v0: t(wr.produced.packaged ? 'a packaged' : 'a loose'), v1: recipeDisplayName(s, wr.produced.recipeKey), v2: tn(s.worker!.property) }), 'info', 3000);
       }
     } else if (wr.blocked && wr.blocked !== 'unassigned') {
       this.workerBlockedTimer -= dt;
       if (this.workerBlockedTimer <= 0) {
         this.workerBlockedTimer = 90;
-        this.toast(`Marisol is idle: ${wr.blocked === 'no_base' ? 'no base supply' : wr.blocked === 'no_mods' ? 'no modifiers' : 'storage full'} in ${s.worker!.property} storage.`, 'warn', 4000);
+        this.toast(t('Marisol is idle: {v0} in {v1} storage.', { v0: t(wr.blocked === 'no_base' ? 'no base supply' : wr.blocked === 'no_mods' ? 'no modifiers' : 'storage full'), v1: tn(s.worker!.property) }), 'warn', 4000);
       }
     }
     // handler: warehouse -> Vince
     const hr = tickHandler(s, this.clock.totalMinutes);
-    if (hr.moved) this.toast(`Teddy dropped ${hr.moved} units at Vince's corner.`, 'info', 3000);
+    if (hr.moved) this.toast(t("Teddy dropped {v0} units at Vince's corner.", { v0: hr.moved }), 'info', 3000);
     if (hr.lost) {
       this.audio.play('siren');
-      this.toast(`Teddy got stopped on the way to Vince: ${hr.lost} units gone, the port is asking questions (suspicion +5).`, 'warn', 6000);
+      this.toast(t('Teddy got stopped on the way to Vince: {v0} units gone, the port is asking questions (suspicion +5).', { v0: hr.lost }), 'warn', 6000);
     }
     if (hr.idle) {
       this.handlerIdleTimer -= 1;
@@ -979,27 +990,27 @@ export class Game implements GameAPI {
     }
     // dealer
     const dr = tickDealer(s, this.clock.totalMinutes);
-    for (const sale of dr.sales) this.toast(`Vince sold ${sale.qty}x ${recipeDisplayName(s, sale.itemKey)} to ${CUSTOMER_MAP[sale.customerId].name.split(' ')[0]} (+$${sale.earned} held).`, 'info', 3000);
+    for (const sale of dr.sales) this.toast(t('Vince sold {v0}x {v1} to {v2} (+${v3} held).', { v0: sale.qty, v1: recipeDisplayName(s, sale.itemKey), v2: CUSTOMER_MAP[sale.customerId].name.split(' ')[0], v3: sale.earned }), 'info', 3000);
     if (dr.tooPricey?.length && dr.sales.length === 0) {
       this.dealerPriceyTimer -= 1;
       if (this.dealerPriceyTimer <= 0) {
         this.dealerPriceyTimer = 6;
-        this.toast(`Vince: "${CUSTOMER_MAP[dr.tooPricey[0]].name.split(' ')[0]} can't afford what you gave me. Corner people carry $75, not $200 — hand me something plain too."`, 'warn', 7000);
+        this.toast(t("Vince: \"{v0} can't afford what you gave me. Corner people carry $75, not $200 — hand me something plain too.\"", { v0: CUSTOMER_MAP[dr.tooPricey[0]].name.split(' ')[0] }), 'warn', 7000);
       }
     }
     if (dr.hassled) {
       this.audio.play('siren');
-      this.toast(`Cops shook Vince down: ${dr.hassled.lost} units lost, HEAT +${dr.hassled.heat}.`, 'warn', 6000);
+      this.toast(t('Cops shook Vince down: {v0} units lost, HEAT +{v1}.', { v0: dr.hassled.lost, v1: dr.hassled.heat }), 'warn', 6000);
     }
     for (const poached of dr.poached ?? []) {
       this.audio.play('error');
-      this.toast(`${CUSTOMER_MAP[poached].name.split(' ')[0]} got tired of Vince's empty corner and now buys from a rival crew. Keep him stocked!`, 'warn', 8000);
+      this.toast(t("{v0} got tired of Vince's empty corner and now buys from a rival crew. Keep him stocked!", { v0: CUSTOMER_MAP[poached].name.split(' ')[0] }), 'warn', 8000);
     }
     if (dr.starved) {
       this.dealerStarvedTimer -= 1;
       if (this.dealerStarvedTimer <= 0) {
         this.dealerStarvedTimer = 3;
-        this.toast('Vince is out of stock. Customers are walking away from his corner.', 'warn', 5000);
+        this.toast(t('Vince is out of stock. Customers are walking away from his corner.'), 'warn', 5000);
       }
     }
     if (this.workerFigure) {
@@ -1027,7 +1038,7 @@ export class Game implements GameAPI {
     const lvl = heatLevel(s.heat);
     if (lvl !== this.lastHeatLevel) {
       if (lvl === 'hunted' || lvl === 'wanted') this.audio.play('siren');
-      if (lvl === 'wanted') this.toast('The cops are actively hunting you. Break line of sight!', 'warn');
+      if (lvl === 'wanted') this.toast(t('The cops are actively hunting you. Break line of sight!'), 'warn');
       this.lastHeatLevel = lvl;
     }
 
@@ -1043,12 +1054,12 @@ export class Game implements GameAPI {
     const raining = this.rainNow;
     if (raining !== this.wasRaining) {
       this.wasRaining = raining;
-      if (raining) this.toast('Rain over Sol Palma. Heat cools a little faster while it lasts.', 'info', 5000);
+      if (raining) this.toast(t('Rain over Sol Palma. Heat cools a little faster while it lasts.'), 'info', 5000);
     }
     const foggy = this.fogNow > 0.5;
     if (foggy !== this.wasFoggy) {
       this.wasFoggy = foggy;
-      if (foggy && this.running) this.toast('Fog over the bay. Nobody sees far this morning — cops included.', 'info', 6000);
+      if (foggy && this.running) this.toast(t('Fog over the bay. Nobody sees far this morning — cops included.'), 'info', 6000);
     }
 
     // radio: car stereo while driving, walkman when toggled
@@ -1102,7 +1113,7 @@ export class Game implements GameAPI {
       this.milestoneTimer = 2;
       for (const m of checkMilestones(s)) {
         this.audio.play('jingle_goal');
-        this.toast(`GOAL: ${m.title} — +$${m.reward}. (${m.hint})`, 'cash', 6000);
+        this.toast(t('GOAL: {v0} — +${v1}. ({v2})', { v0: m.title, v1: m.reward, v2: m.hint }), 'cash', 6000);
       }
       const day = this.clock.day;
       if (day !== s.stats.lastDay) {
@@ -1112,18 +1123,18 @@ export class Game implements GameAPI {
         s.stats.earnedAtDayStart = s.stats.earned;
         s.stats.salesAtDayStart = s.stats.sales;
         this.hud.flash(`DAY ${day}`, '#4ff2e8');
-        if (sales > 0 || earned > 0) this.toast(`NEW DAY ${day}: yesterday you made $${earned} from ${sales} sales.`, 'pager', 7000);
+        if (sales > 0 || earned > 0) this.toast(t('NEW DAY {day}: yesterday you made ${earned} from {sales} sales.', { day, earned, sales }), 'pager', 7000);
         if (s.properties.includes('laundromat')) {
           s.cash += FRONT_DAILY_INCOME;
           s.suspicion = Math.max(0, s.suspicion - FRONT_DAILY_SUSPICION);
-          this.toast(`Lucky Laundromat: +$${FRONT_DAILY_INCOME} clean money, suspicion -${FRONT_DAILY_SUSPICION}.`, 'cash', 5000);
+          this.toast(t('Lucky Laundromat: +${FRONT_DAILY_INCOME} clean money, suspicion -{FRONT_DAILY_SUSPICION}.', { FRONT_DAILY_INCOME, FRONT_DAILY_SUSPICION }), 'cash', 5000);
         }
         const loan = tickLoanDay(s, day);
-        if (loan.dueToday) this.toast(`Pawn shop marker due TODAY: $${s.loan?.owed ?? 0}. Pay at Sol Palma Pawn before midnight.`, 'warn', 7000);
+        if (loan.dueToday) this.toast(t('Pawn shop marker due TODAY: ${v0}. Pay at Sol Palma Pawn before midnight.', { v0: s.loan?.owed ?? 0 }), 'warn', 7000);
         if (loan.late) {
           this.audio.play('error');
-          const took = loan.collected ? ` The collectors took $${loan.collected}.` : ' The collectors found no cash on you.';
-          this.toast(`MARKER OVERDUE: +20% interest and the collectors asked around (heat +${loan.late.heat}, suspicion up).${took} ${loan.cleared ? 'Marker closed.' : `Still owed $${s.loan?.owed ?? 0}.`}`, 'warn', 9000);
+          const took = loan.collected ? t(' The collectors took ${n}.', { n: loan.collected }) : t(' The collectors found no cash on you.');
+          this.toast(t('MARKER OVERDUE: +20% interest and the collectors asked around (heat +{v0}, suspicion up).{took} {v2}', { v0: loan.late.heat, took, v2: loan.cleared ? t('Marker closed.') : t('Still owed ${n}.', { n: s.loan?.owed ?? 0 }) }), 'warn', 9000);
         }
       }
     }
@@ -1180,7 +1191,7 @@ export class Game implements GameAPI {
       if (result === 'searched') {
         this.state.flags.cleanSearch = true;
         this.state.heat = Math.max(0, this.state.heat - 15);
-        this.toast('Stop-and-search: you were clean. The officer lost interest (Heat -15).', 'info', 4000);
+        this.toast(t('Stop-and-search: you were clean. The officer lost interest (Heat -15).'), 'info', 4000);
       }
       if (p.pstate === 'CHASE') {
         for (const c of peds) if (c.state !== 'FLEE' && c.distanceTo(p.position.x, p.position.z) < 7) c.reactTo(p.position.x, p.position.z, true);
@@ -1244,7 +1255,7 @@ export class Game implements GameAPI {
     this.audio.play('pager');
     this.hud.pagerNotify(pagerLine(o, describeRequest(this.state, o)));
     const c = CUSTOMER_MAP[o.customerId];
-    this.toast(`BEEP BEEP · Page from ${c.name}: ${o.qty}x ${describeRequest(this.state, o)} for $${o.price}. Press P.`, 'pager', 6000);
+    this.toast(t('BEEP BEEP · Page from {v0}: {v1}x {v2} for ${v3}. Press P.', { v0: c.name, v1: o.qty, v2: describeRequest(this.state, o), v3: o.price }), 'pager', 6000);
     this.pager.render();
   }
 
@@ -1253,7 +1264,7 @@ export class Game implements GameAPI {
     const o = this.state.orders.find((x) => x.id === id)!;
     this.spawnCustomerFor(o);
     this.audio.play('confirm');
-    this.toast(`Accepted. Meet ${CUSTOMER_MAP[o.customerId].name.split(' ')[0]} at ${landmarkName(o.locationId)}.`);
+    this.toast(t('Accepted. Meet {v0} at {v1}.', { v0: CUSTOMER_MAP[o.customerId].name.split(' ')[0], v1: landmarkName(o.locationId) }));
   }
 
   declineOrder(id: number): void {
@@ -1267,13 +1278,13 @@ export class Game implements GameAPI {
     const who = CUSTOMER_MAP[o.customerId].name.split(' ')[0];
     if (r.outcome === 'accepted') {
       this.audio.play('cash');
-      this.toast(`${who}: "${r.line}" — new price $${r.price}.`, 'cash');
+      this.toast(t('{who}: "{v1}" — new price ${v2}.', { who, v1: r.line, v2: r.price }), 'cash');
     } else if (r.outcome === 'countered') {
       this.audio.play('pager');
-      this.toast(`${who}: "${r.line}"`, 'pager', 5000);
+      this.toast(t('{who}: "{v1}"', { who, v1: r.line }), 'pager', 5000);
     } else {
       this.audio.play('error');
-      this.toast(`${who}: "${r.line}" — order lost.`, 'warn', 5000);
+      this.toast(t('{who}: "{v1}" — order lost.', { who, v1: r.line }), 'warn', 5000);
     }
   }
 
@@ -1295,7 +1306,7 @@ export class Game implements GameAPI {
         if (!order || order.status !== 'accepted') return null;
         const have = findFulfillingItem(this.state, order);
         const late = this.clock.totalMinutes > order.windowEnd;
-        return have ? `[E] SELL ${order.qty}x ${describeRequest(this.state, order)} · $${late ? Math.round(order.price * 0.7) : order.price}${late ? ' (LATE)' : ''}` : `[E] TALK · ${def.name.split(' ')[0]} (needs ${order.qty}x ${describeRequest(this.state, order)})`;
+        return have ? t('[E] SELL {v0}x {v1} · ${v2}{v3}', { v0: order.qty, v1: describeRequest(this.state, order), v2: late ? Math.round(order.price * 0.7) : order.price, v3: late ? t(' (LATE)') : '' }) : t('[E] TALK · {v0} (needs {v1}x {v2})', { v0: def.name.split(' ')[0], v1: order.qty, v2: describeRequest(this.state, order) });
       },
       onInteract: () => this.dealWith(npc),
     });
@@ -1362,11 +1373,11 @@ export class Game implements GameAPI {
     const first = w.def.name.split(' ')[0];
     if (!cs?.unlocked) {
       const sample = this.sampleItem();
-      return sample ? `[E] OFFER SAMPLE (1x ${resolveItem(s, sample).name}) · ${first}, ${w.def.personality}` : `[E] TALK · ${first} (${w.def.personality}) — bring a sample`;
+      return sample ? t('[E] OFFER SAMPLE (1x {v0}) · {first}, {v2}', { v0: resolveItem(s, sample).name, first, v2: w.def.personality }) : t('[E] TALK · {first} ({v1}) — bring a sample', { first, v1: w.def.personality });
     }
     const gate = canStreetSell(s, w.def.id, this.clock.totalMinutes);
-    if (gate.ok) return `[E] SELL ${resolveItem(s, gate.item.id).name} · $${streetUnitPrice(s, w.def.id, gate.item.key)}/unit · ${first}`;
-    return `[E] TALK · ${first} (${w.def.personality})`;
+    if (gate.ok) return t('[E] SELL {v0} · ${v1}/unit · {first}', { v0: resolveItem(s, gate.item.id).name, v1: streetUnitPrice(s, w.def.id, gate.item.key), first });
+    return t('[E] TALK · {first} ({v1})', { first, v1: w.def.personality });
   }
 
   /** Packaged product to hand out: the selected hotbar slot if it is one, else the first packaged stack. */
@@ -1386,7 +1397,7 @@ export class Game implements GameAPI {
       const sample = this.sampleItem();
       if (!sample) {
         w.say(`Do I know you? …No. Come back with something.`, '#b0bec5', 3);
-        this.toast(`${first} (${def.personality}) does not know you yet. Offer a free sample of a packaged product to win them over.`, 'info', 5000);
+        this.toast(t('{first} ({v1}) does not know you yet. Offer a free sample of a packaged product to win them over.', { first, v1: def.personality }), 'info', 5000);
         return;
       }
       const r = offerSample(s, def.id, sample);
@@ -1394,13 +1405,13 @@ export class Game implements GameAPI {
       w.say(r.line!, r.unlocked ? '#7dff9a' : '#ffd166', 4);
       if (r.unlocked) {
         this.audio.play('jingle_customer');
-        this.toast(`NEW CUSTOMER: ${def.name} liked the sample${r.matched ? '' : ' (eventually)'}. They will start paging you.`, 'pager', 6000);
+        this.toast(t('NEW CUSTOMER: {v0} liked the sample{v1}. They will start paging you.', { v0: def.name, v1: r.matched ? '' : t(' (eventually)') }), 'pager', 6000);
         w.setUnlocked(true);
         const eff = r.matched ? def.prefEffects[0] : null;
         if (eff) w.reactTo(this.player.position.x, this.player.position.z, false);
       } else {
         this.audio.play('click');
-        this.toast(`${first}: "${r.line}"`, 'info', 5000);
+        this.toast(t('{first}: "{v1}"', { first, v1: r.line }), 'info', 5000);
       }
       this.save();
       return;
@@ -1416,22 +1427,22 @@ export class Game implements GameAPI {
         const when = f.timePref === 'night' ? ' after dark' : f.timePref === 'day' ? ' during the day' : '';
         const tip = `You know ${f.name.split(' ')[0]}? ${f.personality}, hangs around ${zone}${when}. Loves ${f.prefBase}. Bring a sample.`;
         w.say(`Ask ${f.name.split(' ')[0]} about ${f.prefBase}.`, '#ffd166', 3);
-        this.toast(`${first}: "${tip}"`, 'info', 6000);
+        this.toast(t('{first}: "{tip}"', { first, tip }), 'info', 6000);
         return;
       }
-      const hint = r.reason === 'cooldown' ? `"I'm good for now. Page you later."` : r.reason === 'too_pricey' ? `"That is way over what I've got on me. Got anything plain?"` : r.reason === 'dealer' ? `"Vince takes care of me now. Nice guy. Weird sunglasses."` : r.reason === 'bored' ? `"Same stuff again? Surprise me next time."` : `"I like ${def.prefBase} with ${def.prefEffects.join(' or ')}. Got anything?"`;
+      const hint = r.reason === 'cooldown' ? t('"I\'m good for now. Page you later."') : r.reason === 'too_pricey' ? t('"That is way over what I\'ve got on me. Got anything plain?"') : r.reason === 'dealer' ? t('"Vince takes care of me now. Nice guy. Weird sunglasses."') : r.reason === 'bored' ? t('"Same stuff again? Surprise me next time."') : t('"I like {base} with {effects}. Got any?"', { base: def.prefBase, effects: def.prefEffects.map(tn).join(t(' or ')) });
       w.say(hint.replace(/"/g, ''), '#ffd166', 3);
-      this.toast(`${first}: ${hint}`, 'info', 4000);
+      this.toast(t('{first}: {hint}', { first, hint }), 'info', 4000);
       return;
     }
     this.audio.play('cash');
     this.hud.flash(r.wonBack ? `WON BACK FROM SAL  +$${r.earned}` : `STREET DEAL  +$${r.earned}`, '#7dff9a', flashScale(r.earned!));
     this.announceTier(def.id, tierBeforeStreet);
-    if (r.wonBack) this.toast(`${def.name.split(' ')[0]} is back with you. Sal's crew can keep walking.`, 'cash', 5000);
+    if (r.wonBack) this.toast(t("{v0} is back with you. Sal's crew can keep walking.", { v0: def.name.split(' ')[0] }), 'cash', 5000);
     const name = recipeDisplayName(s, r.itemKey!);
-    this.toast(`+$${r.earned} · Street deal: ${r.qty}x ${name} to ${def.name}${r.trendHit ? ' · TREND BONUS +25%' : ''}`, 'cash');
+    this.toast(t('+${v0} · Street deal: {v1}x {name} to {v3}{v4}', { v0: r.earned, v1: r.qty, name, v3: def.name, v4: r.trendHit ? t(' · TREND BONUS +25%') : '' }), 'cash');
     for (const id of r.unlocked ?? []) this.announceUnlock(id);
-    w.say(def.lines.thanks, '#7dff9a', 3);
+    w.say(tn(def.lines.thanks), '#7dff9a', 3);
     // same exposure rules as a pager deal, but a street corner is a little riskier
     let witnessed = false;
     for (const p of this.police) {
@@ -1466,8 +1477,8 @@ export class Game implements GameAPI {
     const def = npc.def;
     const have = findFulfillingItem(s, order);
     if (!have) {
-      npc.say(def.lines.greet, '#ffd166', 3);
-      this.toast(`${def.name.split(' ')[0]}: "${def.lines.greet}" — bring ${order.qty}x ${describeRequest(s, order)}.`);
+      npc.say(tn(def.lines.greet), '#ffd166', 3);
+      this.toast(t('{v0}: "{v1}" — bring {v2}x {v3}.', { v0: def.name.split(' ')[0], v1: tn(def.lines.greet), v2: order.qty, v3: describeRequest(s, order) }));
       return;
     }
     const tierBefore = relationshipTier(s.customers[order.customerId].relationship);
@@ -1476,9 +1487,9 @@ export class Game implements GameAPI {
     this.audio.play('cash');
     this.hud.flash(r.wonBack ? `WON BACK FROM SAL  +$${r.earned}` : `SOLD  +$${r.earned}`, '#7dff9a', flashScale(r.earned!));
     const name = recipeDisplayName(s, r.itemKey!);
-    this.toast(`+$${r.earned} · Sold ${order.qty}x ${name} to ${def.name}${r.onTime ? '' : ' (late, 30% off)'}${r.trendHit ? ' · TREND BONUS +25%' : ''}`, 'cash');
+    this.toast(t('+${v0} · Sold {v1}x {name} to {v3}{v4}{v5}', { v0: r.earned, v1: order.qty, name, v3: def.name, v4: r.onTime ? '' : t(' (late, 30% off)'), v5: r.trendHit ? t(' · TREND BONUS +25%') : '' }), 'cash');
     const rel = s.customers[def.id];
-    this.toast(`${def.name.split(' ')[0]} relationship ${rel.relationship} (${relationshipTier(rel.relationship)})`, 'info', 2500);
+    this.toast(t('{v0} relationship {v1} ({v2})', { v0: def.name.split(' ')[0], v1: rel.relationship, v2: relationshipTier(rel.relationship) }), 'info', 2500);
     this.announceTier(def.id, tierBefore);
     for (const id of r.unlocked ?? []) this.announceUnlock(id);
     // ---- streamer moments
@@ -1489,7 +1500,7 @@ export class Game implements GameAPI {
     const tooStrong = !!parsed && parsed.mods.length >= 3;
     const reaction: Effect | null = tooStrong ? 'CHAOTIC' : effects.length ? effects[Math.floor(Math.random() * effects.length)] : null;
     if (tooStrong) {
-      this.toast(`${def.name.split(' ')[0]} was not ready for a triple-modifier ${name}. Half the block is watching.`, 'warn', 5000);
+      this.toast(t('{v0} was not ready for a triple-modifier {name}. Half the block is watching.', { v0: def.name.split(' ')[0], name }), 'warn', 5000);
       addHeat(s, 8);
     }
     const line = custom && Math.random() < 0.5 ? `"${custom}"? Who names these things?!` : reaction ? REACTION_LINES[reaction][Math.floor(Math.random() * 3)] : def.lines.thanks;
@@ -1523,7 +1534,7 @@ export class Game implements GameAPI {
     } else if (Math.random() < def.risk * 0.3) {
       addHeat(s, 4);
     }
-    if (this.clock.isNight && Math.random() < 0.15) this.toast('Night deal bonus: nobody looks twice after dark.', 'info', 2500);
+    if (this.clock.isNight && Math.random() < 0.15) this.toast(t('Night deal bonus: nobody looks twice after dark.'), 'info', 2500);
     this.save();
   }
 
@@ -1540,8 +1551,8 @@ export class Game implements GameAPI {
         if (Math.random() > def.reliability && s.flags.firstOrderSent && s.stats.sales > 0) {
           o.status = 'failed';
           this.audio.play('pager');
-          this.hud.pagerNotify(`${def.name.split(' ')[0].toUpperCase()}: CANT MAKE IT\nSORRY. NEXT TIME.`, '[P] PAGER');
-          this.toast(`${def.name.split(' ')[0]} cancelled while you were on the way. Classic ${def.personality}.`, 'warn');
+          this.hud.pagerNotify(t('{v0}: CANT MAKE IT\nSORRY. NEXT TIME.', { v0: def.name.split(' ')[0].toUpperCase() }), '[P] PAGER');
+          this.toast(t('{v0} cancelled while you were on the way. Classic {v1}.', { v0: def.name.split(' ')[0], v1: def.personality }), 'warn');
           npc.startLeaving();
         }
       }
@@ -1552,7 +1563,7 @@ export class Game implements GameAPI {
     const c = CUSTOMER_MAP[id];
     if (!c) return;
     this.audio.play('jingle_customer');
-    this.toast(`NEW CUSTOMER: ${c.name} (${c.personality}) heard about you from ${CUSTOMER_MAP[c.introducedBy ?? '']?.name.split(' ')[0] ?? 'a friend'}.`, 'pager', 6000);
+    this.toast(t('NEW CUSTOMER: {v0} ({v1}) heard about you from {v2}.', { v0: c.name, v1: c.personality, v2: CUSTOMER_MAP[c.introducedBy ?? '']?.name.split(' ')[0] ?? 'a friend' }), 'pager', 6000);
   }
 
   // ------------------------------------------------------------------ actions (GameAPI)
@@ -1607,7 +1618,7 @@ export class Game implements GameAPI {
     const l = LANDMARKS.find((x) => x.id === o.locationId)!;
     if (r.queued) {
       this.audio.play('click');
-      this.toast(`Queued for Dizzy: ${o.qty}x ${describeRequest(this.state, o)} to ${l.name} (after his current run).`);
+      this.toast(t('Queued for Dizzy: {v0}x {v1} to {v2} (after his current run).', { v0: o.qty, v1: describeRequest(this.state, o), v2: l.name }));
       this.despawnCustomer(o.id);
       return;
     }
@@ -1619,19 +1630,19 @@ export class Game implements GameAPI {
       this.runnerNPC.say('On it, boss!', '#7fffd4', 2.5);
     }
     this.audio.play('click');
-    this.toast(`Dizzy grabbed ${o.qty}x ${describeRequest(this.state, o)} from ${r.property} storage and is heading to ${l.name}.`);
+    this.toast(t('Dizzy grabbed {v0}x {v1} from {v2} storage and is heading to {v3}.', { v0: o.qty, v1: describeRequest(this.state, o), v2: r.property, v3: l.name }));
     this.despawnCustomer(o.id);
   }
 
   buy(shopId: string, itemId: string, qty: number): PurchaseResult {
     const r = buyFromShop(this.state, shopId, itemId, qty);
-    if (r.ok && ITEMS[itemId].category === 'equipment' && !itemId.endsWith('_kit')) this.toast(`Bought ${ITEMS[itemId].name}: ${ITEMS[itemId].desc}`, 'cash', 5000);
+    if (r.ok && ITEMS[itemId].category === 'equipment' && !itemId.endsWith('_kit')) this.toast(t('Bought {v0}: {v1}', { v0: ITEMS[itemId].name, v1: ITEMS[itemId].desc }), 'cash', 5000);
     return r;
   }
 
   buyDelivered(shopId: string, itemId: string, qty: number): PurchaseResult {
     const r = buyDelivered(this.state, shopId, itemId, qty);
-    if (r.ok) this.toast(`${qty}x ${ITEMS[itemId].name} will be dropped at Warehouse 7 storage.`, 'info', 2500);
+    if (r.ok) this.toast(t('{qty}x {v1} will be dropped at Warehouse 7 storage.', { qty, v1: ITEMS[itemId].name }), 'info', 2500);
     return r;
   }
 
@@ -1645,33 +1656,33 @@ export class Game implements GameAPI {
 
   nameRecipe(key: string, name: string): boolean {
     const ok = nameRecipe(this.state, key, name);
-    if (ok) this.toast(`Product named "${this.state.recipes[key].customName}".`);
+    if (ok) this.toast(t('Product named "{v0}".', { v0: this.state.recipes[key].customName }));
     return ok;
   }
 
   deposit(property: string, id: string, qty: number): number {
     const n = depositToStorage(this.state, property, id, qty);
     if (n > 0) this.audio.play('click');
-    else this.toast('Storage is full.', 'warn');
+    else this.toast(t('Storage is full.'), 'warn');
     return n;
   }
 
   withdraw(property: string, id: string, qty: number): number {
     const n = withdrawFromStorage(this.state, property, id, qty);
     if (n > 0) this.audio.play('click');
-    else this.toast('No room in your backpack.', 'warn');
+    else this.toast(t('No room in your backpack.'), 'warn');
     return n;
   }
 
   hireRunner(): boolean {
     if (!hireRunner(this.state, RUNNER_HIRE_PRICE)) {
       this.audio.play('error');
-      this.toast(`Dizzy wants $${RUNNER_HIRE_PRICE} up front.`, 'warn');
+      this.toast(t('Dizzy wants ${RUNNER_HIRE_PRICE} up front.', { RUNNER_HIRE_PRICE }), 'warn');
       return false;
     }
     this.audio.play('unlock');
-    this.hud.flash('DIZZY JOINED THE CREW', '#7fffd4');
-    this.toast('Dizzy is on the payroll! Stock packaged products in STORAGE, then use SEND RUNNER on the pager. Dizzy keeps 20%.', 'cash', 8000);
+    this.hud.flash(t('DIZZY JOINED THE CREW'), '#7fffd4');
+    this.toast(t('Dizzy is on the payroll! Stock packaged products in STORAGE, then use SEND RUNNER on the pager. Dizzy keeps 20%.'), 'cash', 8000);
     this.createRunnerNPC();
     this.updateRunnerContact();
     this.save();
@@ -1681,13 +1692,13 @@ export class Game implements GameAPI {
   dealerGive(itemId: string, qty: number): number {
     const n = giveDealerStock(this.state, itemId, qty);
     if (n > 0) this.audio.play('click');
-    else this.toast('Vince cannot carry more.', 'warn');
+    else this.toast(t('Vince cannot carry more.'), 'warn');
     return n;
   }
   dealerTake(itemId: string, qty: number): number {
     const n = takeDealerStock(this.state, itemId, qty);
     if (n > 0) this.audio.play('click');
-    else this.toast('No room in your backpack.', 'warn');
+    else this.toast(t('No room in your backpack.'), 'warn');
     return n;
   }
   dealerAssign(customerId: string, on: boolean): boolean {
@@ -1704,7 +1715,7 @@ export class Game implements GameAPI {
     const n = collectDealerCash(this.state);
     if (n > 0) {
       this.audio.play('collect');
-      this.toast(`Collected $${n} from Vince.`, 'cash');
+      this.toast(t('Collected ${n} from Vince.', { n }), 'cash');
       this.save();
     }
     return n;
@@ -1717,15 +1728,15 @@ export class Game implements GameAPI {
       return;
     }
     if (s.cash < DEALER_HIRE_PRICE) {
-      this.toast(`Vince: "I move product for people who have product. $${DEALER_HIRE_PRICE} buys my corner. You have $${Math.floor(s.cash)}."`, 'info', 5000);
+      this.toast(t('Vince: "I move product for people who have product. ${DEALER_HIRE_PRICE} buys my corner. You have ${v1}."', { DEALER_HIRE_PRICE, v1: Math.floor(s.cash) }), 'info', 5000);
       this.audio.play('error');
       return;
     }
-    if (!this.confirmTwice('dealer', `Hire Vince as a dealer for $${DEALER_HIRE_PRICE}? Give him stock, assign customers, collect cash`)) return;
+    if (!this.confirmTwice('dealer', t('Hire Vince as a dealer for ${DEALER_HIRE_PRICE}? Give him stock, assign customers, collect cash', { DEALER_HIRE_PRICE }))) return;
     if (hireDealer(s, DEALER_HIRE_PRICE)) {
       this.audio.play('unlock');
-      this.hud.flash('VINCE JOINED THE CREW', '#7fffd4');
-      this.toast('Vince works for you now. Hand him packaged product, assign up to 5 customers, and come back for the cash.', 'cash', 8000);
+      this.hud.flash(t('VINCE JOINED THE CREW'), '#7fffd4');
+      this.toast(t('Vince works for you now. Hand him packaged product, assign up to 5 customers, and come back for the cash.'), 'cash', 8000);
       this.save();
       this.openPanel('dealer-panel');
     }
@@ -1767,7 +1778,7 @@ export class Game implements GameAPI {
     }
     this.pendingConfirm = { key, until: now + 5000 };
     this.audio.play('click');
-    this.toast(`${question} — press E again to confirm.`, 'pager', 5000);
+    this.toast(t('{question} — press E again to confirm.', { question }), 'pager', 5000);
     return false;
   }
 
@@ -1775,19 +1786,19 @@ export class Game implements GameAPI {
     const s = this.state;
     if (s.worker?.hired) return;
     if (!s.properties.includes('warehouse')) {
-      this.toast('Marisol: "I do production work, but not in somebody\'s back room. Get a real workspace and we talk."', 'info', 5000);
+      this.toast(t("Marisol: \"I do production work, but not in somebody's back room. Get a real workspace and we talk.\""), 'info', 5000);
       return;
     }
     if (s.cash < WORKER_HIRE_PRICE) {
-      this.toast(`Marisol: "$${WORKER_HIRE_PRICE} and I run your prep line all day. You have $${Math.floor(s.cash)}."`, 'info', 5000);
+      this.toast(t('Marisol: "${WORKER_HIRE_PRICE} and I run your prep line all day. You have ${v1}."', { WORKER_HIRE_PRICE, v1: Math.floor(s.cash) }), 'info', 5000);
       this.audio.play('error');
       return;
     }
-    if (!this.confirmTwice('worker', `Hire Marisol for $${WORKER_HIRE_PRICE}? She turns warehouse supplies into packaged product non-stop`)) return;
+    if (!this.confirmTwice('worker', t('Hire Marisol for ${WORKER_HIRE_PRICE}? She turns warehouse supplies into packaged product non-stop', { WORKER_HIRE_PRICE }))) return;
     if (hireWorker(s, WORKER_HIRE_PRICE, 'warehouse')) {
       this.audio.play('unlock');
-      this.hud.flash('MARISOL JOINED THE CREW', '#7fffd4');
-      this.toast('Marisol is hired! Stock base supplies, modifiers and baggies in WAREHOUSE STORAGE, then assign her a recipe at a PREP TABLE.', 'cash', 9000);
+      this.hud.flash(t('MARISOL JOINED THE CREW'), '#7fffd4');
+      this.toast(t('Marisol is hired! Stock base supplies, modifiers and baggies in WAREHOUSE STORAGE, then assign her a recipe at a PREP TABLE.'), 'cash', 9000);
       this.updateWorkerFigure();
       this.save();
     }
@@ -1797,19 +1808,19 @@ export class Game implements GameAPI {
     const s = this.state;
     if (s.handler?.hired) return;
     if (!s.dealer?.hired) {
-      this.toast('Teddy: "I move product to a corner. You do not have a corner. Go hire Vince at the arcade, then we talk."', 'info', 6000);
+      this.toast(t('Teddy: "I move product to a corner. You do not have a corner. Go hire Vince at the arcade, then we talk."'), 'info', 6000);
       return;
     }
     if (s.cash < HANDLER_HIRE_PRICE) {
       this.audio.play('error');
-      this.toast(`Teddy: "$${HANDLER_HIRE_PRICE} and Vince never runs dry. You have $${Math.floor(s.cash)}."`, 'info', 5000);
+      this.toast(t('Teddy: "${HANDLER_HIRE_PRICE} and Vince never runs dry. You have ${v1}."', { HANDLER_HIRE_PRICE, v1: Math.floor(s.cash) }), 'info', 5000);
       return;
     }
-    if (!this.confirmTwice('handler', `Hire Teddy for $${HANDLER_HIRE_PRICE}? Every hour he carries up to 20 packaged units from Warehouse 7 storage to Vince`)) return;
+    if (!this.confirmTwice('handler', t('Hire Teddy for ${HANDLER_HIRE_PRICE}? Every hour he carries up to 20 packaged units from Warehouse 7 storage to Vince', { HANDLER_HIRE_PRICE }))) return;
     if (hireHandler(s, HANDLER_HIRE_PRICE)) {
       this.audio.play('unlock');
-      this.hud.flash('TEDDY JOINED THE CREW', '#ffd180');
-      this.toast("Teddy is hired! Keep packaged product in WAREHOUSE STORAGE and he keeps Vince's corner stocked. Now and then a trip meets a patrol.", 'cash', 9000);
+      this.hud.flash(t('TEDDY JOINED THE CREW'), '#ffd180');
+      this.toast(t("Teddy is hired! Keep packaged product in WAREHOUSE STORAGE and he keeps Vince's corner stocked. Now and then a trip meets a patrol."), 'cash', 9000);
       this.save();
     }
   }
@@ -1818,11 +1829,11 @@ export class Game implements GameAPI {
     if (this.state.runner?.hired) return;
     const s = this.state;
     if (s.cash < RUNNER_HIRE_PRICE) {
-      this.toast(`Dizzy: "I run packages all over town. $${RUNNER_HIRE_PRICE} and I'm yours. You got $${Math.floor(s.cash)}. Come back richer."`, 'info', 5000);
+      this.toast(t("Dizzy: \"I run packages all over town. ${RUNNER_HIRE_PRICE} and I'm yours. You got ${v1}. Come back richer.\"", { RUNNER_HIRE_PRICE, v1: Math.floor(s.cash) }), 'info', 5000);
       this.audio.play('error');
       return;
     }
-    if (this.confirmTwice('runner', `Hire Dizzy for $${RUNNER_HIRE_PRICE}? Dizzy delivers orders from your storage and keeps 20%`)) this.hireRunner();
+    if (this.confirmTwice('runner', t('Hire Dizzy for ${RUNNER_HIRE_PRICE}? Dizzy delivers orders from your storage and keeps 20%', { RUNNER_HIRE_PRICE }))) this.hireRunner();
   }
 
   buyWarehouse(): boolean {
@@ -1830,18 +1841,18 @@ export class Game implements GameAPI {
     if (s.properties.includes('warehouse')) return false;
     if (s.cash < WAREHOUSE_PRICE) {
       this.audio.play('error');
-      this.toast(`Warehouse 7 costs $${WAREHOUSE_PRICE}. You have $${Math.floor(s.cash)}.`, 'warn');
+      this.toast(t('Warehouse 7 costs ${WAREHOUSE_PRICE}. You have ${v1}.', { WAREHOUSE_PRICE, v1: Math.floor(s.cash) }), 'warn');
       return false;
     }
-    if (!this.confirmTwice('warehouse', `Buy Warehouse 7 for $${WAREHOUSE_PRICE}? Big storage, room for equipment, runner base`)) return false;
+    if (!this.confirmTwice('warehouse', t('Buy Warehouse 7 for ${WAREHOUSE_PRICE}? Big storage, room for equipment, runner base', { WAREHOUSE_PRICE }))) return false;
     spendCash(s, WAREHOUSE_PRICE);
     s.properties.push('warehouse');
     s.storage.warehouse = s.storage.warehouse ?? [];
     this.audio.play('jingle_property');
-    this.hud.flash('WAREHOUSE 7 IS YOURS', '#ffd166');
+    this.hud.flash(t('WAREHOUSE 7 IS YOURS'), '#ffd166');
     this.establishingShot('warehouse', 'WAREHOUSE 7', 'storage · equipment · your crew');
-    this.toast('YOU OWN WAREHOUSE 7. Buy station kits at the pawn shop and place them inside (walk in with a kit, press B).', 'cash', 8000);
-    if (!s.crewName) this.toast('Name your operation at the fax/ledger in your back room — it goes up in neon on the warehouse.', 'info', 7000);
+    this.toast(t('YOU OWN WAREHOUSE 7. Buy station kits at the pawn shop and place them inside (walk in with a kit, press B).'), 'cash', 8000);
+    if (!s.crewName) this.toast(t('Name your operation at the fax/ledger in your back room — it goes up in neon on the warehouse.'), 'info', 7000);
     this.updateWarehouseSign();
     this.refreshCrewSign();
     if (this.runnerNPC) {
@@ -1858,7 +1869,7 @@ export class Game implements GameAPI {
     // sleeping is a night-time reset, not a day-skip button (each skipped day would pay the laundromat and cool suspicion)
     if (h >= 7 && h < 19) {
       this.audio.play('error');
-      this.toast(`Too early to sleep. The bed is for nights (after 19:00) — it is ${this.clock.formatClock()}.`, 'warn');
+      this.toast(t('Too early to sleep. The bed is for nights (after 19:00) — it is {v0}.', { v0: this.clock.formatClock() }), 'warn');
       return;
     }
     const target = h < 7 ? 7 : 7 + 24;
@@ -1868,7 +1879,7 @@ export class Game implements GameAPI {
     s.heat = 0;
     s.suspicion = Math.max(0, s.suspicion - 5);
     this.audio.play('unlock');
-    this.toast('You slept until morning. Heat is gone.', 'info');
+    this.toast(t('You slept until morning. Heat is gone.'), 'info');
     for (const o of expireOrders(s, this.clock.totalMinutes)) {
       this.despawnCustomer(o.id);
       if (o.expiredFrom === 'accepted' && s.customers[o.customerId]) s.customers[o.customerId].relationship = Math.max(0, s.customers[o.customerId].relationship - 2);
@@ -1880,7 +1891,7 @@ export class Game implements GameAPI {
   callAround(): void {
     if (!this.state.upgrades.includes('eq_brickphone')) return;
     if (this.payphoneCooldown > 0) {
-      this.toast(`Battery is recharging… try again in ${Math.ceil(this.payphoneCooldown)}s.`, 'warn');
+      this.toast(t('Battery is recharging… try again in {v0}s.', { v0: Math.ceil(this.payphoneCooldown) }), 'warn');
       return;
     }
     this.usePayphone(true);
@@ -1891,7 +1902,7 @@ export class Game implements GameAPI {
     // broke players still get to call around: the operator takes pity
     const broke = s.cash < 1;
     if (pendingOrders(s).length >= 2) {
-      this.toast('Your pager is already full of messages. Deal with those first.', 'warn');
+      this.toast(t('Your pager is already full of messages. Deal with those first.'), 'warn');
       return;
     }
     if (!fromPhone && !broke) spendCash(s, 1);
@@ -1899,19 +1910,19 @@ export class Game implements GameAPI {
     this.audio.play('click');
     const o = generateOrder(s, { now: this.clock.totalMinutes, simple: s.stats.sales < 2 });
     if (o) {
-      this.toast('You called around… someone paged you back.', 'info');
+      this.toast(t('You called around… someone paged you back.'), 'info');
       setTimeout(() => { if (this.running && this.state.orders.includes(o) && o.status === 'pending') this.announceOrder(o); }, 1200);
-    } else this.toast('Nobody is picking up right now. Try later.', 'warn');
+    } else this.toast(t('Nobody is picking up right now. Try later.'), 'warn');
   }
 
   private buyDrink(): void {
     if (!spendCash(this.state, 5)) {
-      this.toast('Bartender: "No money, no drink."', 'warn');
+      this.toast(t('Bartender: "No money, no drink."'), 'warn');
       return;
     }
     this.audio.play('cash');
     this.state.heat = Math.max(0, this.state.heat - 5);
-    this.toast('You nurse a $5 drink and blend in. Heat -5.');
+    this.toast(t('You nurse a $5 drink and blend in. Heat -5.'));
   }
 
   private syncStarterBox(): void {
@@ -1936,13 +1947,13 @@ export class Game implements GameAPI {
       removeItem(s, 'pulp_sunset', 3 - leftPulp);
       removeItem(s, 'baggies', 6 - leftBags);
       this.audio.play('error');
-      this.toast('Your backpack is full. Make room for 3 Sunset Pulp and 6 baggies first.', 'warn');
+      this.toast(t('Your backpack is full. Make room for 3 Sunset Pulp and 6 baggies first.'), 'warn');
       return;
     }
     s.flags.starterTaken = true;
     this.syncStarterBox();
     this.audio.play('unlock');
-    this.toast('Starter box: 3x Sunset Pulp, 6x Zip Baggies. Prep the pulp at the PREP TABLE, then bag it at PACKAGING.', 'cash', 7000);
+    this.toast(t('Starter box: 3x Sunset Pulp, 6x Zip Baggies. Prep the pulp at the PREP TABLE, then bag it at PACKAGING.'), 'cash', 7000);
   }
 
   placeStation(kind: 'prep_table' | 'pack_table' | 'storage'): boolean {
@@ -1963,7 +1974,7 @@ export class Game implements GameAPI {
     if (watcher) {
       watcher.say('Nice try. Out of the trash.', '#9ecbff', 2.5);
       this.audio.play('error');
-      this.toast('He is right on top of you — break line of sight before you hide.', 'warn', 3500);
+      this.toast(t('He is right on top of you — break line of sight before you hide.'), 'warn', 3500);
       return;
     }
     this.hiding = { x: o.position.x, z: o.position.z, exitX: px, exitZ: pz };
@@ -2024,7 +2035,7 @@ export class Game implements GameAPI {
       position: this.vehicle.position,
       radius: 4,
       aimY: 0.8,
-      prompt: () => (this.driving ? null : '[E] ENTER CAR · [F] TRUNK'),
+      prompt: () => (this.driving ? null : t('[E] ENTER CAR · [F] TRUNK')),
       onInteract: () => this.enterCar(),
     });
   }
@@ -2034,15 +2045,15 @@ export class Game implements GameAPI {
     if (s.properties.includes('laundromat')) return;
     if (s.cash < FRONT_PRICE) {
       this.audio.play('error');
-      this.toast(`The laundromat is $${FRONT_PRICE}. A legit business washes more than socks.`, 'info', 5000);
+      this.toast(t('The laundromat is ${FRONT_PRICE}. A legit business washes more than socks.', { FRONT_PRICE }), 'info', 5000);
       return;
     }
-    if (!this.confirmTwice('front', `Buy Lucky Laundromat for $${FRONT_PRICE}? +$${FRONT_DAILY_INCOME}/day clean income and suspicion drops ${FRONT_DAILY_SUSPICION}/day`)) return;
+    if (!this.confirmTwice('front', t('Buy Lucky Laundromat for ${FRONT_PRICE}? +${FRONT_DAILY_INCOME}/day clean income and suspicion drops {FRONT_DAILY_SUSPICION}/day', { FRONT_PRICE, FRONT_DAILY_INCOME, FRONT_DAILY_SUSPICION }))) return;
     spendCash(s, FRONT_PRICE);
     s.properties.push('laundromat');
     this.audio.play('jingle_property');
     this.establishingShot('laundromat', 'LUCKY LAUNDROMAT', 'clean money every morning');
-    this.toast('You are now a legitimate businessman. Allegedly. The laundromat pays out every morning and cools your reputation.', 'cash', 8000);
+    this.toast(t('You are now a legitimate businessman. Allegedly. The laundromat pays out every morning and cools your reputation.'), 'cash', 8000);
     const sign = this.city.objects.find((o) => o.kind === 'front_sign');
     if (sign) sign.mesh.visible = false;
     this.save();
@@ -2053,16 +2064,16 @@ export class Game implements GameAPI {
     if (s.properties.includes('motel')) return;
     if (s.cash < MOTEL_PRICE) {
       this.audio.play('error');
-      this.toast(`Room 6 is $${MOTEL_PRICE} for the season. You have $${Math.floor(s.cash)}.`, 'info', 5000);
+      this.toast(t('Room 6 is ${MOTEL_PRICE} for the season. You have ${v1}.', { MOTEL_PRICE, v1: Math.floor(s.cash) }), 'info', 5000);
       return;
     }
-    if (!this.confirmTwice('motel', `Rent Room 6 at the Ocean View Motel for $${MOTEL_PRICE}? Beach-side stash, bed, cops stay out`)) return;
+    if (!this.confirmTwice('motel', t('Rent Room 6 at the Ocean View Motel for ${MOTEL_PRICE}? Beach-side stash, bed, cops stay out', { MOTEL_PRICE }))) return;
     spendCash(s, MOTEL_PRICE);
     s.properties.push('motel');
     s.storage.motel = s.storage.motel ?? [];
     this.audio.play('jingle_property');
     this.establishingShot('motel', 'OCEAN VIEW MOTEL · ROOM 6', 'beach-side stash · no cops inside');
-    this.toast('Room 6 is yours: a stash by the beach strip, a bed to rest in, and no cops inside.', 'cash', 7000);
+    this.toast(t('Room 6 is yours: a stash by the beach strip, a bed to rest in, and no cops inside.'), 'cash', 7000);
     const sign = this.city.objects.find((o) => o.kind === 'motel_sign');
     if (sign) sign.mesh.visible = false;
     this.save();
@@ -2073,17 +2084,17 @@ export class Game implements GameAPI {
     if (s.vehicle?.owned) return;
     if (s.cash < VEHICLE_PRICE) {
       this.audio.play('error');
-      this.toast(`Rojas: "$${VEHICLE_PRICE}, runs great, A/C is a rumor." You have $${Math.floor(s.cash)}.`, 'info', 5000);
+      this.toast(t('Rojas: "${VEHICLE_PRICE}, runs great, A/C is a rumor." You have ${v1}.', { VEHICLE_PRICE, v1: Math.floor(s.cash) }), 'info', 5000);
       return;
     }
-    if (!this.confirmTwice('car', `Buy the '88 sedan for $${VEHICLE_PRICE}? Cross town in seconds, drive-by deliveries`)) return;
+    if (!this.confirmTwice('car', t("Buy the '88 sedan for ${VEHICLE_PRICE}? Cross town in seconds, drive-by deliveries", { VEHICLE_PRICE }))) return;
     spendCash(s, VEHICLE_PRICE);
     s.vehicle = { owned: true, x: CAR_SALE_SPOT.x, z: CAR_SALE_SPOT.z + 4, yaw: CAR_SALE_SPOT.yaw };
     this.audio.play('jingle_property');
     const cx = CAR_SALE_SPOT.x;
     const cz = CAR_SALE_SPOT.z + 4;
-    this.playShots([{ from: [cx + 9, 3.5, cz + 9], to: [cx + 5, 2, cz + 4.5], lookFrom: [cx, 0.8, cz], dur: 4, text: "'88 SEDAN", sub: 'yours · E to get in · N radio' }]);
-    this.toast("You own a car. W/S drive · A/D steer · SHIFT brake · SPACE horn · E get out. It saves where you leave it.", 'cash', 8000);
+    this.playShots([{ from: [cx + 9, 3.5, cz + 9], to: [cx + 5, 2, cz + 4.5], lookFrom: [cx, 0.8, cz], dur: 4, text: "'88 SEDAN", sub: t('yours · E to get in · N radio') }]);
+    this.toast(t('You own a car. W/S drive · A/D steer · SHIFT brake · SPACE horn · E get out. It saves where you leave it.'), 'cash', 8000);
     this.syncVehicle();
     this.save();
   }
@@ -2097,13 +2108,13 @@ export class Game implements GameAPI {
     if (!this.vehicle || this.driving) return;
     if (!this.carNearRespray(o)) {
       this.audio.play('error');
-      this.toast('Rojas: "Bring the car into the lot first. I do not paint from memory."', 'info', 4000);
+      this.toast(t('Rojas: "Bring the car into the lot first. I do not paint from memory."'), 'info', 4000);
       return;
     }
     const r = resprayCar(this.state);
     if (!r.ok) {
       this.audio.play('error');
-      this.toast(`Rojas wants $${RESPRAY_PRICE} for a respray. You have $${Math.floor(this.state.cash)}.`, 'warn');
+      this.toast(t('Rojas wants ${RESPRAY_PRICE} for a respray. You have ${v1}.', { RESPRAY_PRICE, v1: Math.floor(this.state.cash) }), 'warn');
       return;
     }
     this.vehicle.setPaint(r.paint!);
@@ -2111,7 +2122,7 @@ export class Game implements GameAPI {
     this.audio.play('door');
     let called = 0;
     for (const p of this.police) if (p.loseTrack()) called++;
-    this.toast(`Rojas sprayed the sedan ${r.name}. ${r.heatDropped ? `Heat -${r.heatDropped}. ` : ''}${called ? 'The cops are looking for the old colour.' : 'Looks new.'}`, 'cash', 6000);
+    this.toast(t('Rojas sprayed the sedan {v0}. {v1}{v2}', { v0: r.name, v1: r.heatDropped ? t('Heat -{n}. ', { n: r.heatDropped }) : '', v2: t(called ? 'The cops are looking for the old colour.' : 'Looks new.') }), 'cash', 6000);
     this.save();
   }
 
@@ -2206,7 +2217,7 @@ export class Game implements GameAPI {
     const ghost = new THREE.Mesh(boxGeo(size[0], size[1], size[2]), lambert('#4ff2e8', { transparent: true, opacity: 0.45 }));
     this.dynamicGroup.add(ghost);
     this.placement = { kind, ghost, rot: 0, item };
-    this.toast('Placement mode: aim at the floor, CLICK to place, R to rotate, ESC to cancel.', 'info', 5000);
+    this.toast(t('Placement mode: aim at the floor, CLICK to place, R to rotate, ESC to cancel.'), 'info', 5000);
   }
 
   private placementArea(): WorldObject | null {
@@ -2261,7 +2272,7 @@ export class Game implements GameAPI {
     this.state.placedStations.push(st);
     this.instantiateStation(st);
     this.audio.play('unlock');
-    this.toast(`Placed ${ITEMS[this.placement.item].name.replace(' Kit', '')}.`, 'cash');
+    this.toast(t('Placed {v0}.', { v0: ITEMS[this.placement.item].name.replace(' Kit', '') }), 'cash');
     this.dynamicGroup.remove(this.placement.ghost);
     this.placement = null;
     this.save();
@@ -2275,18 +2286,18 @@ export class Game implements GameAPI {
 
   private tryStartPlacementFromInventory(): void {
     if (!this.state.properties.includes('warehouse')) {
-      this.toast('Equipment placement needs a warehouse. Warehouse 7 is for sale at the docks.', 'warn');
+      this.toast(t('Equipment placement needs a warehouse. Warehouse 7 is for sale at the docks.'), 'warn');
       return;
     }
     if (!this.playerInsideBuilding('warehouse')) {
-      this.toast('Go inside your warehouse to place equipment.', 'warn');
+      this.toast(t('Go inside your warehouse to place equipment.'), 'warn');
       return;
     }
     const kits: [string, PlacedStation['kind']][] = [['prep_station_kit', 'prep_table'], ['pack_station_kit', 'pack_table'], ['shelf_kit', 'storage']];
     const sel = this.state.inventory[this.hud.selectedSlot];
     const chosen = kits.find(([k]) => sel?.id === k) ?? kits.find(([k]) => countItem(this.state, k) > 0);
     if (!chosen) {
-      this.toast('You have no station kits. The pawn shop sells them once you own the warehouse.', 'warn');
+      this.toast(t('You have no station kits. The pawn shop sells them once you own the warehouse.'), 'warn');
       return;
     }
     this.beginPlacement(chosen[1], chosen[0]);
@@ -2308,26 +2319,26 @@ export class Game implements GameAPI {
     if (this.settings.cutscenes) this.hud.setVisible(false);
     else {
       this.arrestTimer = 3.2;
-      this.hud.flash('BUSTED', '#7fbfff');
+      this.hud.flash(t('BUSTED'), '#7fbfff');
     }
     const r = applyArrest(this.state);
     // busted in or beside the sedan: they pop the trunk too
     const trunkTaken = this.vehicle && this.vehicle.distanceTo(this.player.position.x, this.player.position.z) < 6 ? searchTrunk(this.state) : 0;
-    if (trunkTaken > 0) this.toast(`They popped the trunk: ${trunkTaken} units gone.`, 'warn', 6000);
+    if (trunkTaken > 0) this.toast(t('They popped the trunk: {trunkTaken} units gone.', { trunkTaken }), 'warn', 6000);
     this.clock.totalMinutes = this.state.clockMinutes;
     const items = r.confiscated.map((c) => `${c.qty}x ${resolveItem(this.state, c.id).name}`).join(', ');
     const p = this.player.position;
     const eye: [number, number, number] = [p.x, p.y + 1.6, p.z];
     if (this.settings.cutscenes) this.cutscene.play(
       [
-        { from: eye, to: [p.x + 5, p.y + 9, p.z + 7], lookFrom: [p.x, p.y + 1, p.z], dur: 3.6, text: 'BUSTED', sub: items ? `confiscated: ${items} · fine $${r.fine}` : `fine $${r.fine}` },
-        { from: [p.x + 5, p.y + 9, p.z + 7], to: [p.x + 6, p.y + 10, p.z + 8], lookFrom: [p.x, p.y + 1, p.z], dur: 2.6, fade: 1, text: '6 HOURS LATER', sub: 'Sol Palma County Jail' },
+        { from: eye, to: [p.x + 5, p.y + 9, p.z + 7], lookFrom: [p.x, p.y + 1, p.z], dur: 3.6, text: t('BUSTED'), sub: items ? `confiscated: ${items} · fine $${r.fine}` : `fine $${r.fine}` },
+        { from: [p.x + 5, p.y + 9, p.z + 7], to: [p.x + 6, p.y + 10, p.z + 8], lookFrom: [p.x, p.y + 1, p.z], dur: 2.6, fade: 1, text: t('6 HOURS LATER'), sub: 'Sol Palma County Jail' },
       ],
       () => {
         if (this.arrested) this.arrestTimer = Math.min(this.arrestTimer, 0.01);
       },
     );
-    this.toast(`BUSTED. ${items ? 'Confiscated: ' + items + '. ' : ''}Fine: $${r.fine}. You lost 6 hours in a holding cell.`, 'warn', 9000);
+    this.toast(t('BUSTED. {v0}Fine: ${v1}. You lost 6 hours in a holding cell.', { v0: items ? t('Confiscated: {items}. ', { items }) : '', v1: r.fine }), 'warn', 9000);
     for (const o of this.state.orders) if (o.status === 'failed' || o.status === 'expired') this.despawnCustomer(o.id);
     if (this.openPanelId) this.closePanel();
     this.cancelPlacement();
@@ -2346,7 +2357,7 @@ export class Game implements GameAPI {
       // released in front of the police station
       this.player.teleport(70, 0.3, -24, Math.PI);
       for (const p of this.police) p.pstate = 'PATROL';
-      this.toast('Released. "Stay out of trouble." Your customers are still out there.', 'info', 5000);
+      this.toast(t('Released. "Stay out of trouble." Your customers are still out there.'), 'info', 5000);
       this.orderTimer = 15;
       this.save();
     }
@@ -2418,45 +2429,45 @@ export class Game implements GameAPI {
 
   private computeObjective(): string {
     const s = this.state;
-    if (this.arrested) return 'Being processed at District 3…';
-    if (!s.flags.starterTaken) return 'Open the STARTER BOX in your back room.';
+    if (this.arrested) return t('Being processed at District 3…');
+    if (!s.flags.starterTaken) return t('Open the STARTER BOX in your back room.');
     const pending = pendingOrders(s);
-    if (pending.length) return `Pager: ${pending.length} new order${pending.length > 1 ? 's' : ''}. Press P to accept or decline.`;
-    if (s.loan && loanDaysLeft(s.loan, this.clock.day) <= 0) return `Pawn shop marker ${loanDaysLeft(s.loan, this.clock.day) < 0 ? 'OVERDUE' : 'due today'}: pay $${s.loan.owed} at Sol Palma Pawn.`;
-    if (s.heat >= 60 && s.vehicle?.owned && !this.hiding) return `Hot. Break line of sight, hide in a dumpster, or get the sedan resprayed at Rojas ($${RESPRAY_PRICE}, heat -${RESPRAY_HEAT}).`;
+    if (pending.length) return t(pending.length > 1 ? 'Pager: {v0} new orders. Press P to accept or decline.' : 'Pager: {v0} new order. Press P to accept or decline.', { v0: pending.length });
+    if (s.loan && loanDaysLeft(s.loan, this.clock.day) <= 0) return t('Pawn shop marker {v0}: pay ${v1} at Sol Palma Pawn.', { v0: loanDaysLeft(s.loan, this.clock.day) < 0 ? 'OVERDUE' : 'due today', v1: s.loan.owed });
+    if (s.heat >= 60 && s.vehicle?.owned && !this.hiding) return t('Hot. Break line of sight, hide in a dumpster, or get the sedan resprayed at Rojas (${RESPRAY_PRICE}, heat -{RESPRAY_HEAT}).', { RESPRAY_PRICE, RESPRAY_HEAT });
     const active = activeOrders(s).filter((o) => o.status === 'accepted');
     if (active.length) {
       const o = active[0];
       const c = CUSTOMER_MAP[o.customerId];
       const have = findFulfillingItem(s, o);
-      if (have) return `Deliver ${o.qty}x ${describeRequest(s, o)} to ${c.name.split(' ')[0]} at ${landmarkName(o.locationId)}.`;
+      if (have) return t('Deliver {v0}x {v1} to {v2} at {v3}.', { v0: o.qty, v1: describeRequest(s, o), v2: c.name.split(' ')[0], v3: landmarkName(o.locationId) });
       const loose = looseProductsInInventory(s);
-      if (loose.length) return `Package ${describeRequest(s, o)} at the PACKAGING table (need ${o.qty} baggies).`;
+      if (loose.length) return t('Package {v0} at the PACKAGING table (need {v1} baggies).', { v0: describeRequest(s, o), v1: o.qty });
       const hasBase = ['pulp_sunset', 'wax_velvet', 'gel_neon'].some((id) => countItem(s, id) > 0);
-      if (hasBase) return `Prep ${describeRequest(s, o)} at the PREP TABLE${o.effects.length ? ' — use modifiers to get ' + o.effects.join('+') : ''}.`;
-      return `Buy supplies from Rico at the Container Yard (docks) for ${describeRequest(s, o)}.`;
+      if (hasBase) return t('Prep {v0} at the PREP TABLE{v1}.', { v0: describeRequest(s, o), v1: o.effects.length ? t(' — use modifiers to get {effects}', { effects: o.effects.map(tn).join('+') }) : '' });
+      return t('Buy supplies from Rico at the Container Yard (docks) for {v0}.', { v0: describeRequest(s, o) });
     }
-    if (s.runner?.activeOrderId !== null && s.runner?.hired) return 'Dizzy is out on a delivery. Prep more stock while you wait.';
+    if (s.runner?.activeOrderId !== null && s.runner?.hired) return t('Dizzy is out on a delivery. Prep more stock while you wait.');
     const looseNow = looseProductsInInventory(s);
-    if (looseNow.length && countItem(s, 'baggies') > 0) return `Package your ${recipeDisplayName(s, looseNow[0].key)} at the PACKAGING table.`;
-    if (['pulp_sunset', 'wax_velvet', 'gel_neon'].some((id) => countItem(s, id) > 0) && s.stats.produced === 0) return 'Prep your Sunset Pulp at the PREP TABLE while you wait for a page.';
-    if (s.cash < 30 && !s.loan && s.stats.sales >= 1 && !['pulp_sunset', 'wax_velvet', 'gel_neon'].some((id) => countItem(s, id) > 0) && packagedInInventory(s).length === 0) return `Broke? Sol Palma Pawn writes a $${LOAN_TIERS[0]} marker — pay it back within ${LOAN_DAYS} days.`;
-    if (countItem(s, 'baggies') < 3) return 'Stock up on baggies at Quick Stop 24. Wait for the next page.';
-    if (s.cash >= WAREHOUSE_PRICE && !s.properties.includes('warehouse')) return `You can afford WAREHOUSE 7 ($${WAREHOUSE_PRICE}) at the docks.`;
-    if (s.cash >= RUNNER_HIRE_PRICE && !s.runner?.hired && s.stats.sales >= 4) return `Hire Dizzy the runner near the Ocean View Motel ($${RUNNER_HIRE_PRICE}).`;
-    if (s.properties.includes('warehouse') && !s.worker?.hired && s.cash >= WORKER_HIRE_PRICE) return `Hire Marisol (production worker) at the Port Authority ($${WORKER_HIRE_PRICE}).`;
-    if (!s.dealer?.hired && s.cash >= DEALER_HIRE_PRICE && Object.values(s.customers).filter((c) => c.unlocked).length >= 5) return `Hire Vince as a dealer near Neptune Arcade ($${DEALER_HIRE_PRICE}) to offload customers.`;
-    if (s.dealer?.hired && dealerStockCount(s) === 0 && s.dealer.customers.length > 0) return 'Vince is out of stock: bring him packaged product at Neptune Arcade.';
-    if (s.dealer?.hired && s.properties.includes('warehouse') && !s.handler?.hired && s.cash >= HANDLER_HIRE_PRICE + 200) return `Hire Teddy in the Warehouse 7 office ($${HANDLER_HIRE_PRICE}) to keep Vince stocked from the warehouse.`;
-    if (s.dealer?.hired && s.dealer.cash >= 200) return `Vince is holding $${Math.round(s.dealer.cash)} for you. Swing by Neptune Arcade.`;
-    if (s.worker?.hired && !s.worker.recipeKey) return 'Assign Marisol a recipe at a PREP TABLE and stock the warehouse storage.';
-    if (s.cash >= 220 && !s.upgrades.includes('eq_mixer')) return 'Buy a Turbo Mixer at Sol Palma Pawn ($220) to prep faster.';
-    if (!s.properties.includes('laundromat') && s.cash >= FRONT_PRICE + 300 && s.suspicion >= 20) return `Buy the Lucky Laundromat ($${FRONT_PRICE}) as a legit front to cool your reputation.`;
-    if (!s.properties.includes('motel') && s.cash >= MOTEL_PRICE + 200 && s.properties.includes('warehouse')) return `Rent Room 6 at the Ocean View Motel ($${MOTEL_PRICE}) for a beach-side stash.`;
-    if (!s.vehicle?.owned && s.cash >= VEHICLE_PRICE + 100 && s.stats.sales >= 6) return `Buy the '88 sedan at Rojas Auto Repair ($${VEHICLE_PRICE}) to cross town fast.`;
-    if (packagedInInventory(s).length && s.runner?.hired) return 'Store packaged product in STORAGE so Dizzy can deliver it.';
-    if (s.inventory.filter((st) => !st).length <= 1) return 'Backpack nearly full: the shelf in your back room is STORAGE (E) for supplies and product.';
-    return 'Waiting for a page… restock at Rico (Container Yard, docks) or Quick Stop 24, or use a payphone to call around.';
+    if (looseNow.length && countItem(s, 'baggies') > 0) return t('Package your {v0} at the PACKAGING table.', { v0: recipeDisplayName(s, looseNow[0].key) });
+    if (['pulp_sunset', 'wax_velvet', 'gel_neon'].some((id) => countItem(s, id) > 0) && s.stats.produced === 0) return t('Prep your Sunset Pulp at the PREP TABLE while you wait for a page.');
+    if (s.cash < 30 && !s.loan && s.stats.sales >= 1 && !['pulp_sunset', 'wax_velvet', 'gel_neon'].some((id) => countItem(s, id) > 0) && packagedInInventory(s).length === 0) return t('Broke? Sol Palma Pawn writes a ${v0} marker — pay it back within {LOAN_DAYS} days.', { v0: LOAN_TIERS[0], LOAN_DAYS });
+    if (countItem(s, 'baggies') < 3) return t('Stock up on baggies at Quick Stop 24. Wait for the next page.');
+    if (s.cash >= WAREHOUSE_PRICE && !s.properties.includes('warehouse')) return t('You can afford WAREHOUSE 7 (${WAREHOUSE_PRICE}) at the docks.', { WAREHOUSE_PRICE });
+    if (s.cash >= RUNNER_HIRE_PRICE && !s.runner?.hired && s.stats.sales >= 4) return t('Hire Dizzy the runner near the Ocean View Motel (${RUNNER_HIRE_PRICE}).', { RUNNER_HIRE_PRICE });
+    if (s.properties.includes('warehouse') && !s.worker?.hired && s.cash >= WORKER_HIRE_PRICE) return t('Hire Marisol (production worker) at the Port Authority (${WORKER_HIRE_PRICE}).', { WORKER_HIRE_PRICE });
+    if (!s.dealer?.hired && s.cash >= DEALER_HIRE_PRICE && Object.values(s.customers).filter((c) => c.unlocked).length >= 5) return t('Hire Vince as a dealer near Neptune Arcade (${DEALER_HIRE_PRICE}) to offload customers.', { DEALER_HIRE_PRICE });
+    if (s.dealer?.hired && dealerStockCount(s) === 0 && s.dealer.customers.length > 0) return t('Vince is out of stock: bring him packaged product at Neptune Arcade.');
+    if (s.dealer?.hired && s.properties.includes('warehouse') && !s.handler?.hired && s.cash >= HANDLER_HIRE_PRICE + 200) return t('Hire Teddy in the Warehouse 7 office (${HANDLER_HIRE_PRICE}) to keep Vince stocked from the warehouse.', { HANDLER_HIRE_PRICE });
+    if (s.dealer?.hired && s.dealer.cash >= 200) return t('Vince is holding ${v0} for you. Swing by Neptune Arcade.', { v0: Math.round(s.dealer.cash) });
+    if (s.worker?.hired && !s.worker.recipeKey) return t('Assign Marisol a recipe at a PREP TABLE and stock the warehouse storage.');
+    if (s.cash >= 220 && !s.upgrades.includes('eq_mixer')) return t('Buy a Turbo Mixer at Sol Palma Pawn ($220) to prep faster.');
+    if (!s.properties.includes('laundromat') && s.cash >= FRONT_PRICE + 300 && s.suspicion >= 20) return t('Buy the Lucky Laundromat (${FRONT_PRICE}) as a legit front to cool your reputation.', { FRONT_PRICE });
+    if (!s.properties.includes('motel') && s.cash >= MOTEL_PRICE + 200 && s.properties.includes('warehouse')) return t('Rent Room 6 at the Ocean View Motel (${MOTEL_PRICE}) for a beach-side stash.', { MOTEL_PRICE });
+    if (!s.vehicle?.owned && s.cash >= VEHICLE_PRICE + 100 && s.stats.sales >= 6) return t("Buy the '88 sedan at Rojas Auto Repair (${VEHICLE_PRICE}) to cross town fast.", { VEHICLE_PRICE });
+    if (packagedInInventory(s).length && s.runner?.hired) return t('Store packaged product in STORAGE so Dizzy can deliver it.');
+    if (s.inventory.filter((st) => !st).length <= 1) return t('Backpack nearly full: the shelf in your back room is STORAGE (E) for supplies and product.');
+    return t('Waiting for a page… restock at Rico (Container Yard, docks) or Quick Stop 24, or use a payphone to call around.');
   }
 
   private currentOrderText(): string | null {
@@ -2499,7 +2510,7 @@ export class Game implements GameAPI {
     if (!clean) return;
     this.state.crewName = clean;
     this.audio.play('jingle_property');
-    this.toast(`Your operation is now known as ${clean}.${this.state.properties.includes('warehouse') ? ' The sign on Warehouse 7 is lit.' : ''}`, 'cash', 5000);
+    this.toast(t('Your operation is now known as {clean}.{v1}', { clean, v1: this.state.properties.includes('warehouse') ? t(' The sign on Warehouse 7 is lit.') : '' }), 'cash', 5000);
     this.refreshCrewSign();
     this.save();
     // the neon goes up: a short establishing shot of the sign (only once the warehouse is yours)
@@ -2522,8 +2533,8 @@ export class Game implements GameAPI {
     setTimeout(() => {
       if (!this.running || this.state !== stateAtCall) return;
       this.audio.play('jingle_customer');
-      this.hud.flash(`${first} IS NOW ${after === 'acquaintance' ? 'AN' : 'A'} ${after.toUpperCase()}`, '#ffd166');
-      this.toast(`${CUSTOMER_MAP[customerId].name} is now a ${after}: ${perk}.`, 'cash', 6000);
+      this.hud.flash(t('{first} IS NOW {v1} {v2}', { first, v1: after === 'acquaintance' ? 'AN' : 'A', v2: tn(after).toUpperCase() }), '#ffd166');
+      this.toast(t('{v0} is now a {after}: {perk}.', { v0: CUSTOMER_MAP[customerId].name, after, perk }), 'cash', 6000);
     }, 1700);
   }
 
@@ -2540,7 +2551,7 @@ export class Game implements GameAPI {
       setTimeout(() => this.audio.play('collect'), 350);
       if (r.net! >= 150) this.hud.flash(r.payout === 3 ? `SNAKE EYES  +$${r.net}` : `DICE  +$${r.net}`, '#ffd166', flashScale(r.net!));
     } else setTimeout(() => this.audio.play('chips'), 350);
-    if ((this.state.stats.diceRolls ?? 0) % 10 === 0) this.toast('The guys at the crate are getting loud. Cops notice loud.', 'warn', 4000);
+    if ((this.state.stats.diceRolls ?? 0) % 10 === 0) this.toast(t('The guys at the crate are getting loud. Cops notice loud.'), 'warn', 4000);
     return r;
   }
 
@@ -2553,7 +2564,7 @@ export class Game implements GameAPI {
       return false;
     }
     this.audio.play('cash');
-    this.toast(`Marker written: $${amount} in hand, $${r.owed} due by the end of day ${this.state.loan?.dueDay}. Miss it and the collectors come.`, 'cash', 7000);
+    this.toast(t('Marker written: ${amount} in hand, ${v1} due by the end of day {v2}. Miss it and the collectors come.', { amount, v1: r.owed, v2: this.state.loan?.dueDay }), 'cash', 7000);
     return true;
   }
 
@@ -2561,7 +2572,7 @@ export class Game implements GameAPI {
     const paid = repayLoan(this.state, amount);
     if (paid <= 0) {
       this.audio.play('error');
-      this.toast('Not enough cash on hand.', 'warn');
+      this.toast(t('Not enough cash on hand.'), 'warn');
       return 0;
     }
     this.audio.play('cash');
@@ -2579,12 +2590,12 @@ export class Game implements GameAPI {
     const tail = this.police.find((p) => (p.pstate === 'CHASE' || p.pstate === 'APPROACH') && p.distanceTo(px, pz) < 30);
     if (tail) {
       this.audio.play('error');
-      this.toast('The driver takes one look at the cop behind you and closes the door.', 'warn', 4000);
+      this.toast(t('The driver takes one look at the cop behind you and closes the door.'), 'warn', 4000);
       return;
     }
     if (!spendCash(s, BUS_FARE)) {
       this.audio.play('error');
-      this.toast(`Fare is $${BUS_FARE}. Exact change, no stories.`, 'warn');
+      this.toast(t('Fare is ${BUS_FARE}. Exact change, no stories.', { BUS_FARE }), 'warn');
       return;
     }
     this.closePanel();
@@ -2594,7 +2605,7 @@ export class Game implements GameAPI {
       s.clockMinutes = this.clock.totalMinutes;
       this.player.teleport(dest.x + Math.sin(dest.rot + Math.PI / 2) * 2.5, 0.3, dest.z + Math.cos(dest.rot + Math.PI / 2) * 2.5, dest.rot + Math.PI);
       s.stats.busRides = (s.stats.busRides ?? 0) + 1;
-      this.toast(`${dest.name}. ${BUS_MINUTES} minutes and $${BUS_FARE} well spent.`, 'info', 4000);
+      this.toast(t('{v0}. {BUS_MINUTES} minutes and ${BUS_FARE} well spent.', { v0: dest.name, BUS_MINUTES, BUS_FARE }), 'info', 4000);
       this.save();
     };
     if (this.settings.cutscenes) {
@@ -2722,7 +2733,7 @@ export class Game implements GameAPI {
         if (e.code === 'KeyY') this.acceptOrder(o.id);
         else {
           this.declineOrder(o.id);
-          this.toast(`Declined ${CUSTOMER_MAP[o.customerId].name.split(' ')[0]}'s order.`);
+          this.toast(t("Declined {v0}'s order.", { v0: CUSTOMER_MAP[o.customerId].name.split(' ')[0] }));
         }
         break;
       }

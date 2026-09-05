@@ -5,6 +5,7 @@ import { dealerStockCount } from '../systems/DealerSystem';
 import { CUSTOMERS } from '../data/customers';
 import { DEALER_MAX_CUSTOMERS, DEALER_MAX_STOCK } from '../data/items';
 import { relationshipTier } from '../systems/CustomerSystem';
+import { t, tn } from '../i18n';
 
 /** Dealer management: stock, assigned customers, cash pickup. */
 export class DealerUI extends Panel {
@@ -18,53 +19,53 @@ export class DealerUI extends Panel {
     const body = this.body;
     body.innerHTML = '';
     if (!d?.hired) {
-      body.textContent = 'No dealer hired.';
+      body.textContent = t('No dealer hired.');
       return;
     }
     const top = document.createElement('div');
     top.className = 'row';
-    top.innerHTML = `<span class="name"><b>CASH HELD: <span style="color:#7dff9a">$${Math.round(d.cash)}</span></b><span class="desc">${d.sales} sales · $${Math.round(d.earnedTotal)} lifetime · Vince sells at 65% of street price and keeps nothing (you pay him up front).</span></span>`;
-    const collect = this.button(`COLLECT $${Math.round(d.cash)}`, () => { this.api.dealerCollect(); this.render(); }, 'primary');
+    top.innerHTML = `<span class="name"><b>${t('CASH HELD: ${n}', { n: `<span style="color:#7dff9a">${Math.round(d.cash)}</span>` })}</b><span class="desc">${t('{sales} sales · ${total} lifetime · Vince sells at 65% of street price and keeps nothing (you pay him up front).', { sales: d.sales, total: Math.round(d.earnedTotal) })}</span></span>`;
+    const collect = this.button(t('COLLECT ${n}', { n: Math.round(d.cash) }), () => { this.api.dealerCollect(); this.render(); }, 'primary');
     collect.disabled = d.cash < 1;
     top.appendChild(collect);
     body.appendChild(top);
 
     const stockSec = document.createElement('div');
-    stockSec.innerHTML = `<h3>STOCK (${dealerStockCount(st)}/${DEALER_MAX_STOCK} UNITS)</h3>`;
-    if (d.stock.length === 0) stockSec.innerHTML += '<div style="color:#ffb3c1">Empty. Vince cannot sell air. Hand him packaged product below.</div>';
-    if (st.handler?.hired) stockSec.innerHTML += '<div class="desc" style="color:#ffd180">Teddy restocks this corner from Warehouse 7 storage every hour (up to 20 packaged units a trip).</div>';
+    stockSec.innerHTML = `<h3>${t('STOCK ({n}/{max} UNITS)', { n: dealerStockCount(st), max: DEALER_MAX_STOCK })}</h3>`;
+    if (d.stock.length === 0) stockSec.innerHTML += `<div style="color:#ffb3c1">${t('Empty. Vince cannot sell air. Hand him packaged product below.')}</div>`;
+    if (st.handler?.hired) stockSec.innerHTML += `<div class="desc" style="color:#ffd180">${t('Teddy restocks this corner from Warehouse 7 storage every hour (up to 20 packaged units a trip).')}</div>`;
     for (const s of d.stock) {
       const row = document.createElement('div');
       row.className = 'row';
       row.innerHTML = `<span class="name"><b>${esc(resolveItem(st, s.id).name)}</b> x${s.qty}</span>`;
-      row.appendChild(this.button('TAKE BACK 1', () => { this.api.dealerTake(s.id, 1); this.render(); }));
-      row.appendChild(this.button('TAKE ALL', () => { this.api.dealerTake(s.id, s.qty); this.render(); }));
+      row.appendChild(this.button(t('TAKE BACK 1'), () => { this.api.dealerTake(s.id, 1); this.render(); }));
+      row.appendChild(this.button(t('TAKE ALL'), () => { this.api.dealerTake(s.id, s.qty); this.render(); }));
       stockSec.appendChild(row);
     }
     const packs = packagedInInventory(st);
     if (packs.length) {
-      stockSec.innerHTML += '<h3>HAND OVER FROM BACKPACK</h3>';
+      stockSec.innerHTML += `<h3>${t('HAND OVER FROM BACKPACK')}</h3>`;
       for (const p of packs) {
         const row = document.createElement('div');
         row.className = 'row';
         row.innerHTML = `<span class="name"><b>${esc(resolveItem(st, p.id).name)}</b> x${p.qty}</span>`;
-        row.appendChild(this.button('GIVE 1', () => { this.api.dealerGive(p.id, 1); this.render(); }, 'cyan'));
-        row.appendChild(this.button('GIVE ALL', () => { this.api.dealerGive(p.id, p.qty); this.render(); }, 'cyan'));
+        row.appendChild(this.button(t('GIVE 1'), () => { this.api.dealerGive(p.id, 1); this.render(); }, 'cyan'));
+        row.appendChild(this.button(t('GIVE ALL'), () => { this.api.dealerGive(p.id, p.qty); this.render(); }, 'cyan'));
         stockSec.appendChild(row);
       }
     }
     body.appendChild(stockSec);
 
     const custSec = document.createElement('div');
-    custSec.innerHTML = `<h3>CUSTOMERS HANDLED BY VINCE (${d.customers.length}/${DEALER_MAX_CUSTOMERS})</h3><div class="desc" style="color:#999">Assigned customers stop paging you; Vince sells to them on his own about every hour and a half if he has stock.</div>`;
+    custSec.innerHTML = `<h3>${t('CUSTOMERS HANDLED BY VINCE ({n}/{max})', { n: d.customers.length, max: DEALER_MAX_CUSTOMERS })}</h3><div class="desc" style="color:#999">${t('Assigned customers stop paging you; Vince sells to them on his own about every hour and a half if he has stock.')}</div>`;
     for (const c of CUSTOMERS) {
       const cs = st.customers[c.id];
       if (!cs?.unlocked) continue;
       const on = d.customers.includes(c.id);
       const row = document.createElement('div');
       row.className = 'row';
-      row.innerHTML = `<span class="name"><b>${c.name}</b> <span class="tag">${c.personality.toUpperCase()}</span><span class="tag">${relationshipTier(cs.relationship).toUpperCase()}</span><span class="desc">likes ${c.prefBase} · ${c.homeZone}</span></span>`;
-      const b = this.button(on ? 'REMOVE' : 'ASSIGN', () => { this.api.dealerAssign(c.id, !on); this.render(); }, on ? '' : 'primary');
+      row.innerHTML = `<span class="name"><b>${c.name}</b> <span class="tag">${tn(c.personality).toUpperCase()}</span><span class="tag">${tn(relationshipTier(cs.relationship)).toUpperCase()}</span><span class="desc">${t('likes {base} · {zone}', { base: c.prefBase, zone: tn(c.homeZone) })}</span></span>`;
+      const b = this.button(t(on ? 'REMOVE' : 'ASSIGN'), () => { this.api.dealerAssign(c.id, !on); this.render(); }, on ? '' : 'primary');
       if (!on && d.customers.length >= DEALER_MAX_CUSTOMERS) b.disabled = true;
       row.appendChild(b);
       custSec.appendChild(row);

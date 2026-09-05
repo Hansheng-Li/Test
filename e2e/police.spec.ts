@@ -55,6 +55,7 @@ const placeCop = (page: Page, dist: number, pstate: string) =>
 test('witnessed deal, stop-and-search, bust and the dumpster rule', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => localStorage.setItem('sunset_syndicate_settings', JSON.stringify({ lang: 0 })));
   await page.goto('/');
   await expect(page.locator('#menu h1')).toHaveText('SUNSET SYNDICATE');
   await page.evaluate(() => {

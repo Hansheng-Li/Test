@@ -24,6 +24,7 @@ const g = (page: Page) => page.evaluate(() => { const game = (window as unknown 
 test('title, settings, intro skip, radio, panels, pause and continue', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => localStorage.setItem('sunset_syndicate_settings', JSON.stringify({ lang: 0 })));
   await page.goto('/');
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -32,7 +33,7 @@ test('title, settings, intro skip, radio, panels, pause and continue', async ({ 
 
   // settings fold-out: station picker and cutscene toggle persist
   await page.click('#menu button:has-text("SETTINGS")');
-  await page.selectOption('#menu .settings select', '1');
+  await page.selectOption('#menu .settings select[data-key="radioStation"]', '1');
   expect(await page.evaluate(() => (window as unknown as { game: G }).game.settings.radioStation)).toBe(1);
   await page.click('#menu button:has-text("CREDITS")');
   await expect(page.locator('#menu .credits')).toBeVisible();

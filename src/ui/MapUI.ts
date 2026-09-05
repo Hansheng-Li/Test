@@ -3,6 +3,7 @@ import { GameAPI } from './UIContext';
 import { BUS_STOPS, PAYPHONES, BUILDINGS, LANDMARKS, ROADS_X, ROADS_Z, MAP_MIN_X, MAP_MAX_X, MAP_MIN_Z, MAP_MAX_Z, OCEAN_X, CANAL_X, CANAL_Z, SAFEHOUSE_DOOR, SUPPLIER_SPOT, DEALER_CONTACT_SPOT, RUNNER_CONTACT_SPOT, WORKER_CONTACT_SPOT, PROPERTY_ANCHORS } from '../data/city';
 import { activeOrders } from '../systems/OrderSystem';
 import { CUSTOMER_MAP } from '../data/customers';
+import { t, tn } from '../i18n';
 
 /** Short map names: what fits on a block at a readable size. Anything not listed keeps its full name. */
 const SHORT: Record<string, string> = {
@@ -103,7 +104,7 @@ export class MapUI extends Panel {
     }
     g.setLineDash([]);
     // districts
-    for (const [name, x] of [['DOCKS', -160], ['DOWNTOWN', 30], ['BEACH', 140]] as const) this.text(g, name, this.px(x), this.pz(MAP_MIN_Z + 14), 22, 'rgba(90,60,30,0.55)');
+    for (const [name, x] of [['DOCKS', -160], ['DOWNTOWN', 30], ['BEACH', 140]] as const) this.text(g, t(name), this.px(x), this.pz(MAP_MIN_Z + 14), 22, 'rgba(90,60,30,0.55)');
     // buildings
     const st = this.api.state;
     for (const b of BUILDINGS) {
@@ -117,7 +118,7 @@ export class MapUI extends Panel {
       g.lineWidth = owned ? 3 : 1.5;
       g.strokeRect(x0, z0, b.w * s, b.d * s);
       if (b.w < 22) continue;
-      const label = (SHORT[b.id] ?? b.name).toUpperCase();
+      const label = tn(SHORT[b.id] ?? b.name).toUpperCase();
       const size = quiet ? 10 : 12;
       const lines = this.wrap(g, label, size, b.w * s - 8);
       const cy = this.pz(b.z) - ((lines.length - 1) * (size + 2)) / 2;
@@ -145,7 +146,7 @@ export class MapUI extends Panel {
         g.strokeStyle = '#fff';
         g.lineWidth = 2.5;
         g.stroke();
-        this.text(g, `${CUSTOMER_MAP[o.customerId].name.split(' ')[0]} · ${l.name}`, this.px(l.x) + 8 * s, this.pz(l.z), 14, '#7a0030', 'left');
+        this.text(g, `${CUSTOMER_MAP[o.customerId].name.split(' ')[0]} · ${tn(l.name)}`, this.px(l.x) + 8 * s, this.pz(l.z), 14, '#7a0030', 'left');
       }
     }
     // key spots
@@ -159,14 +160,14 @@ export class MapUI extends Panel {
       g.stroke();
       if (label) this.text(g, label, this.px(x) + (r + 3) * s, this.pz(z), 14, '#1e1208', 'left');
     };
-    dot(SAFEHOUSE_DOOR.x, SAFEHOUSE_DOOR.z, '#2e7d32', 'BACK ROOM (home)');
-    dot(SUPPLIER_SPOT.x, SUPPLIER_SPOT.z, '#ff9800', 'RICO · supplies');
-    if (st.properties.includes('warehouse')) dot(PROPERTY_ANCHORS.warehouse.x, PROPERTY_ANCHORS.warehouse.z, '#2e7d32', 'YOUR WAREHOUSE');
-    if (st.properties.includes('motel')) dot(PROPERTY_ANCHORS.motel.x, PROPERTY_ANCHORS.motel.z, '#2e7d32', 'ROOM 6');
-    if (st.properties.includes('laundromat')) dot(-27, -22, '#2e7d32', 'YOUR LAUNDROMAT');
-    dot(DEALER_CONTACT_SPOT.x, DEALER_CONTACT_SPOT.z, '#8e24aa', st.dealer?.hired ? `VINCE · holding $${Math.round(st.dealer.cash)}` : 'VINCE · dealer for hire');
-    if (!st.runner?.hired) dot(RUNNER_CONTACT_SPOT.x, RUNNER_CONTACT_SPOT.z, '#00838f', 'DIZZY · runner for hire');
-    if (!st.worker?.hired) dot(WORKER_CONTACT_SPOT.x, WORKER_CONTACT_SPOT.z, '#6a1b9a', 'MARISOL · worker for hire');
+    dot(SAFEHOUSE_DOOR.x, SAFEHOUSE_DOOR.z, '#2e7d32', t('BACK ROOM (home)'));
+    dot(SUPPLIER_SPOT.x, SUPPLIER_SPOT.z, '#ff9800', t('RICO · supplies'));
+    if (st.properties.includes('warehouse')) dot(PROPERTY_ANCHORS.warehouse.x, PROPERTY_ANCHORS.warehouse.z, '#2e7d32', t('YOUR WAREHOUSE'));
+    if (st.properties.includes('motel')) dot(PROPERTY_ANCHORS.motel.x, PROPERTY_ANCHORS.motel.z, '#2e7d32', t('ROOM 6'));
+    if (st.properties.includes('laundromat')) dot(-27, -22, '#2e7d32', t('YOUR LAUNDROMAT'));
+    dot(DEALER_CONTACT_SPOT.x, DEALER_CONTACT_SPOT.z, '#8e24aa', st.dealer?.hired ? t('VINCE · holding ${n}', { n: Math.round(st.dealer.cash) }) : t('VINCE · dealer for hire'));
+    if (!st.runner?.hired) dot(RUNNER_CONTACT_SPOT.x, RUNNER_CONTACT_SPOT.z, '#00838f', t('DIZZY · runner for hire'));
+    if (!st.worker?.hired) dot(WORKER_CONTACT_SPOT.x, WORKER_CONTACT_SPOT.z, '#6a1b9a', t('MARISOL · worker for hire'));
     if (this.api.hasScanner()) for (const p of this.api.policeXZ()) dot(p.x, p.z, '#1e88e5', '', 3.5);
     const r = this.api.runnerXZ();
     if (r) dot(r.x, r.z, '#00c2a8', 'DIZZY');
@@ -177,7 +178,7 @@ export class MapUI extends Panel {
     g.arc(this.px(p.x), this.pz(p.z), 11 * s, 0, Math.PI * 2);
     g.fill();
     dot(p.x, p.z, '#d50000', '', 5.5);
-    this.text(g, 'YOU', this.px(p.x), this.pz(p.z) - 9 * s, 16, '#b71c1c');
+    this.text(g, t('YOU'), this.px(p.x), this.pz(p.z) - 9 * s, 16, '#b71c1c');
     // legend: swatches, not bullets
     const items: [string, string, 'dot' | 'box'][] = [['#d50000', 'you', 'dot'], ['#e91e63', 'customer waiting', 'dot'], ['#00c2a8', 'runner', 'dot'], ['#ffd166', 'shops', 'box'], ['#8ef0a5', 'your property', 'box'], ['#1e6fd9', 'payphone', 'box'], ['#e67e22', 'bus stop (B)', 'box'], ['#1e88e5', 'police (scanner)', 'dot']];
     const lh = 22;
@@ -202,7 +203,7 @@ export class MapUI extends Panel {
       g.fillStyle = '#2b1a0c';
       g.textAlign = 'left';
       g.textBaseline = 'middle';
-      g.fillText(label, x + 22, y);
+      g.fillText(t(label), x + 22, y);
     });
   }
 }

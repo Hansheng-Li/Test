@@ -38,6 +38,7 @@ const inv = (page: Page) => page.evaluate(() => (window as unknown as { game: G 
 test('a new player can complete the first sale', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => localStorage.setItem('sunset_syndicate_settings', JSON.stringify({ lang: 0 })));
   await page.goto('/');
   await page.click('#menu button:has-text("NEW GAME")');
   // the opening flyover plays; any key skips it

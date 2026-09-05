@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 /** Base class for modal UI panels. Only one panel is open at a time (managed by Game). */
 export abstract class Panel {
   el: HTMLDivElement;
@@ -5,11 +7,11 @@ export abstract class Panel {
   /** Set by the game: the header's CLOSE button and ESC both go through here. */
   onCloseRequest: (() => void) | null = null;
 
-  constructor(public id: string, title: string, parent: HTMLElement) {
+  constructor(public id: string, public title: string, parent: HTMLElement) {
     this.el = document.createElement('div');
     this.el.className = 'panel';
     this.el.id = id;
-    this.el.innerHTML = `<h2>${title}<button type="button" class="close-hint" title="Close (Esc)">✕ CLOSE · ESC</button></h2><div class="body"></div>`;
+    this.el.innerHTML = `<h2><span class="ptitle">${t(title)}</span><button type="button" class="close-hint" title="${t('Close (Esc)')}">${t('✕ CLOSE · ESC')}</button></h2><div class="body"></div>`;
     parent.appendChild(this.el);
     (this.el.querySelector('.close-hint') as HTMLButtonElement).addEventListener('click', (e) => {
       e.stopPropagation();
@@ -21,9 +23,16 @@ export abstract class Panel {
     return this.el.querySelector('.body') as HTMLDivElement;
   }
 
+  /** Panel title (translated at render time so a language switch applies). */
+  setTitle(title: string): void {
+    (this.el.querySelector('.ptitle') as HTMLElement).textContent = t(title);
+    (this.el.querySelector('.close-hint') as HTMLElement).textContent = t('✕ CLOSE · ESC');
+  }
+
   open(): void {
     this.isOpen = true;
     this.el.classList.add('open');
+    this.setTitle(this.title);
     this.render();
   }
 

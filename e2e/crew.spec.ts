@@ -49,6 +49,7 @@ const prompt = (page: Page) => page.evaluate(() => { const p = document.getEleme
 test('runner delivers from storage and the dealer sells from his corner', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => localStorage.setItem('sunset_syndicate_settings', JSON.stringify({ lang: 0 })));
   await page.goto('/');
   await expect(page.locator('#menu h1')).toHaveText('SUNSET SYNDICATE');
   await page.evaluate(() => {

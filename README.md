@@ -187,6 +187,9 @@ Design rules that shaped the code:
 - Teddy the handler (Warehouse 7 office, needs Vince): every hour he carries up to 20 packaged units from
   warehouse storage to Vince's corner, so Marisol → Teddy → Vince runs while you work the street. One trip
   in twenty meets a patrol and the bag is lost. The cash pickup from Vince stays yours.
+- Simplified Chinese UI by default (English in Settings → Language, switches live): menus, HUD, every panel,
+  prompts, objectives, toasts, item and place names, customer lines. Radio DJs and WSOL still broadcast in
+  English as part of the 1996 Florida setting.
 - Car chases: drive past a cruiser while the city is hot and it leaves its loop to pursue the sedan along
   the road grid (a shade slower than you on the straights, faster in the corners). Sit still within reach
   and you are pulled over: a clean car costs nothing, contraband in the backpack or trunk is a bust. Lose

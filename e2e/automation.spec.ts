@@ -47,6 +47,7 @@ const prompt = (page: Page) => page.evaluate(() => { const p = document.getEleme
 test('warehouse, placed station and worker produce packaged product', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => localStorage.setItem('sunset_syndicate_settings', JSON.stringify({ lang: 0 })));
   await page.goto('/');
   await expect(page.locator('#menu h1')).toHaveText('SUNSET SYNDICATE');
   await page.evaluate(() => {

@@ -6,10 +6,12 @@ export interface Settings {
   radioStation: number;
   /** 1 = play cutscenes (intro, purchases, arrests); 0 = skip them. */
   cutscenes: number;
+  /** UI language: 1 = 简体中文 (default), 0 = English. */
+  lang: number;
 }
 
 const KEY = 'sunset_syndicate_settings';
-const DEFAULTS: Settings = { sensitivity: 1, masterVolume: 0.5, radioVolume: 0.35, radioStation: 0, cutscenes: 1 };
+const DEFAULTS: Settings = { sensitivity: 1, masterVolume: 0.5, radioVolume: 0.35, radioStation: 0, cutscenes: 1, lang: 1 };
 
 export function loadSettings(): Settings {
   try {
@@ -22,6 +24,7 @@ export function loadSettings(): Settings {
       radioVolume: clampNum(p.radioVolume, 0, 1, DEFAULTS.radioVolume),
       radioStation: Math.floor(clampNum(p.radioStation, 0, 8, 0)),
       cutscenes: clampNum(p.cutscenes, 0, 1, 1) >= 0.5 ? 1 : 0,
+      lang: clampNum(p.lang, 0, 1, 1) >= 0.5 ? 1 : 0,
     };
   } catch {
     return { ...DEFAULTS };
