@@ -9,6 +9,7 @@ import { relationshipTier } from '../systems/CustomerSystem';
 import { Order } from '../game/GameState';
 import { activeEvent, describeEvent } from '../systems/EventSystem';
 import { t, tn } from '../i18n';
+import { faceImg } from './Icons';
 
 export function landmarkName(id: string): string {
   if (id === 'street') return t('on the street');
@@ -76,10 +77,14 @@ export class PagerUI extends Panel {
       card.className = 'order-card';
       const c = CUSTOMER_MAP[o.customerId];
       const cs = st.customers[o.customerId];
+      const head = document.createElement('div');
+      head.className = 'order-head';
+      head.innerHTML = faceImg(c.id, c.shirt, 'avatar big');
       const screen = document.createElement('div');
       screen.className = 'pager-screen';
       screen.textContent = pagerLine(o, describeRequest(st, o));
-      card.appendChild(screen);
+      head.appendChild(screen);
+      card.appendChild(head);
       const info = document.createElement('div');
       info.innerHTML = (o.vip ? `<span class="tag" style="background:#5a3a00;color:#ffd166">${t('VIP · BIG MONEY · TIGHT WINDOW')}</span>` : '') + (o.bored ? `<span class="tag" style="background:#1a3a5a;color:#9ecbff">${t('BORED OF THE USUAL · WANTS {effects}', { effects: o.effects.map(tn).join('+') })}</span>` : '') + `<span class="tag">${tn(c.personality).toUpperCase()}</span><span class="tag">${tn(relationshipTier(cs.relationship)).toUpperCase()}</span><span class="tag">${t('REL {n}', { n: cs.relationship })}</span>` +
         (o.effects.length ? o.effects.map((e) => `<span class="tag effect">${tn(e)}</span>`).join('') : '');
@@ -108,11 +113,11 @@ export class PagerUI extends Panel {
       const have = findFulfillingItem(st, o);
       const stock = storageItemForOrder(st, o);
       const request = esc(describeRequest(st, o));
-      card.innerHTML = `<b>${c.name}</b> · ${o.qty}x ${request} · $${o.price}<br/>` +
+      card.innerHTML = `<div class="order-head">${faceImg(c.id, c.shirt)}<div style="flex:1;min-width:0"><b>${c.name}</b> · ${o.qty}x ${request} · $${o.price}<br/>` +
         `${t('MEET: {place} · WINDOW {from}-{to}', { place: landmarkName(o.locationId), from: GameClock.formatMinutes(o.windowStart), to: GameClock.formatMinutes(o.windowEnd) })}<br/>` +
         (o.status === 'runner'
           ? (st.runner?.activeOrderId === o.id ? `<span style="color:#7fffd4">${t('RUNNER ON THE WAY · {pct}%', { pct: Math.round((o.runnerProgress ?? 0) * 100) })}</span>` : `<span style="color:#7fffd4">${t('QUEUED FOR RUNNER')}</span>`)
-          : have ? `<span style="color:#7dff9a">${t('YOU ARE CARRYING THE GOODS')}</span>` : `<span style="color:#ffb3c1">${t('YOU DO NOT HAVE {n}x {what} YET', { n: o.qty, what: request })}</span>`);
+          : have ? `<span style="color:#7dff9a">${t('YOU ARE CARRYING THE GOODS')}</span>` : `<span style="color:#ffb3c1">${t('YOU DO NOT HAVE {n}x {what} YET', { n: o.qty, what: request })}</span>`) + '</div></div>';
       const actions = document.createElement('div');
       actions.className = 'actions';
       if (o.status === 'accepted' && st.runner?.hired) {

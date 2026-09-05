@@ -1,3 +1,4 @@
+import { FACES, faceIndexFor } from '../world/Faces';
 /**
  * Item icons: Kenney Generic Items (CC0), renamed per item id under public/assets/icons/items.
  * Packaged product, loose product and station kits share one icon each. A missing file simply
@@ -13,4 +14,10 @@ export function iconFor(itemId: string): string {
 /** An <img> tag for an item, self-hiding if the file is missing. */
 export function iconImg(itemId: string, cls = 'icon'): string {
   return `<img class="${cls}" src="${iconFor(itemId)}" alt="" draggable="false" onerror="this.style.display='none'">`;
+}
+
+/** A face avatar (Kenney Blocky Characters, the same face the NPC wears) on a coloured tile. */
+export function faceImg(key: string, color: string, cls = 'avatar'): string {
+  const face = FACES[faceIndexFor(key)];
+  return `<span class="${cls}" style="background:${color}"><img src="/assets/textures/faces/${face.file}.png" alt="" onerror="this.style.display='none'"/></span>`;
 }

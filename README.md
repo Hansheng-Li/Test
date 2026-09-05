@@ -190,6 +190,11 @@ Design rules that shaped the code:
 - Teddy the handler (Warehouse 7 office, needs Vince): every hour he carries up to 20 packaged units from
   warehouse storage to Vince's corner, so Marisol → Teddy → Vince runs while you work the street. One trip
   in twenty meets a patrol and the bag is lost. The cash pickup from Vince stays yours.
+- Chapter one is paced by hand: Rico's note on the pager, prep and bag the starter pulp, Tasha's first
+  page (only after the product is bagged), the first sale, a restock trip to Rico at the Container Yard,
+  then the second sale; only then does the pager open up. Story beats arrive as dialogue cards (the
+  speaker's face on the left, text on the right) that never freeze the game: click, Enter, or E with
+  nothing in reach turns the page. Pager messages show the customer's face too.
 - Simplified Chinese UI by default (English in Settings → Language, switches live): menus, HUD, every panel,
   prompts, objectives, toasts, item and place names, customer lines. Radio DJs and WSOL still broadcast in
   English as part of the 1996 Florida setting.

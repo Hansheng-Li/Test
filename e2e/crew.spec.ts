@@ -26,6 +26,7 @@ type G = {
     runner: { hired: boolean; activeOrderId: number | null; deliveries: number } | null;
     dealer: { hired: boolean; stock: { id: string; qty: number }[]; customers: string[]; cash: number; sales: number } | null;
     flags: Record<string, boolean>;
+    stats: { sales: number };
   };
   city: { objects: { kind: string; position: { x: number; y: number; z: number } }[] };
   player: { teleport(x: number, y: number, z: number, yaw: number): void; pitch: number };
@@ -59,6 +60,9 @@ test('runner delivers from storage and the dealer sells from his corner', async 
     game.settings.cutscenes = 0;
     game.input.locked = true;
     game.state.flags.starterTaken = true;
+    // a mid-game crew scenario: chapter one is over, so the pager hands out orders freely
+    game.state.flags.boughtFromRico = true;
+    game.state.stats.sales = 2;
     game.state.cash = 5000;
     game.state.recipes['SUNSET'] = { key: 'SUNSET', base: 'SUNSET', mods: [], effects: ['ENERGY'], value: 24, defaultName: 'SUNSET' };
     game.state.storage.safehouse = [{ id: 'pkg:SUNSET', qty: 20 }];

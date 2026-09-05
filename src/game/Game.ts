@@ -48,6 +48,9 @@ import { relationshipTier } from '../systems/CustomerSystem';
 import { AudioSystem, SfxName } from '../audio/Audio';
 import { HUD } from '../ui/HUD';
 import { Menu } from '../ui/Menu';
+import { Dialogue } from '../ui/Dialogue';
+import { STORY_CARDS } from '../data/story';
+import { storyStep, ordersAllowed, claimStoryCard, markStorySeen } from '../systems/StorySystem';
 import { Panel } from '../ui/Panel';
 import { PagerUI, landmarkName, pagerLine } from '../ui/PagerUI';
 import { InventoryUI } from '../ui/InventoryUI';
@@ -90,6 +93,7 @@ export class Game implements GameAPI {
   audio = new AudioSystem();
   hud: HUD;
   menu: Menu;
+  dialogue: Dialogue;
   interaction = new InteractionSystem();
   panels: Record<string, Panel> = {};
   pager: PagerUI;
@@ -211,6 +215,7 @@ export class Game implements GameAPI {
     this.player.teleport(SPAWN.x, SPAWN.y + 0.2, SPAWN.z, SPAWN.yaw);
 
     this.hud = new HUD(root);
+    this.dialogue = new Dialogue(root);
     this.pager = new PagerUI(root, this);
     this.inventoryUI = new InventoryUI(root, this);
     this.shopUI = new ShopUI(root, this);
@@ -273,6 +278,7 @@ export class Game implements GameAPI {
         this.audio.init();
         this.input.requestLock();
         if (this.placement) this.confirmPlacement();
+        else if (this.dialogue.active) this.dialogue.next();
       }
     });
     document.addEventListener('pointerlockchange', () => {
@@ -297,13 +303,12 @@ export class Game implements GameAPI {
     this.state = createNewState();
     this.applyStateToWorld();
     this.orderTimer = 40;
+    this.dialogue.clear();
     this.tips = [
-      t('Grab the STARTER BOX in your back room. Your pager will go off soon.'),
       t('WASD to move · SHIFT to sprint · E to interact · TAB backpack · P pager · M map'),
       t('1-8 picks the hotbar slot: that is what you hand over as a free sample or a street deal.'),
-      t('People have habits: day folks page less after dark. Payphones (blue on the map) call around for work.'),
     ];
-    this.tipTimer = 0.5;
+    this.tipTimer = 12;
     this.beginPlay();
     if (intro && this.settings.cutscenes) this.playIntro();
   }
@@ -344,6 +349,7 @@ export class Game implements GameAPI {
   quitToTitle(): void {
     this.running = false;
     this.cutscene.cancel();
+    this.dialogue.clear();
     this.arrested = false;
     this.hud.arrestMode = false;
     this.hud.setVisible(false);
@@ -388,6 +394,9 @@ export class Game implements GameAPI {
     }
     this.activeSlot = n;
     this.state = s;
+    // a run that is already past chapter one never replays its cards
+    if (storyStep(s) === 'done') markStorySeen(s);
+    this.dialogue.clear();
     this.applyStateToWorld();
     this.orderTimer = 20;
     this.beginPlay();
@@ -917,6 +926,21 @@ export class Game implements GameAPI {
       }
     }
 
+    // story cards (chapter one): play once per step, advance on click / Enter / E with nothing to interact with
+    this.dialogue.setHidden(uiOpen || this.arrested || this.cutscene.active);
+    if (!uiOpen && !this.arrested && !this.cutscene.active && !this.menu.visible) {
+      const step = claimStoryCard(s);
+      if (step && STORY_CARDS[step]) {
+        this.dialogue.show(STORY_CARDS[step].map((c) => ({ ...c, speaker: t(c.speaker), lines: c.lines.map((l) => t(l)) })));
+        this.audio.play('pager');
+        // the first page follows Tasha's card; the second follows Rico's restock talk
+        if (step === 'page') this.orderTimer = Math.min(this.orderTimer, 8);
+        if (step === 'second') this.orderTimer = Math.min(this.orderTimer, 10);
+      }
+      this.dialogue.update(this.uiDt);
+      if (this.dialogue.active && (this.input.wasPressed('Enter') || (this.input.wasPressed('KeyE') && !target && !this.driving && !this.hiding))) this.dialogue.next();
+    }
+
     // panels
     if (this.openPanelId) this.panels[this.openPanelId].update(this.uiDt);
 
@@ -1244,6 +1268,11 @@ export class Game implements GameAPI {
 
   private tryGenerateOrder(): void {
     const s = this.state;
+    if (!ordersAllowed(s)) {
+      // chapter one: no pages until the first product is bagged, and none while Rico waits for a visit
+      this.orderTimer = 5;
+      return;
+    }
     const pending = pendingOrders(s).length;
     const active = activeOrders(s).length;
     const hasPhone = s.upgrades.includes('eq_brickphone');
@@ -1648,12 +1677,14 @@ export class Game implements GameAPI {
 
   buy(shopId: string, itemId: string, qty: number): PurchaseResult {
     const r = buyFromShop(this.state, shopId, itemId, qty);
+    if (r.ok && shopId === 'supplier') this.state.flags.boughtFromRico = true;
     if (r.ok && ITEMS[itemId].category === 'equipment' && !itemId.endsWith('_kit')) this.toast(t('Bought {v0}: {v1}', { v0: ITEMS[itemId].name, v1: ITEMS[itemId].desc }), 'cash', 5000);
     return r;
   }
 
   buyDelivered(shopId: string, itemId: string, qty: number): PurchaseResult {
     const r = buyDelivered(this.state, shopId, itemId, qty);
+    if (r.ok && shopId === 'supplier') this.state.flags.boughtFromRico = true;
     if (r.ok) this.toast(t('{qty}x {v1} will be dropped at Warehouse 7 storage.', { qty, v1: ITEMS[itemId].name }), 'info', 2500);
     return r;
   }
@@ -2443,7 +2474,10 @@ export class Game implements GameAPI {
     const s = this.state;
     if (this.arrested) return t('Being processed at District 3…');
     if (!s.flags.starterTaken) return t('Open the STARTER BOX in your back room.');
+    const step = storyStep(s);
+    if (step === 'page') return t('Product is bagged. Keep the pager on: Tasha is about to page you.');
     const pending = pendingOrders(s);
+    if (step === 'restock' && !pending.length) return t('Restock: buy Sunset Pulp from Rico at the Container Yard (docks). Bring cash.');
     if (pending.length) return t(pending.length > 1 ? 'Pager: {v0} new orders. Press P to accept or decline.' : 'Pager: {v0} new order. Press P to accept or decline.', { v0: pending.length });
     if (s.loan && loanDaysLeft(s.loan, this.clock.day) <= 0) return t('Pawn shop marker {v0}: pay ${v1} at Sol Palma Pawn.', { v0: loanDaysLeft(s.loan, this.clock.day) < 0 ? 'OVERDUE' : 'due today', v1: s.loan.owed });
     if (s.heat >= 60 && s.vehicle?.owned && !this.hiding) return t('Hot. Break line of sight, hide in a dumpster, or get the sedan resprayed at Rojas (${RESPRAY_PRICE}, heat -{RESPRAY_HEAT}).', { RESPRAY_PRICE, RESPRAY_HEAT });
