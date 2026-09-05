@@ -37,13 +37,13 @@ export class InventoryUI extends Panel {
       cell.className = 'inv-slot';
       if (s) {
         const def = resolveItem(st, s.id);
-        cell.innerHTML = `<span class="qty">x${s.qty}</span>${iconImg(s.id)}<b>${esc(tn(def.name))}</b><span class="meta">${tn(def.category.replace('_', ' '))}${def.desc ? ' · ' + tn(def.desc) : ''}</span>`;
+        cell.innerHTML = `${iconImg(s.id)}<div class="txt"><b>${esc(tn(def.name))}</b> <span class="qty">×${s.qty}</span><span class="meta">${tn(def.category.replace('_', ' '))}${def.desc ? ' · ' + tn(def.desc) : ''}</span></div>`;
         if (this.storageProperty) {
           const b = this.button(t('STORE'), () => { this.api.deposit(this.storageProperty!, s.id, s.qty); this.render(); });
           b.style.marginTop = '4px';
           cell.appendChild(b);
         }
-      } else cell.innerHTML = `<span class="meta">${t('empty slot {n}', { n: i + 1 })}</span>`;
+      } else cell.innerHTML = `<div class="txt"><span class="meta">${t('empty slot {n}', { n: i + 1 })}</span></div>`;
       grid.appendChild(cell);
     });
     left.appendChild(grid);

@@ -62,7 +62,7 @@ import { InventoryUI } from '../ui/InventoryUI';
 import { ShopUI } from '../ui/ShopUI';
 import { PrepUI, PackUI } from '../ui/StationUI';
 import { MapUI } from '../ui/MapUI';
-import { GameAPI, ToastKind } from '../ui/UIContext';
+import { GameAPI, ToastKind, esc } from '../ui/UIContext';
 import { Civilian } from '../entities/NPC';
 import { Police } from '../entities/Police';
 import { Cruiser } from '../entities/Cruiser';
@@ -2788,10 +2788,10 @@ export class Game implements GameAPI {
       .map((o) => {
         const c = CUSTOMER_MAP[o.customerId];
         const have = findFulfillingItem(s, o);
-        const tag = o.status === 'runner' ? `<span class="runner">RUNNER ${Math.round((o.runnerProgress ?? 0) * 100)}%</span>` : have ? '<span style="color:#7dff9a">READY</span>' : '<span style="color:#ffb3c1">NEED PRODUCT</span>';
+        const tag = o.status === 'runner' ? `<span class="runner">${t('RUNNER {pct}%', { pct: Math.round((o.runnerProgress ?? 0) * 100) })}</span>` : have ? `<span style="color:#7dff9a">${t('READY')}</span>` : `<span style="color:#ffb3c1">${t('NEED PRODUCT')}</span>`;
         const left = Math.round(o.windowEnd - this.clock.totalMinutes);
-        const timeTag = o.status === 'runner' ? '' : left < 0 ? ` · <span style="color:#ffb3c1">LATE · 30% off · leaves in ${Math.max(0, LATE_GRACE_MINUTES + left)} min</span>` : ` · ${left} min left`;
-        return `${c.name.split(' ')[0]} · ${o.qty}x ${describeRequest(s, o)} · $${o.price}${o.vip ? ' · <span style="color:#ffd166">VIP</span>' : ''}<br/>${landmarkName(o.locationId)} · by ${GameClock.formatMinutes(o.windowEnd)}${timeTag} · ${tag}`;
+        const timeTag = o.status === 'runner' ? '' : left < 0 ? ` · <span style="color:#ffb3c1">${t('LATE · 30% off · leaves in {n} min', { n: Math.max(0, LATE_GRACE_MINUTES + left) })}</span>` : ` · ${t('{n} min left', { n: left })}`;
+        return `<b>${c.name.split(' ')[0]}</b> · ${o.qty}× ${esc(describeRequest(s, o))} · $${o.price}${o.vip ? ' · <span style="color:#ffd166">VIP</span>' : ''}<br/>${landmarkName(o.locationId)} · ${t('by {time}', { time: GameClock.formatMinutes(o.windowEnd) })}${timeTag} · ${tag}`;
       })
       .join('<hr style="border:0;border-top:1px solid #444;margin:4px 0"/>');
   }

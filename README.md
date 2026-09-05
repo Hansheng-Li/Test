@@ -197,6 +197,10 @@ Design rules that shaped the code:
   starter box holds a baseball bat. Select the bat on the hotbar and left-click to swing: a cop in the arc
   goes down for four seconds and cannot arrest you (heat +18, and he comes up chasing), civilians scatter
   (heat +6), the rest of the block takes notice.
+- Orders read as cards, not beeper code: the customer's face and name, then labelled rows for what they
+  want, what they pay, where and by when, and their note; the HUD beeper shows the same in two lines. Panels
+  use a larger face with more line height, backpack slots put the icon left of the text, and at most three
+  toasts stack at once.
 - The journal (J) is the game's table of contents: the chapter-one checklist (also shown in the HUD
   objective box until the chapter is done), what to do right now, active orders and the next goals; a
   directory of every key place and customer hangout with what it is for, the price of what it sells and

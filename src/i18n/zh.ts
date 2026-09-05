@@ -464,6 +464,17 @@ export const ZH: Record<string, string> = {
   'Good for It': '守信', 'Pay off a pawn shop marker.': '还清一张当铺借条。',
   'New Coat': '新漆', 'Get the sedan resprayed at Rojas.': '在 Rojas 给轿车喷一次漆。',
   'Sunset Syndicate': '日落辛迪加', 'Earn $10,000 lifetime.': '累计赚到 $10,000。',
+  // ---- readable orders
+  WANTS: '要什么',
+  PAYS: '出价',
+  WHERE: '地点',
+  BY: '时间',
+  'by {time}': '{time} 前',
+  'RUNNER {pct}%': '跑腿 {pct}%',
+  READY: '货已备好',
+  'NEED PRODUCT': '还没货',
+  'LATE · 30% off · leaves in {n} min': '迟到 · 七折 · {n} 分钟后离开',
+  '{n} min left': '剩 {n} 分钟',
   // ---- menu
   'SOL PALMA, FLORIDA · 1996': '佛罗里达 · 索尔帕尔马 · 1996',
   CONTINUE: '继续游戏',

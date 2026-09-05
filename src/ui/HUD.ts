@@ -248,7 +248,7 @@ export class HUD {
     t.className = 'toast ' + kind;
     t.textContent = msg;
     this.toastsEl.appendChild(t);
-    while (this.toastsEl.children.length > 4) this.toastsEl.removeChild(this.toastsEl.firstChild!);
+    while (this.toastsEl.children.length > 3) this.toastsEl.removeChild(this.toastsEl.firstChild!);
     setTimeout(() => t.remove(), ms);
   }
 
