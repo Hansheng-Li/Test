@@ -321,6 +321,7 @@ export class Game implements GameAPI {
       setSetting: (key, value) => this.applySetting(key, value),
     });
     this.applySetting('sensitivity', this.settings.sensitivity, false);
+    this.applySetting('bgmVolume', this.settings.bgmVolume, false);
     this.applySetting('masterVolume', this.settings.masterVolume, false);
     this.applySetting('radioVolume', this.settings.radioVolume, false);
     this.applySetting('radioStation', this.settings.radioStation, false);
@@ -424,6 +425,7 @@ export class Game implements GameAPI {
     this.hud.arrestMode = false;
     this.hud.setVisible(false);
     if (this.audio.radio.playing) this.audio.radio.stop();
+    this.audio.setBgm(false);
     this.audio.setEngine(false, 0);
     this.audio.setTitleMusic(true);
     this.clock.totalMinutes = Math.floor(this.clock.totalMinutes / (24 * 60)) * 24 * 60 + 19 * 60;
@@ -489,6 +491,7 @@ export class Game implements GameAPI {
     if (key === 'sensitivity') this.player.sensitivity = 0.0022 * value;
     if (key === 'masterVolume') this.audio.setMasterVolume(value);
     if (key === 'radioVolume') this.audio.radio.setVolume(value);
+    if (key === 'bgmVolume') this.audio.setBgmVolume(value);
     if (key === 'radioStation') this.audio.radio.tune(value);
     if (key === 'lang') {
       setLang(value >= 0.5 ? 'zh' : 'en');
@@ -545,6 +548,7 @@ export class Game implements GameAPI {
   pause(): void {
     if (!this.running) return;
     this.audio.setEngine(false, 0);
+    this.audio.setBgm(false);
     this.expectUnlock = true;
     this.input.releaseLock();
     this.menu.show('pause');
@@ -1184,6 +1188,8 @@ export class Game implements GameAPI {
       this.audio.radio.setLevel(this.inCar ? 1 : 0.7);
       this.audio.radio.update(this.uiDt);
     }
+    // a quiet music bed whenever nothing else is playing
+    this.audio.setBgm(this.running && !wantRadio && !this.menu.visible && !this.cutscene.active && !this.arrested && this.settings.bgmVolume > 0.01);
     // dancers + beach night crowd only at night
     const night = this.clock.isNight;
     for (const c of this.nightCrowd) {

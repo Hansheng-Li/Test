@@ -35,6 +35,9 @@ const ONE_SHOT = new Set<SfxName>(['jingle_goal', 'jingle_customer', 'jingle_bus
  * Procedural WebAudio sound effects and an ambient bed. No external assets.
  * The context is created lazily on the first user gesture.
  */
+/** A few CC0 tracks the music bed cycles through (see public/assets/LICENSES.md); missing files just mean silence. */
+const BGM_TRACKS = ['holizna_city_lights', 'komiku_sunset_on_the_beach', 'holizna_night_driving'];
+
 export class AudioSystem {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -234,6 +237,50 @@ export class AudioSystem {
 
   private titleEl: HTMLAudioElement | null = null;
   private titleGain: GainNode | null = null;
+  private bgmEl: HTMLAudioElement | null = null;
+  private bgmGain: GainNode | null = null;
+  private bgmOn = false;
+  private bgmVolume = 0.4;
+  private bgmIndex = 0;
+
+  /** Quiet music while the radio is off: fades in and out, moves to the next track when one ends. */
+  setBgm(on: boolean): void {
+    if (!this.ctx || !this.master) return;
+    if (on === this.bgmOn && (on ? !!this.bgmEl : true)) return;
+    this.bgmOn = on;
+    const ctx = this.ctx;
+    if (!this.bgmEl) {
+      if (!on) return;
+      try {
+        this.bgmEl = new Audio(`/assets/music/${BGM_TRACKS[this.bgmIndex]}.ogg`);
+        this.bgmGain = ctx.createGain();
+        this.bgmGain.gain.value = 0;
+        ctx.createMediaElementSource(this.bgmEl).connect(this.bgmGain).connect(this.master);
+        this.bgmEl.addEventListener('ended', () => {
+          if (!this.bgmEl) return;
+          this.bgmIndex = (this.bgmIndex + 1) % BGM_TRACKS.length;
+          this.bgmEl.src = `/assets/music/${BGM_TRACKS[this.bgmIndex]}.ogg`;
+          if (this.bgmOn) void this.bgmEl.play().catch(() => undefined);
+        });
+      } catch {
+        this.bgmEl = null;
+        return;
+      }
+    }
+    if (!this.bgmGain) return;
+    this.bgmGain.gain.setTargetAtTime(on ? this.bgmVolume * 0.5 : 0, ctx.currentTime, on ? 1.5 : 0.5);
+    if (on && this.bgmEl.paused) void this.bgmEl.play().catch(() => undefined);
+    if (!on) window.setTimeout(() => { if (this.bgmEl && !this.bgmOn) this.bgmEl.pause(); }, 1600);
+  }
+
+  setBgmVolume(v: number): void {
+    this.bgmVolume = v;
+    if (this.bgmGain && this.ctx && this.bgmOn) this.bgmGain.gain.setTargetAtTime(v * 0.5, this.ctx.currentTime, 0.2);
+  }
+
+  get bgmPlaying(): boolean {
+    return this.bgmOn && !!this.bgmEl && !this.bgmEl.paused;
+  }
 
   /** Title-screen theme (CC0 'Retro Synths'); needs a user gesture first, so call it from a click. */
   setTitleMusic(on: boolean): void {

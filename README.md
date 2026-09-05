@@ -227,6 +227,9 @@ Design rules that shaped the code:
   then the second sale; only then does the pager open up. Story beats arrive as dialogue cards (the
   speaker's face on the left, text on the right) that never freeze the game: click, Enter, or E with
   nothing in reach turns the page. Pager messages show the customer's face too.
+- A quiet music bed (three of the CC0 radio tracks, cycling) plays whenever the radio is off and you are
+  in the city; it fades under the radio, cutscenes, arrests and menus. Settings → Music volume (radio off)
+  sets it, 0 turns it off.
 - Simplified Chinese UI by default (English in Settings → Language, switches live): menus, HUD, every panel,
   prompts, objectives, toasts, item and place names, customer lines. Radio DJs and WSOL still broadcast in
   English as part of the 1996 Florida setting.

@@ -2,7 +2,7 @@ import { STATIONS } from '../audio/Radio';
 import { t, getLang } from '../i18n';
 import { esc } from './UIContext';
 
-type SettingKey = 'sensitivity' | 'masterVolume' | 'radioVolume' | 'cutscenes' | 'radioStation' | 'lang';
+type SettingKey = 'sensitivity' | 'masterVolume' | 'radioVolume' | 'bgmVolume' | 'cutscenes' | 'radioStation' | 'lang';
 
 const HOWTO_EN = `
         <b style="color:#4ff2e8">THE LOOP</b> · Pager beeps → accept → buy supplies from Rico (docks) → PREP TABLE → PACKAGING → walk to the meeting spot → E to sell.<br/>
@@ -117,7 +117,7 @@ export class Menu {
       row.style.margin = '6px 0';
       return row;
     };
-    const slider = (label: string, key: 'sensitivity' | 'masterVolume' | 'radioVolume', min: number, max: number, step: number): void => {
+    const slider = (label: string, key: 'sensitivity' | 'masterVolume' | 'radioVolume' | 'bgmVolume', min: number, max: number, step: number): void => {
       const row = rowOf();
       const lbl = document.createElement('span');
       lbl.textContent = t(label);
@@ -159,6 +159,7 @@ export class Menu {
     slider('Mouse sensitivity', 'sensitivity', 0.2, 3, 0.05);
     slider('Master volume', 'masterVolume', 0, 1, 0.05);
     slider('Radio volume', 'radioVolume', 0, 1, 0.05);
+    slider('Music volume (radio off)', 'bgmVolume', 0, 1, 0.05);
     select('Radio station', 'radioStation', STATIONS.map((s, i) => ({ value: i, label: `${s.name} ${s.freq}` })), st.radioStation);
     const row = document.createElement('label');
     row.style.display = 'flex';

@@ -2,6 +2,8 @@ export interface Settings {
   sensitivity: number;
   masterVolume: number;
   radioVolume: number;
+  /** Background music bed while the radio is off (0 = none). */
+  bgmVolume: number;
   /** Last tuned station index. */
   radioStation: number;
   /** 1 = play cutscenes (intro, purchases, arrests); 0 = skip them. */
@@ -11,7 +13,7 @@ export interface Settings {
 }
 
 const KEY = 'sunset_syndicate_settings';
-const DEFAULTS: Settings = { sensitivity: 1, masterVolume: 0.5, radioVolume: 0.35, radioStation: 0, cutscenes: 1, lang: 1 };
+const DEFAULTS: Settings = { sensitivity: 1, masterVolume: 0.5, radioVolume: 0.35, bgmVolume: 0.4, radioStation: 0, cutscenes: 1, lang: 1 };
 
 export function loadSettings(): Settings {
   try {
@@ -22,6 +24,7 @@ export function loadSettings(): Settings {
       sensitivity: clampNum(p.sensitivity, 0.2, 3, DEFAULTS.sensitivity),
       masterVolume: clampNum(p.masterVolume, 0, 1, DEFAULTS.masterVolume),
       radioVolume: clampNum(p.radioVolume, 0, 1, DEFAULTS.radioVolume),
+      bgmVolume: clampNum(p.bgmVolume, 0, 1, DEFAULTS.bgmVolume),
       radioStation: Math.floor(clampNum(p.radioStation, 0, 8, 0)),
       cutscenes: clampNum(p.cutscenes, 0, 1, 1) >= 0.5 ? 1 : 0,
       lang: clampNum(p.lang, 0, 1, 1) >= 0.5 ? 1 : 0,

@@ -524,6 +524,7 @@ export const ZH: Record<string, string> = {
   'Mouse sensitivity': '鼠标灵敏度',
   'Master volume': '主音量',
   'Radio volume': '电台音量',
+  'Music volume (radio off)': '背景音乐音量（电台关闭时）',
   'Radio station': '电台频道',
   'Cutscenes (intro, purchases, arrests)': '过场动画（开场、购置、被捕）',
   Language: '语言 / Language',
