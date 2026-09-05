@@ -980,7 +980,7 @@ export class Game implements GameAPI {
 
     // interaction
     const target = this.driving || this.hiding || this.cutscene.active ? null : this.interaction.update(this.camera, this.camera.position);
-    this.hud.setPrompt(uiOpen || this.arrested ? null : this.hiding ? t('[E] CLIMB OUT') : this.driving ? (Math.abs(this.ride!.speed) < 1 ? t(this.inCar ? '[E] GET OUT · SPACE HORN · SHIFT BRAKE' : '[E] GET OFF · SHIFT BRAKE') : null) : target ? target.prompt() : this.placement ? '[CLICK] PLACE · [R] ROTATE · [ESC] CANCEL' : this.state.inventory[this.hud.selectedSlot]?.id === 'pistol' ? t('[CLICK] FIRE · {n} ROUNDS', { n: countItem(this.state, 'rounds') }) : null);
+    this.hud.setPrompt(uiOpen || this.arrested ? null : this.hiding ? t('[E] CLIMB OUT') : this.driving ? (Math.abs(this.ride!.speed) < 1 ? t('[E] GET OUT · SPACE HORN · SHIFT DRIFT · F NITRO') : null) : target ? target.prompt() : this.placement ? '[CLICK] PLACE · [R] ROTATE · [ESC] CANCEL' : this.state.inventory[this.hud.selectedSlot]?.id === 'pistol' ? t('[CLICK] FIRE · {n} ROUNDS', { n: countItem(this.state, 'rounds') }) : null);
     if (this.hiding) this.updateHiding(dt);
     // E works whenever no panel or menu is up, locked or not: closing a panel with Escape leaves the mouse free
     if (!uiOpen && !this.arrested && !this.menu.visible && this.input.wasPressed('KeyE')) {
@@ -1271,7 +1271,7 @@ export class Game implements GameAPI {
     }
 
     this.hud.setClickHint(!this.input.locked && !uiOpen && !this.arrested);
-    this.hud.speedText = this.driving && this.ride ? `${Math.round(this.ride.mph)} MPH` : null;
+    this.hud.speedText = this.driving && this.ride ? `${Math.round(this.ride.mph)} MPH · ${t('NITRO')} ${'▮'.repeat(Math.round(this.ride.nitro * 5))}${'▯'.repeat(5 - Math.round(this.ride.nitro * 5))}${this.ride.drifting ? ' · ' + t('DRIFT') : ''}` : this.player.sprintOn ? t('SPRINT') : null;
     this.hud.stamina = this.player.stamina;
     this.updateCompass();
     this.minimapTimer -= this.uiDt;
@@ -2260,7 +2260,7 @@ export class Game implements GameAPI {
     const cx = CAR_SALE_SPOT.x;
     const cz = CAR_SALE_SPOT.z + 4;
     this.playShots([{ from: [cx + 9, 3.5, cz + 9], to: [cx + 5, 2, cz + 4.5], lookFrom: [cx, 0.8, cz], dur: 4, text: "'88 SEDAN", sub: t('yours · E to get in · N radio') }]);
-    this.toast(t('You own a car. W/S drive · A/D steer · SHIFT brake · SPACE horn · E get out. It saves where you leave it.'), 'cash', 8000);
+    this.toast(t('You own a car. W/S drive · A/D steer · SHIFT handbrake (drift at speed) · F nitro · SPACE horn · E get out. It saves where you leave it.'), 'cash', 8000);
     this.syncVehicle();
     this.save();
   }
@@ -2311,7 +2311,7 @@ export class Game implements GameAPI {
     this.cancelPlacement();
     if (v.kind === 'beater' && !this.state.flags.droveStarter) {
       this.state.flags.droveStarter = true;
-      this.toast(t("Rico's hatchback: W/S drive · A/D steer · SHIFT brake · SPACE horn · E get out. It saves where you leave it."), 'info', 7000);
+      this.toast(t("Rico's hatchback: W/S drive · A/D steer · SHIFT handbrake (drift at speed) · F nitro · SPACE horn · E get out. It saves where you leave it."), 'info', 7000);
     }
   }
 

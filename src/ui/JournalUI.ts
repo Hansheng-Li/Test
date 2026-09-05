@@ -18,7 +18,7 @@ type Tab = 'tasks' | 'places' | 'people' | 'controls';
 const KEYS: [string, string][] = [
   ['W A S D', 'Move'],
   ['Mouse', 'Look around'],
-  ['Shift', 'Sprint'],
+  ['Shift', 'Toggle sprint · handbrake in the car (drifts at speed)'],
   ['Space', 'Jump · stir and seal inside station panels · horn in the car'],
   ['E', 'Interact: talk, buy, use a station, sell, get in a car'],
   ['Left click', 'Swing the bat / fire the pistol (selected on the hotbar)'],
@@ -29,7 +29,7 @@ const KEYS: [string, string][] = [
   ['Tab', 'Backpack, product book, customer book'],
   ['M', 'Paper map (the radar in the corner is always on)'],
   ['N', 'Radio: next station / off'],
-  ['F', 'Sedan trunk (stand beside the parked sedan)'],
+  ['F', 'Nitro in the car · sedan trunk when standing beside it'],
   ['B', 'Place equipment inside your warehouse'],
   ['H', 'Hide the HUD'],
   ['Esc', 'Close a panel · pause menu (save, settings)'],

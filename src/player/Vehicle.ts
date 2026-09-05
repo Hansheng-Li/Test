@@ -26,12 +26,19 @@ export class Vehicle {
   /** Body materials Rojas can respray (box body + hood, or the model's paint* materials). */
   private paintMats: THREE.MeshLambertMaterial[] = [];
   private hornCooldown = 0;
-  maxSpeed = 16;
-  reverseMax = -5;
-  accel = 9;
-  brake = 18;
+  maxSpeed = 22.4;
+  reverseMax = -6;
+  accel = 12;
+  brake = 22;
   friction = 3.5;
   lastHit = 0;
+  /** Direction the car actually travels; lags behind `yaw` while drifting. */
+  private travelYaw = 0;
+  /** True while the handbrake is sliding the car sideways. */
+  drifting = false;
+  /** 0..1 nitro charge; F burns it, it refills when unused. */
+  nitro = 1;
+  boosting = false;
 
   /** Half-width of the collision body. */
   private bodyRadius = 1.05;
@@ -71,12 +78,13 @@ export class Vehicle {
     }
     this.position.set(x, 0.15, z);
     this.yaw = yaw;
+    this.travelYaw = yaw;
     if (kind === 'beater') {
       // Rico's old hatchback: slower, softer brakes, rust for paint
-      this.maxSpeed = 11;
-      this.reverseMax = -4;
-      this.accel = 6.5;
-      this.brake = 14;
+      this.maxSpeed = 15.4;
+      this.reverseMax = -5;
+      this.accel = 8.5;
+      this.brake = 17;
       this.bodyRadius = 0.95;
       this.setPaint('#9a5b34');
     }
@@ -148,17 +156,28 @@ export class Vehicle {
       this.hornCooldown = 0.6;
       result = 'horn';
     }
-    if (fwd) this.speed += this.accel * dt;
+    // nitro: Ctrl burns the charge for a big push; it refills slowly when unused
+    this.boosting = input.isDown('KeyF') && this.nitro > 0.02 && fwd && this.speed > 1;
+    if (this.boosting) this.nitro = Math.max(0, this.nitro - dt / 2.5);
+    else this.nitro = Math.min(1, this.nitro + dt / 9);
+    const top = this.maxSpeed * (this.boosting ? 1.3 : 1);
+    if (fwd) this.speed += this.accel * (this.boosting ? 2.2 : 1) * dt;
     else if (back) this.speed -= (this.speed > 0 ? this.brake : this.accel * 0.6) * dt;
     else this.speed -= Math.sign(this.speed) * Math.min(Math.abs(this.speed), this.friction * dt);
-    if (handbrake) this.speed -= Math.sign(this.speed) * Math.min(Math.abs(this.speed), this.brake * 1.2 * dt);
-    this.speed = Math.max(this.reverseMax, Math.min(this.maxSpeed, this.speed));
+    // handbrake at speed: the rear steps out (drift); at low speed it just brakes
+    this.drifting = handbrake && Math.abs(this.speed) > 7;
+    if (handbrake) this.speed -= Math.sign(this.speed) * Math.min(Math.abs(this.speed), (this.drifting ? this.friction * 2.5 : this.brake * 1.2) * dt);
+    this.speed = Math.max(this.reverseMax, Math.min(top, this.speed));
     const targetSteer = (left ? 1 : 0) - (right ? 1 : 0);
     this.steer += (targetSteer - this.steer) * Math.min(1, dt * 8);
-    const steerRate = 1.8 * Math.min(1, Math.abs(this.speed) / 6);
+    const steerRate = (this.drifting ? 3.2 : 1.8) * Math.min(1, Math.abs(this.speed) / 6);
     this.yaw += this.steer * steerRate * dt * Math.sign(this.speed || 1);
-    const vx = Math.sin(this.yaw) * this.speed;
-    const vz = Math.cos(this.yaw) * this.speed;
+    // the travel direction follows the nose: instantly with grip, lazily in a drift
+    let rel = this.yaw - this.travelYaw;
+    rel = Math.atan2(Math.sin(rel), Math.cos(rel));
+    this.travelYaw += rel * Math.min(1, dt * (this.drifting ? 2.2 : 14));
+    const vx = Math.sin(this.travelYaw) * this.speed;
+    const vz = Math.cos(this.travelYaw) * this.speed;
     const pos = { x: this.position.x, y: this.position.y, z: this.position.z };
     const vel = { x: vx, y: -2, z: vz };
     const before = { x: pos.x, z: pos.z };
@@ -194,9 +213,27 @@ export class Vehicle {
     };
   }
 
-  /** Where the player stands after getting out (driver side). */
+  /** Where the player stands after getting out: the driver side, or the first side that is not inside a wall. */
   exitSpot(): { x: number; z: number } {
+    const candidates: [number, number][] = [[-2.3, 0], [2.3, 0], [-2.3, 2.2], [2.3, 2.2], [0, -3.8], [0, 3.8], [-2.3, -2.2], [2.3, -2.2]];
+    for (const [lx, lz] of candidates) {
+      const p = this.local(lx, lz);
+      if (this.spotFree(p.x, p.z)) return p;
+    }
     return this.local(-2.3, 0);
+  }
+
+  /** No solid box overlaps a standing player at (x, z). */
+  private spotFree(x: number, z: number): boolean {
+    const r = 0.4;
+    const y0 = this.position.y + 0.3;
+    const y1 = y0 + 1.7;
+    for (const b of this.world.query(x - r, z - r, x + r, z + r)) {
+      if (b.maxY <= y0 || b.minY >= y1) continue;
+      if (b.maxX <= x - r || b.minX >= x + r || b.maxZ <= z - r || b.minZ >= z + r) continue;
+      return false;
+    }
+    return true;
   }
 
   /** Camera yaw that looks along the car's heading (player convention: forward = (-sin, -cos)). */

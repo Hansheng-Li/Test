@@ -31,7 +31,7 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | --- | --- |
 | `W A S D` | Move |
 | Mouse | Look |
-| `Shift` | Sprint (drains stamina; refills when you slow down) |
+| `Shift` | Toggle sprint on foot (no need to hold it); handbrake in the car, which drifts at speed |
 | `Space` | Jump (also: STIR / SEAL inside station panels) |
 | `E` | Interact (talk, buy, use station, sell, open storage…) |
 | `Tab` | Backpack, product book, customer book |
@@ -45,7 +45,7 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | `N` | Radio: cycles SOL PALMA FM → THE WAVE → FUNK CITY → SIGNAL ZERO → off (walkman on foot, car stereo while driving) |
 | any key | Skips a cutscene (Escape pauses instead) |
 | `H` | Hide/show the HUD (screenshot mode) |
-| `W S A D` / `Shift` / `Space` | In the car: drive / brake / horn |
+| `W S A D` / `Shift` / `F` / `Space` | In the car: drive / handbrake & drift / nitro (a five-bar charge that refills when unused) / horn |
 | `R` | Rotate equipment in placement mode |
 | `Esc` | Close panel / pause menu (save, how to play, settings: sensitivity & volumes) |
 | `F3` | Performance overlay (fps, draw calls, triangles) |

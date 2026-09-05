@@ -13,8 +13,8 @@ export class PlayerController {
   yaw = 0;
   pitch = 0;
   grounded = false;
-  walkSpeed = 5.2;
-  sprintSpeed = 8.8;
+  walkSpeed = 5.6;
+  sprintSpeed = 11.5;
   jumpSpeed = 5.5;
   gravity = -18;
   sensitivity = 0.0022;
@@ -25,6 +25,8 @@ export class PlayerController {
   /** Set by gameplay: player cannot move (arrested, menus). */
   frozen = false;
   sprinting = false;
+  /** Shift toggles this (playtest feedback: no holding). Moving with it on sprints. */
+  sprintOn = false;
   /** 0..1; sprinting drains it, resting refills it. Makes police chases a real decision. */
   stamina = 1;
   /** Sprinting no longer costs stamina (playtest feedback): the field stays for the HUD bar, which simply never drains. */
@@ -67,7 +69,8 @@ export class PlayerController {
       mx /= len;
       mz /= len;
     }
-    const wantSprint = len > 0 && this.input.isDown('ShiftLeft') && !this.frozen;
+    if (!this.frozen && this.input.locked && this.input.wasPressed('ShiftLeft')) this.sprintOn = !this.sprintOn;
+    const wantSprint = len > 0 && this.sprintOn && !this.frozen;
     if (this.stamina <= 0) this.staminaLock = true;
     if (this.stamina >= 0.3) this.staminaLock = false;
     this.sprinting = wantSprint && !this.staminaLock && this.stamina > 0;

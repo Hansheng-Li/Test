@@ -298,6 +298,31 @@ export class AudioSystem {
     this.ambientGain.gain.setTargetAtTime(opts.night ? 0.07 : 0.12, ctx.currentTime, 0.5);
   }
 
+  /** A car horn: two detuned sawtooth voices a major third apart, rounded off by a lowpass. */
+  private hornTone(): void {
+    if (!this.ctx || !this.master) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.16, now + 0.03);
+    g.gain.setValueAtTime(0.16, now + 0.32);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = 1400;
+    filt.Q.value = 2;
+    g.connect(filt).connect(this.master);
+    for (const f of [415, 523, 417, 526]) {
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = f;
+      o.connect(g);
+      o.start(now);
+      o.stop(now + 0.5);
+    }
+  }
+
   /** A short decaying noise burst through a lowpass: the crack of a pistol. */
   private noiseBurst(dur: number, gain: number, cutoff: number): void {
     if (!this.ctx || !this.master) return;
@@ -460,8 +485,7 @@ export class AudioSystem {
         this.tone(70 + Math.random() * 30, 0, 0.06, 'triangle', 0.045, 45);
         break;
       case 'horn':
-        this.tone(392, 0, 0.45, 'square', 0.14);
-        this.tone(494, 0, 0.45, 'square', 0.12);
+        this.hornTone();
         break;
       case 'bump':
         this.tone(70, 0, 0.18, 'sawtooth', 0.2, 40);
