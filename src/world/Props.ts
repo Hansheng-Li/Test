@@ -339,3 +339,59 @@ export function mergeGeometries(geos: THREE.BufferGeometry[]): THREE.BufferGeome
   out.setIndex(indices);
   return out;
 }
+
+/** A felt blackjack table with a dealer's shoe and chips. Local -z is the customer side. */
+export function buildBlackjackTable(pb: PropBuilder, x: number, z: number, rot: number): THREE.Group {
+  const g = new THREE.Group();
+  const top = new THREE.Mesh(boxGeo(2.4, 0.1, 1.3), lambert('#0f5a2c'));
+  top.position.y = 0.9;
+  const rail = new THREE.Mesh(boxGeo(2.5, 0.08, 0.16), lambert('#5d3a1a'));
+  rail.position.set(0, 0.98, -0.6);
+  const base = new THREE.Mesh(boxGeo(2.0, 0.85, 0.9), lambert('#3e2723'));
+  base.position.y = 0.43;
+  const shoe = new THREE.Mesh(boxGeo(0.3, 0.12, 0.22), lambert('#111'));
+  shoe.position.set(0.8, 1.0, 0.35);
+  g.add(top, rail, base, shoe);
+  const cardMat = lambert('#f5f5f5');
+  for (const [dx, dz, ry] of [[-0.5, 0.2, 0.1], [-0.3, 0.2, 0.15], [0.3, -0.2, -0.2]]) {
+    const card = new THREE.Mesh(boxGeo(0.14, 0.01, 0.2), cardMat);
+    card.position.set(dx, 0.96, dz);
+    card.rotation.y = ry;
+    g.add(card);
+  }
+  for (const [dx, dz, c] of [[0.6, -0.25, '#e53935'], [0.75, -0.3, '#1e88e5'], [0.5, -0.4, '#43a047']] as [number, number, string][]) {
+    const chip = new THREE.Mesh(cylGeo(0.06, 0.06, 0.05, 10), lambert(c));
+    chip.position.set(dx, 0.98, dz);
+    g.add(chip);
+  }
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.5), new THREE.MeshBasicMaterial({ map: signTexture('BLACKJACK', { color: '#ffd166', bg: '#111111', glow: false, sub: 'DEALER DRAWS TO 17 · 3:2' }), side: THREE.DoubleSide }));
+  sign.position.set(0, 1.75, 0.6);
+  g.add(sign);
+  g.position.set(x, 0.15, z);
+  g.rotation.y = rot;
+  pb.group.add(g);
+  pb.collider(aabbFromBottom(x, 0.15, z, 2.4, 1.0, 1.3, 'blackjack'));
+  return g;
+}
+
+/** A cabinet slot machine with a lit face. Local -z is the front. */
+export function buildSlotMachine(pb: PropBuilder, x: number, z: number, rot: number): THREE.Group {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(boxGeo(0.9, 1.9, 0.7), lambert('#8e0038'));
+  body.position.y = 0.95;
+  const face = new THREE.Mesh(boxGeo(0.7, 0.5, 0.05), lambert('#fff3b0', { emissive: '#ffd166', emissiveIntensity: 0.6 }));
+  face.position.set(0, 1.35, -0.36);
+  const marquee = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 0.32), new THREE.MeshBasicMaterial({ map: signTexture('SUNSET SEVENS', { color: '#ffd166', bg: '#3a0018', glow: false }), side: THREE.DoubleSide }));
+  marquee.position.set(0, 1.78, -0.37);
+  marquee.rotation.y = Math.PI;
+  const arm = new THREE.Mesh(cylGeo(0.03, 0.03, 0.5, 6), lambert('#c0c0c0'));
+  arm.position.set(0.55, 1.35, 0);
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), lambert('#e53935'));
+  knob.position.set(0.55, 1.62, 0);
+  g.add(body, face, marquee, arm, knob);
+  g.position.set(x, 0.15, z);
+  g.rotation.y = rot;
+  pb.group.add(g);
+  pb.collider(aabbFromBottom(x, 0.15, z, 1.0, 2.0, 0.8, 'slot'));
+  return g;
+}

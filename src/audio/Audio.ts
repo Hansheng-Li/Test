@@ -1,6 +1,6 @@
 import { Radio } from './Radio';
 
-export type SfxName = 'pager' | 'cash' | 'click' | 'error' | 'siren' | 'seal' | 'mix' | 'arrest' | 'unlock' | 'step' | 'horn' | 'bump' | 'thud' | 'open' | 'close' | 'confirm' | 'collect' | 'door' | 'bag' | 'page' | 'jingle_goal' | 'jingle_customer' | 'jingle_bust' | 'jingle_property' | 'jingle_intro' | 'switch' | 'tick' | 'dice' | 'chips' | 'shot';
+export type SfxName = 'pager' | 'cash' | 'click' | 'error' | 'siren' | 'seal' | 'mix' | 'arrest' | 'unlock' | 'step' | 'horn' | 'bump' | 'thud' | 'open' | 'close' | 'confirm' | 'collect' | 'door' | 'bag' | 'page' | 'jingle_goal' | 'jingle_customer' | 'jingle_bust' | 'jingle_property' | 'jingle_intro' | 'switch' | 'tick' | 'dice' | 'chips' | 'shot' | 'card';
 
 /** CC0 sample files (see public/assets/LICENSES.md). Missing files fall back to the synth versions. */
 const SAMPLES: Partial<Record<SfxName, { files: string[]; gain: number; synthFallback?: SfxName }>> = {
@@ -25,6 +25,7 @@ const SAMPLES: Partial<Record<SfxName, { files: string[]; gain: number; synthFal
   jingle_property: { files: ['jingle_property'], gain: 0.5, synthFallback: 'unlock' },
   jingle_intro: { files: ['jingle_intro'], gain: 0.45, synthFallback: 'unlock' },
   dice: { files: ['casino_diceThrow1', 'casino_diceThrow2', 'casino_dieThrow1'], gain: 0.6, synthFallback: 'click' },
+  card: { files: ['casino_cardShuffle'], gain: 0.5, synthFallback: 'tick' },
   chips: { files: ['casino_chipsHandle1', 'casino_chipLay1', 'casino_chipsCollide1'], gain: 0.55, synthFallback: 'click' },
 };
 

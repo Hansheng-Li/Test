@@ -197,6 +197,10 @@ Design rules that shaped the code:
   starter box holds a baseball bat. Select the bat on the hotbar and left-click to swing: a cop in the arc
   goes down for four seconds and cannot arrest you (heat +18, and he comes up chasing), civilians scatter
   (heat +6), the rest of the block takes notice.
+- Neptune's back room spills onto the sidewalk beside the arcade: a blackjack table ($20–200 a hand,
+  dealer draws to 17, blackjack pays 3:2, double down on the first two cards, H/S keys) and the Sunset
+  Sevens slot machine ($5 or $20 a pull, 7-7-7 pays 50×, about 92% return). Both draw a little heat per
+  hand and count toward the Card Sharp milestone.
 - Every order tells you how to make it: a dashed hint under WANTS names the modifiers that give the
   requested effects (or says plain base is fine), effect tags are bold and colour-coded everywhere, and the
   objective line repeats the hint at the prep table. Accepting an order guarantees 2.5 to 5 real minutes

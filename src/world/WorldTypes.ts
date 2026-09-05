@@ -13,6 +13,8 @@ export interface WorldObject {
     | 'payphone'
     | 'bus_stop'
     | 'dice_table'
+    | 'blackjack_table'
+    | 'slot_machine'
     | 'warehouse_sign'
     | 'supplier'
     | 'runner_contact'

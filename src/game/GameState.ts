@@ -154,6 +154,10 @@ export interface GameState {
     /** Street dice: throws and lifetime net. */
     diceRolls?: number;
     diceNet?: number;
+    /** Back-room casino: blackjack hands, slot pulls, lifetime net. */
+    casinoHands?: number;
+    slotSpins?: number;
+    casinoNet?: number;
     /** Pawn shop markers taken and paid off. */
     loansTaken?: number;
     loansRepaid?: number;

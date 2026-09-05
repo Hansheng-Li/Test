@@ -8,6 +8,8 @@ import { Weather } from '../world/Weather';
 import { dressInteriors } from '../world/Dressing';
 import { BusUI } from '../ui/BusUI';
 import { DiceUI } from '../ui/DiceUI';
+import { CasinoUI } from '../ui/CasinoUI';
+import { startBlackjack, blackjackHit, blackjackStand, blackjackDouble, spinSlots, BlackjackHand, SlotResult } from '../systems/CasinoSystem';
 import { rollDice, DicePick, DiceResult } from '../systems/DiceSystem';
 import { BUS_STOPS, BUS_FARE, BUS_MINUTES, CRUISER_ROUTE, CURFEW_CRUISER_ROUTE, RESPRAY_PRICE, RESPRAY_HEAT } from '../data/city';
 import { hashString } from '../utils/math';
@@ -113,6 +115,7 @@ export class Game implements GameAPI {
   ledgerUI: LedgerUI;
   busUI: BusUI;
   diceUI: DiceUI;
+  casinoUI: CasinoUI;
   private milestoneTimer = 0;
   private dealerStarvedTimer = 0;
   openPanelId: string | null = null;
@@ -295,8 +298,9 @@ export class Game implements GameAPI {
     this.ledgerUI = new LedgerUI(root, this);
     this.busUI = new BusUI(root, this);
     this.diceUI = new DiceUI(root, this);
+    this.casinoUI = new CasinoUI(root, this);
     this.journalUI = new JournalUI(root, this);
-    for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI, this.dealerUI, this.ledgerUI, this.busUI, this.diceUI, this.journalUI]) {
+    for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI, this.dealerUI, this.ledgerUI, this.busUI, this.diceUI, this.casinoUI, this.journalUI]) {
       this.panels[p.id] = p;
       p.onCloseRequest = () => this.closePanel();
     }
@@ -685,6 +689,12 @@ export class Game implements GameAPI {
         break;
       case 'dice_table':
         add({ prompt: () => t('[E] STREET DICE · high or low, ${v0}-${v1} a throw', { v0: 10, v1: 200 }), onInteract: () => this.openPanel('dice-panel'), radius: 3 });
+        break;
+      case 'blackjack_table':
+        add({ prompt: () => t('[E] BLACKJACK · ${v0}-${v1} a hand', { v0: 20, v1: 200 }), onInteract: () => { this.casinoUI.tab = 'blackjack'; this.openPanel('casino-panel'); }, radius: 3.6 });
+        break;
+      case 'slot_machine':
+        add({ prompt: () => t('[E] SUNSET SEVENS · ${v0} or ${v1} a pull', { v0: 5, v1: 20 }), onInteract: () => { this.casinoUI.tab = 'slots'; this.openPanel('casino-panel'); }, radius: 3.2 });
         break;
       case 'bus_stop':
         add({ prompt: () => t('[E] BUS STOP · ride to another district (${BUS_FARE})', { BUS_FARE }), onInteract: () => { this.busUI.here = String(o.data?.stop ?? ''); this.openPanel('bus-panel'); }, radius: 3.5 });
@@ -2859,6 +2869,7 @@ export class Game implements GameAPI {
         return at('Port Authority', WORKER_CONTACT_SPOT.x, WORKER_CONTACT_SPOT.z);
       case 'dealer':
       case 'dice':
+      case 'casino':
         return at('Neptune Arcade', DEALER_CONTACT_SPOT.x, DEALER_CONTACT_SPOT.z);
       case 'handler':
         return at('Warehouse 7 office', HANDLER_CONTACT_SPOT.x, HANDLER_CONTACT_SPOT.z);
@@ -3092,11 +3103,71 @@ export class Game implements GameAPI {
   }
 
   /** Street dice: a throw, a sound, a flash on a big win; the crate does not care who is watching. */
+  blackjackDeal(bet: number): BlackjackHand | null {
+    const r = startBlackjack(this.state, bet);
+    if ('ok' in r) {
+      this.audio.play('error');
+      this.toast(r.reason === 'no_cash' ? t('You are light. Come back with cash.') : t('That is not a bet.'), 'warn');
+      return null;
+    }
+    this.audio.play('card');
+    if (r.outcome === 'blackjack') this.casinoWin(r.net);
+    return r;
+  }
+
+  blackjackHit(hand: BlackjackHand): BlackjackHand {
+    this.audio.play('card');
+    blackjackHit(this.state, hand);
+    if (hand.outcome) this.casinoSettled(hand);
+    return hand;
+  }
+
+  blackjackStand(hand: BlackjackHand): BlackjackHand {
+    this.audio.play('card');
+    blackjackStand(this.state, hand);
+    this.casinoSettled(hand);
+    return hand;
+  }
+
+  blackjackDouble(hand: BlackjackHand): BlackjackHand | null {
+    const r = blackjackDouble(this.state, hand);
+    if ('ok' in r) {
+      this.audio.play('error');
+      this.toast(r.reason === 'no_cash' ? t('Doubling takes another ${n}. You are light.', { n: hand.bet }) : t('Too late to double.'), 'warn');
+      return null;
+    }
+    this.audio.play('card');
+    this.casinoSettled(hand);
+    return hand;
+  }
+
+  private casinoSettled(hand: BlackjackHand): void {
+    if (!hand.outcome) return;
+    if (hand.net > 0) this.casinoWin(hand.net);
+  }
+
+  private casinoWin(net: number): void {
+    setTimeout(() => this.audio.play('collect'), 300);
+    if (net >= 150) this.hud.flash(`+$${net}`, '#ffd166', flashScale(net));
+  }
+
+  spinSlots(bet: number): SlotResult {
+    const r = spinSlots(this.state, bet);
+    if (!r.ok) {
+      this.audio.play('error');
+      this.toast(r.reason === 'no_cash' ? t('You are light. Come back with cash.') : t('That is not a bet.'), 'warn');
+      return r;
+    }
+    this.audio.play('chips');
+    if ((r.net ?? 0) >= 150) setTimeout(() => this.hud.flash(t('JACKPOT  +${n}', { n: r.net }), '#ffd166', flashScale(r.net!)), 1100);
+    return r;
+  }
+
   playDice(bet: number, pick: DicePick): DiceResult {
     const r = rollDice(this.state, bet, pick);
     if (!r.ok) {
       this.audio.play('error');
-      this.toast(r.reason === 'no_cash' ? 'You are light. Come back with cash.' : 'That is not a bet.', 'warn');
+      this.toast(r.reason === 'no_cash' ? t('You are light. Come back with cash.') : t('That is not a bet.'), 'warn');
       return r;
     }
     this.audio.play('dice');

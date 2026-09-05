@@ -3,6 +3,7 @@ import { PurchaseResult } from '../systems/EconomySystem';
 import { PrepPlan, PrepResult, PackageResult } from '../systems/ProductionSystem';
 import { SfxName } from '../audio/Audio';
 import { DicePick, DiceResult } from '../systems/DiceSystem';
+import { BlackjackHand, SlotResult } from '../systems/CasinoSystem';
 
 /** Escape player-typed text (product/crew names) before it goes into innerHTML. */
 export function esc(text: string): string {
@@ -22,6 +23,12 @@ export interface GameAPI {
   rideBus(stopId: string): void;
   /** One throw of street dice. */
   playDice(bet: number, pick: DicePick): DiceResult;
+  /** Back-room blackjack: null when the bet cannot be placed. */
+  blackjackDeal(bet: number): BlackjackHand | null;
+  blackjackHit(hand: BlackjackHand): BlackjackHand;
+  blackjackStand(hand: BlackjackHand): BlackjackHand;
+  blackjackDouble(hand: BlackjackHand): BlackjackHand | null;
+  spinSlots(bet: number): SlotResult;
   acceptOrder(id: number): void;
   haggle(id: number, markup: number): void;
   declineOrder(id: number): void;

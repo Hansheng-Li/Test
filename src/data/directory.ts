@@ -24,7 +24,7 @@ export const PLACES: PlaceEntry[] = [
   { id: 'warehouse', name: 'Warehouse 7', what: 'For sale at ${WAREHOUSE_PRICE}: place stations and shelves, Marisol works here, Teddy keeps the office.', vars: { WAREHOUSE_PRICE }, x: -175, z: -36, color: '#2e7d32' },
   { id: 'motel', name: 'Ocean View Motel', what: 'Dizzy the runner for hire (${RUNNER_HIRE_PRICE}). Room 6 for rent (${MOTEL_PRICE}): a beach-side stash and a bed.', vars: { RUNNER_HIRE_PRICE, MOTEL_PRICE }, x: RUNNER_CONTACT_SPOT.x, z: RUNNER_CONTACT_SPOT.z, color: '#00838f' },
   { id: 'port', name: 'Port Authority', what: 'Marisol the production worker for hire (${WORKER_HIRE_PRICE}).', vars: { WORKER_HIRE_PRICE }, x: WORKER_CONTACT_SPOT.x, z: WORKER_CONTACT_SPOT.z, color: '#6a1b9a' },
-  { id: 'arcade', name: 'Neptune Arcade', what: 'Vince the dealer for hire (${DEALER_HIRE_PRICE}); street dice behind the building.', vars: { DEALER_HIRE_PRICE }, x: DEALER_CONTACT_SPOT.x, z: DEALER_CONTACT_SPOT.z, color: '#8e24aa' },
+  { id: 'arcade', name: 'Neptune Arcade', what: 'Vince the dealer for hire (${DEALER_HIRE_PRICE}); street dice behind the building, blackjack and the Sunset Sevens slot machine on the sidewalk.', vars: { DEALER_HIRE_PRICE }, x: DEALER_CONTACT_SPOT.x, z: DEALER_CONTACT_SPOT.z, color: '#8e24aa' },
   { id: 'laundromat', name: 'Lucky Laundromat', what: 'A legit front for sale (${FRONT_PRICE}): clean income every morning and a cooler reputation.', vars: { FRONT_PRICE }, x: -27, z: 2, color: '#26a69a' },
   { id: 'bus', name: 'Sol Palma Transit', what: 'Orange bus stops, one per district: ${BUS_FARE} and {BUS_MINUTES} minutes to another district. Not while a cop is on your heels.', vars: { BUS_FARE, BUS_MINUTES }, x: 70, z: -111, color: '#e67e22' },
 ];

@@ -8,7 +8,7 @@ import { lambert, basic, boxGeo, cylGeo, PALETTE } from './Materials';
 import { facadeTexture, signTexture, asphaltTexture, sidewalkTexture, sandTexture, grassTexture } from './Textures';
 import {
   PropBuilder, buildPalms, buildStreetLights, buildBench, buildTrashCan, buildDumpster, buildCar, buildFence,
-  buildContainer, buildPayphone, buildLifeguardTower, buildBusStop, buildDiceTable,
+  buildContainer, buildPayphone, buildLifeguardTower, buildBusStop, buildDiceTable, buildBlackjackTable, buildSlotMachine,
 } from './Props';
 import { furnishInterior, InteriorContext, makeLabel, makeFigure } from './Interiors';
 import { WorldObject, NightToggle } from './WorldTypes';
@@ -302,6 +302,11 @@ export function buildCity(): CityResult {
   // street dice by the arcade door, a few steps from Vince
   const dice = buildDiceTable(pb, 155, 93, 0.3);
   objects.push({ kind: 'dice_table', id: 'dice_table', position: new THREE.Vector3(155, SLAB, 93), mesh: dice });
+  // Neptune's back room spills onto the sidewalk south of the door: a blackjack table and a slot machine
+  const bj = buildBlackjackTable(pb, 152.4, 84, Math.PI / 2);
+  objects.push({ kind: 'blackjack_table', id: 'blackjack_table', position: new THREE.Vector3(152.4, SLAB, 84), mesh: bj });
+  const slot = buildSlotMachine(pb, 152.2, 80.2, Math.PI / 2);
+  objects.push({ kind: 'slot_machine', id: 'slot_machine', position: new THREE.Vector3(152.2, SLAB, 80.2), mesh: slot });
   // transit stops
   for (const b of BUS_STOPS) {
     const g = buildBusStop(pb, b.x, b.z, b.rot);
