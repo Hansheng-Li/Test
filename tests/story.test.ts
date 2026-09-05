@@ -71,3 +71,20 @@ describe('chapter one pacing', () => {
     }
   });
 });
+
+describe('chapter-one checklist', () => {
+  it('marks earlier steps done, the current one now, the rest next', async () => {
+    const { storyChecklist } = await import('../src/systems/StorySystem');
+    const { STORY_STEP_LABELS } = await import('../src/data/story');
+    const s = createNewState();
+    s.flags.starterTaken = true;
+    addItem(s, 'prod:SUNSET', 2);
+    const list = storyChecklist(s);
+    expect(list.map((c) => c.step)).toEqual(['box', 'prep', 'pack', 'page', 'deliver', 'restock', 'second']);
+    expect(list.map((c) => c.state)).toEqual(['done', 'done', 'now', 'next', 'next', 'next', 'next']);
+    for (const c of list) expect(STORY_STEP_LABELS[c.step]).toBeTruthy();
+    s.stats.sales = 5;
+    s.flags.boughtFromRico = true;
+    expect(storyChecklist(s).every((c) => c.state === 'done')).toBe(true);
+  });
+});

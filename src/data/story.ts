@@ -10,6 +10,18 @@ export interface StoryCard {
   lines: string[];
 }
 
+/** One line per chapter-one step for checklists (English keys). */
+export const STORY_STEP_LABELS: Record<string, string> = {
+  box: 'Open the starter box in the back room',
+  prep: 'Prep the Sunset Pulp at the prep table',
+  pack: 'Bag the product at the packaging table',
+  page: 'Wait for Tasha to page you',
+  deliver: 'Deliver the first order',
+  restock: 'Buy pulp from Rico at the Container Yard',
+  second: 'Sell the second order',
+  done: 'You are in business',
+};
+
 export const STORY_CARDS: Record<string, StoryCard[]> = {
   box: [
     {

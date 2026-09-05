@@ -52,8 +52,10 @@ import { HUD } from '../ui/HUD';
 import { Menu } from '../ui/Menu';
 import { Dialogue } from '../ui/Dialogue';
 import { Minimap } from '../ui/Minimap';
+import { JournalUI } from '../ui/JournalUI';
+import { STORY_STEP_LABELS } from '../data/story';
 import { STORY_CARDS } from '../data/story';
-import { storyStep, ordersAllowed, claimStoryCard, markStorySeen } from '../systems/StorySystem';
+import { storyStep, ordersAllowed, claimStoryCard, markStorySeen, storyChecklist, prologueActive } from '../systems/StorySystem';
 import { Panel } from '../ui/Panel';
 import { PagerUI, landmarkName, pagerLine } from '../ui/PagerUI';
 import { InventoryUI } from '../ui/InventoryUI';
@@ -98,6 +100,9 @@ export class Game implements GameAPI {
   menu: Menu;
   dialogue: Dialogue;
   minimap: Minimap;
+  journalUI: JournalUI;
+  /** A place the player asked the journal to point at; cleared on arrival. */
+  private waypoint: { x: number; z: number; label: string } | null = null;
   private minimapTimer = 0;
   interaction = new InteractionSystem();
   panels: Record<string, Panel> = {};
@@ -278,7 +283,8 @@ export class Game implements GameAPI {
     this.ledgerUI = new LedgerUI(root, this);
     this.busUI = new BusUI(root, this);
     this.diceUI = new DiceUI(root, this);
-    for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI, this.dealerUI, this.ledgerUI, this.busUI, this.diceUI]) {
+    this.journalUI = new JournalUI(root, this);
+    for (const p of [this.pager, this.inventoryUI, this.shopUI, this.prepUI, this.packUI, this.mapUI, this.dealerUI, this.ledgerUI, this.busUI, this.diceUI, this.journalUI]) {
       this.panels[p.id] = p;
       p.onCloseRequest = () => this.closePanel();
     }
@@ -356,6 +362,7 @@ export class Game implements GameAPI {
     this.applyStateToWorld();
     this.orderTimer = 40;
     this.dialogue.clear();
+    this.waypoint = null;
     this.tips = [
       t('WASD to move · SHIFT to sprint · E to interact · TAB backpack · P pager · M map'),
       t('1-8 picks the hotbar slot: that is what you hand over as a free sample or a street deal.'),
@@ -1278,7 +1285,7 @@ export class Game implements GameAPI {
       this.objectiveText = this.computeObjective();
       this.orderText = this.currentOrderText();
     }
-    this.hud.update(s, this.clock.formatClock(), this.clock.day, this.objectiveText, this.orderText, dt);
+    this.hud.update(s, this.clock.formatClock(), this.clock.day, this.objectiveText, this.orderText, dt, this.arrested || !prologueActive(s) ? null : storyChecklist(s).map((c) => ({ label: t(STORY_STEP_LABELS[c.step]), state: c.state })));
   }
 
   // ------------------------------------------------------------------ NPC updates
@@ -2640,8 +2647,25 @@ export class Game implements GameAPI {
   // ------------------------------------------------------------------ HUD helpers
 
   /** Where the player should be heading right now, if the game can tell. */
+  setWaypoint(x: number, z: number, label: string): void {
+    this.waypoint = { x, z, label };
+    this.closePanel();
+    this.audio.play('confirm');
+    this.toast(t('Compass set: {label}', { label }), 'info', 3000);
+  }
+
+  objective(): string {
+    return this.objectiveText;
+  }
+
   private compassTarget(): { label: string; x: number; z: number } | null {
     const s = this.state;
+    if (this.waypoint) {
+      if (Math.hypot(this.waypoint.x - this.player.position.x, this.waypoint.z - this.player.position.z) < 6) {
+        this.toast(t('You are here: {label}', { label: this.waypoint.label }), 'info', 3000);
+        this.waypoint = null;
+      } else return this.waypoint;
+    }
     if (!s.flags.starterTaken) return null;
     const active = activeOrders(s).filter((o) => o.status === 'accepted');
     if (active.length) {
@@ -3029,6 +3053,9 @@ export class Game implements GameAPI {
         break;
       case 'KeyM':
         this.openPanel('map-panel');
+        break;
+      case 'KeyJ':
+        this.openPanel('journal-panel');
         break;
       case 'KeyB':
         this.tryStartPlacementFromInventory();

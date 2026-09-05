@@ -52,4 +52,8 @@ export interface GameAPI {
   runnerXZ(): { x: number; z: number } | null;
   hasScanner(): boolean;
   setCrewName(name: string): void;
+  /** Point the compass and the radar at a place until the player gets there. */
+  setWaypoint(x: number, z: number, label: string): void;
+  /** The HUD objective line. */
+  objective(): string;
 }

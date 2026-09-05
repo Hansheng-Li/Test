@@ -37,6 +37,7 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | `Tab` | Backpack, product book, customer book |
 | `P` | Pager (accept / decline / haggle, send the runner) |
 | `Y` / `X` | Accept / decline the newest page without opening the pager |
+| `J` | Journal: chapter checklist and goals, a directory of places and people (GUIDE ME sets the compass), the key table |
 | `M` | Paper map of Sol Palma (the radar in the corner is always on) |
 | `1`–`8` | Select hotbar slot |
 | Left click | Swing the baseball bat / fire the pistol (whichever is the selected hotbar item) |
@@ -196,6 +197,11 @@ Design rules that shaped the code:
   starter box holds a baseball bat. Select the bat on the hotbar and left-click to swing: a cop in the arc
   goes down for four seconds and cannot arrest you (heat +18, and he comes up chasing), civilians scatter
   (heat +6), the rest of the block takes notice.
+- The journal (J) is the game's table of contents: the chapter-one checklist (also shown in the HUD
+  objective box until the chapter is done), what to do right now, active orders and the next goals; a
+  directory of every key place and customer hangout with what it is for, the price of what it sells and
+  the distance to it; every contact with their face, role, price and hire status, plus the customers you
+  know; and the full key table. GUIDE ME on any row points the compass and the radar at it until you arrive.
 - A radar in the bottom-right corner: heading-up, roads and blocks, your property in green, shops in
   gold, waiting customers, parked cars, the runner, and cops (nearby or alarmed ones; every one of them
   with the scanner). The objective shows as a diamond, or an arrow on the rim when it is out of range,

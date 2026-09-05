@@ -29,6 +29,7 @@ export class HUD {
   private lastCash = NaN;
   private shownCash = NaN;
   private lastObjective = '';
+  private lastSteps = '';
   private lastOrder: string | null = '';
   private lastClock = '';
   private pagerTimer = 0;
@@ -43,7 +44,7 @@ export class HUD {
       <div id="hud-cash" class="hud-box"><small class="i18n-cash">CASH</small><span class="val">$0</span></div>
       <div id="hud-clock" class="hud-box">DAY 1 · 15:30</div>
       <div id="hud-heat" class="hud-box"><div class="label"><span class="i18n-heat">HEAT</span><span class="lvl">CALM</span></div><div class="bar"><div></div></div><div class="stamina"><div></div></div></div>
-      <div id="hud-objective" class="hud-box"><div class="title i18n-objective">OBJECTIVE</div><div class="text"></div></div>
+      <div id="hud-objective" class="hud-box"><div class="title i18n-objective">OBJECTIVE</div><div class="steps"></div><div class="text"></div><div class="keys i18n-keys"></div></div>
       <div id="hud-order" class="hud-box"><div class="title i18n-order">CURRENT ORDER</div><div class="obody"></div></div>
       <div id="hud-item" class="hud-box"></div>
       <div id="crosshair"></div>
@@ -88,6 +89,8 @@ export class HUD {
     (this.root.querySelector('.i18n-objective') as HTMLElement).textContent = t('OBJECTIVE');
     (this.root.querySelector('.i18n-order') as HTMLElement).textContent = t('CURRENT ORDER');
     (this.root.querySelector('#clickhint') as HTMLElement).textContent = t('CLICK TO CAPTURE THE MOUSE');
+    (this.root.querySelector('.i18n-keys') as HTMLElement).textContent = t('J journal · P pager · M map · TAB backpack');
+    this.lastSteps = '';
     this.lastClock = '';
     this.lastObjective = '';
   }
@@ -109,7 +112,14 @@ export class HUD {
 
   speedText: string | null = null;
 
-  update(state: GameState, clockText: string, day: number, objective: string, orderText: string | null, dt: number): void {
+  update(state: GameState, clockText: string, day: number, objective: string, orderText: string | null, dt: number, steps: { label: string; state: 'done' | 'now' | 'next' }[] | null = null): void {
+    const stepsKey = steps ? steps.map((s) => s.state + s.label).join('|') : '';
+    if (stepsKey !== this.lastSteps) {
+      this.lastSteps = stepsKey;
+      const el = this.root.querySelector('#hud-objective .steps') as HTMLElement;
+      el.innerHTML = steps ? steps.map((s) => `<div class="step ${s.state}">${s.state === 'done' ? '✓' : s.state === 'now' ? '▶' : '○'} ${s.label}</div>`).join('') : '';
+      el.style.display = steps ? 'block' : 'none';
+    }
     // the counter rolls toward the real value so payouts read as a satisfying tick-up
     if (Number.isNaN(this.shownCash) || Math.abs(state.cash - this.shownCash) > 5000) this.shownCash = state.cash;
     else this.shownCash += (state.cash - this.shownCash) * Math.min(1, dt * 6);

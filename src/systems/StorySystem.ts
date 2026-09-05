@@ -50,3 +50,14 @@ export function claimStoryCard(s: GameState): StoryStep | null {
 export function markStorySeen(s: GameState): void {
   for (const step of STORY_STEPS) s.flags[storyFlag(step)] = true;
 }
+
+export interface StoryCheck {
+  step: StoryStep;
+  state: 'done' | 'now' | 'next';
+}
+
+/** The chapter-one checklist (every step but 'done'), marked against the current step. */
+export function storyChecklist(s: GameState): StoryCheck[] {
+  const idx = STORY_STEPS.indexOf(storyStep(s));
+  return STORY_STEPS.filter((st) => st !== 'done').map((step, i) => ({ step, state: i < idx ? 'done' : i === idx ? 'now' : 'next' }));
+}

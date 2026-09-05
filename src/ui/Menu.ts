@@ -92,7 +92,7 @@ export class Menu {
       <div class="settings" style="display:none;min-width:360px;font-size:13px;color:#ddd;background:rgba(0,0,0,0.4);padding:12px 16px;border-radius:6px;border:1px solid #444"></div>
       <div class="howto" style="display:none;max-width:680px;font-size:14px;line-height:1.6;color:#ddd;background:rgba(0,0,0,0.4);padding:12px 16px;border-radius:6px;border:1px solid #444">${getLang() === 'zh' ? HOWTO_ZH : HOWTO_EN}</div>
       <div class="credits">${CREDITS}</div>
-      <div class="controls">${t('WASD move · MOUSE look · SHIFT sprint · SPACE jump')}<br/>${t('E interact · TAB inventory · P pager · Y/X accept/decline page · M map · N radio · 1-8 select item · ESC pause')}<br/><br/><span style="color:#ff9a3c">${t('All products in this game are fictional. Click to capture the mouse.')}</span></div>
+      <div class="controls">${t('WASD move · MOUSE look · SHIFT sprint · SPACE jump')}<br/>${t('E interact · J journal · TAB inventory · P pager · Y/X accept/decline page · M map · N radio · 1-8 select item · ESC pause')}<br/><br/><span style="color:#ff9a3c">${t('All products in this game are fictional. Click to capture the mouse.')}</span></div>
       <div class="stripe bottom"></div>`;
     const btns = this.el.querySelector('.buttons') as HTMLElement;
     btns.style.display = 'flex';
