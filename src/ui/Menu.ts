@@ -1,5 +1,6 @@
 import { STATIONS } from '../audio/Radio';
 import { t, getLang } from '../i18n';
+import { esc } from './UIContext';
 
 type SettingKey = 'sensitivity' | 'masterVolume' | 'radioVolume' | 'cutscenes' | 'radioStation' | 'lang';
 
@@ -31,14 +32,25 @@ const CREDITS = `
         SIGNAL ZERO and every other sound not listed above is synthesised in-game.<br/><br/>
         Full per-file table: public/assets/LICENSES.md in the repository.`;
 
+export interface MenuSlot {
+  slot: number;
+  /** One-line run summary, null when the slot is empty. */
+  summary: string | null;
+  savedAt: number | null;
+  /** The slot the running game writes to (pause) or the one CONTINUE would load (title). */
+  current: boolean;
+}
+
 /** Title screen + pause overlay. */
 export class Menu {
   el: HTMLDivElement;
   mode: 'title' | 'pause' = 'title';
+  /** What the slot list does when a slot is clicked. */
+  private slotMode: 'load' | 'new' | 'save' = 'load';
 
   constructor(
     parent: HTMLElement,
-    private actions: { newGame: () => void; continueGame: () => void; resetSave: () => void; resume: () => void; save: () => void; quit: () => void; hasSave: () => boolean; saveSummary: () => string | null; runStats: () => string | null; getSettings: () => Record<SettingKey, number>; setSetting: (key: SettingKey, value: number) => void },
+    private actions: { newGame: (slot?: number) => void; continueGame: (slot?: number) => void; deleteSlot: (slot: number) => void; resume: () => void; save: (slot?: number) => void; quit: () => void; hasSave: () => boolean; slots: () => MenuSlot[]; saveSummary: () => string | null; runStats: () => string | null; getSettings: () => Record<SettingKey, number>; setSetting: (key: SettingKey, value: number) => void },
   ) {
     this.el = document.createElement('div');
     this.el.id = 'menu';
@@ -62,8 +74,9 @@ export class Menu {
 
   /** Re-render in place (after a language switch), keeping whichever fold-out was open. */
   refresh(): void {
-    const open = ['.howto', '.settings', '.credits'].find((sel) => (this.el.querySelector(sel) as HTMLElement | null)?.style.display === 'block') ?? null;
+    const open = ['.howto', '.settings', '.credits', '.slots'].find((sel) => (this.el.querySelector(sel) as HTMLElement | null)?.style.display === 'block') ?? null;
     this.render();
+    if (open === '.slots') this.renderSlots();
     if (open) this.toggle(open);
   }
 
@@ -75,6 +88,7 @@ export class Menu {
       <div class="sub">${t('SOL PALMA, FLORIDA · 1996')}</div>
       <div class="runstats" style="display:none;font-family:var(--mono);font-size:13px;color:var(--cyan);letter-spacing:1px;margin-top:-18px;margin-bottom:6px"></div>
       <div class="buttons"></div>
+      <div class="slots" style="display:none"></div>
       <div class="settings" style="display:none;min-width:360px;font-size:13px;color:#ddd;background:rgba(0,0,0,0.4);padding:12px 16px;border-radius:6px;border:1px solid #444"></div>
       <div class="howto" style="display:none;max-width:680px;font-size:14px;line-height:1.6;color:#ddd;background:rgba(0,0,0,0.4);padding:12px 16px;border-radius:6px;border:1px solid #444">${getLang() === 'zh' ? HOWTO_ZH : HOWTO_EN}</div>
       <div class="credits">${CREDITS}</div>
@@ -165,9 +179,14 @@ export class Menu {
       statsEl.style.display = 'block';
     }
     if (this.mode === 'title') {
-      if (hasSave) add('CONTINUE', this.actions.continueGame, 'big primary');
-      add('NEW GAME', this.actions.newGame, hasSave ? 'big' : 'big primary');
-      if (hasSave) add('RESET SAVE', () => { if (confirm(t('Delete your save?'))) { this.actions.resetSave(); this.render(); } }, 'big');
+      if (hasSave) add('CONTINUE', () => this.actions.continueGame(), 'big primary');
+      add('NEW GAME', () => {
+        // a free slot starts right away; when all three are taken the player picks which one to overwrite
+        const free = this.actions.slots().find((sl) => sl.summary === null);
+        if (free) this.actions.newGame(free.slot);
+        else this.openSlots('new');
+      }, hasSave ? 'big' : 'big primary');
+      if (hasSave) add('LOAD GAME', () => this.openSlots('load'), 'big');
       add('HOW TO PLAY', () => this.toggle('.howto'), 'big');
       add('SETTINGS', () => this.toggle('.settings'), 'big');
       add('CREDITS', () => this.toggle('.credits'), 'big');
@@ -177,13 +196,69 @@ export class Menu {
       add('SETTINGS', () => this.toggle('.settings'), 'big');
       add('CREDITS', () => this.toggle('.credits'), 'big');
       add('SAVE GAME', () => { this.actions.save(); }, 'big');
+      add('SAVE TO SLOT…', () => this.openSlots('save'), 'big');
       add('QUIT TO TITLE', () => { this.actions.save(); this.actions.quit(); this.show('title'); }, 'big');
+    }
+  }
+
+  /** Open the slot list in the given mode (or close it when it is already open in that mode). */
+  private openSlots(mode: 'load' | 'new' | 'save'): void {
+    const el = this.el.querySelector('.slots') as HTMLElement;
+    if (el.style.display === 'block' && this.slotMode === mode) {
+      el.style.display = 'none';
+      return;
+    }
+    this.slotMode = mode;
+    this.renderSlots();
+    for (const other of ['.howto', '.settings', '.credits']) (this.el.querySelector(other) as HTMLElement).style.display = 'none';
+    el.style.display = 'block';
+  }
+
+  private renderSlots(): void {
+    const el = this.el.querySelector('.slots') as HTMLElement;
+    el.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'slots-head';
+    head.textContent = this.slotMode === 'load' ? t('LOAD GAME') : this.slotMode === 'save' ? t('SAVE TO SLOT…') : t('ALL SLOTS ARE TAKEN · PICK ONE TO OVERWRITE');
+    el.appendChild(head);
+    const fmt = (ms: number): string => new Date(ms).toLocaleString(getLang() === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    for (const sl of this.actions.slots()) {
+      const row = document.createElement('div');
+      row.className = 'slot-row' + (sl.current ? ' current' : '');
+      row.dataset.slot = String(sl.slot);
+      const text = document.createElement('div');
+      text.className = 'slot-text';
+      text.innerHTML = `<b>${t('SLOT {n}', { n: sl.slot })}${sl.current ? ` <span class="tag">${t('CURRENT')}</span>` : ''}</b>` +
+        `<span class="meta">${sl.summary ? `${esc(sl.summary)}${sl.savedAt ? ' · ' + t('saved {time}', { time: fmt(sl.savedAt) }) : ''}` : t('EMPTY')}</span>`;
+      row.appendChild(text);
+      const btn = (label: string, fn: () => void, cls = ''): void => {
+        const b = document.createElement('button');
+        b.className = cls;
+        b.textContent = t(label);
+        b.addEventListener('click', fn);
+        row.appendChild(b);
+      };
+      if (this.slotMode === 'load') {
+        if (sl.summary) {
+          btn('LOAD', () => this.actions.continueGame(sl.slot), 'primary');
+          btn('DELETE', () => { if (confirm(t('Delete slot {n}?', { n: sl.slot }))) { this.actions.deleteSlot(sl.slot); this.refresh(); } });
+        }
+      } else if (this.slotMode === 'new') {
+        btn('START HERE', () => { if (!sl.summary || confirm(t('Overwrite slot {n}?', { n: sl.slot }))) this.actions.newGame(sl.slot); }, sl.summary ? '' : 'primary');
+      } else {
+        btn('SAVE HERE', () => {
+          if (sl.summary && !sl.current && !confirm(t('Overwrite slot {n}?', { n: sl.slot }))) return;
+          this.actions.save(sl.slot);
+          this.renderSlots();
+        }, sl.current ? 'primary' : '');
+      }
+      el.appendChild(row);
     }
   }
 
   /** Show one of the fold-out panels, hiding the others. */
   private toggle(sel: string): void {
-    for (const other of ['.howto', '.settings', '.credits']) {
+    for (const other of ['.howto', '.settings', '.credits', '.slots']) {
       const el = this.el.querySelector(other) as HTMLElement;
       if (other === sel) el.style.display = el.style.display === 'none' || !el.style.display ? 'block' : 'none';
       else el.style.display = 'none';

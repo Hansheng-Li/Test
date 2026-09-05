@@ -185,37 +185,100 @@ export function deserialize(json: string): GameState | null {
   return state;
 }
 
-export function saveToStorage(state: GameState, storage: Storage): boolean {
+export const SLOT_COUNT = 3;
+export const ACTIVE_SLOT_KEY = 'sunset_syndicate_active_slot';
+/** localStorage key of one save slot (1-based). */
+export const slotKey = (slot: number): string => `sunset_syndicate_save_slot${slot}`;
+
+export interface SlotInfo {
+  slot: number;
+  state: GameState | null;
+  /** Wall-clock ms of the last write, null when the slot is empty. */
+  savedAt: number | null;
+}
+
+const validSlot = (slot: number): boolean => Number.isInteger(slot) && slot >= 1 && slot <= SLOT_COUNT;
+
+/** Moves the pre-slot single save (v0.3 and earlier) into slot 1 so old players keep their run. */
+export function migrateLegacySave(storage: Storage, now = Date.now()): boolean {
   try {
-    storage.setItem(SAVE_KEY, serialize(state));
+    const raw = storage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    if (!storage.getItem(slotKey(1)) && deserialize(raw)) {
+      storage.setItem(slotKey(1), JSON.stringify({ savedAt: now, state: JSON.parse(raw) }));
+      if (!storage.getItem(ACTIVE_SLOT_KEY)) storage.setItem(ACTIVE_SLOT_KEY, '1');
+    }
+    storage.removeItem(SAVE_KEY);
     return true;
   } catch {
     return false;
   }
 }
 
-export function loadFromStorage(storage: Storage): GameState | null {
+export function saveToSlot(state: GameState, storage: Storage, slot: number, now = Date.now()): boolean {
+  if (!validSlot(slot)) return false;
   try {
-    const raw = storage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    return deserialize(raw);
-  } catch {
-    return null;
-  }
-}
-
-export function hasSave(storage: Storage): boolean {
-  try {
-    return !!storage.getItem(SAVE_KEY);
+    storage.setItem(slotKey(slot), JSON.stringify({ savedAt: now, state }));
+    storage.setItem(ACTIVE_SLOT_KEY, String(slot));
+    return true;
   } catch {
     return false;
   }
 }
 
-export function clearSave(storage: Storage): void {
+function readSlot(storage: Storage, slot: number): SlotInfo {
+  const empty: SlotInfo = { slot, state: null, savedAt: null };
+  if (!validSlot(slot)) return empty;
   try {
-    storage.removeItem(SAVE_KEY);
+    const raw = storage.getItem(slotKey(slot));
+    if (!raw) return empty;
+    const wrapped = JSON.parse(raw) as { savedAt?: unknown; state?: unknown };
+    const state = wrapped && typeof wrapped === 'object' && wrapped.state ? deserialize(JSON.stringify(wrapped.state)) : null;
+    if (!state) return empty;
+    return { slot, state, savedAt: isFiniteNum(wrapped.savedAt) ? wrapped.savedAt : 0 };
+  } catch {
+    return empty;
+  }
+}
+
+export function loadFromSlot(storage: Storage, slot: number): GameState | null {
+  return readSlot(storage, slot).state;
+}
+
+export function listSlots(storage: Storage): SlotInfo[] {
+  return Array.from({ length: SLOT_COUNT }, (_, i) => readSlot(storage, i + 1));
+}
+
+export function clearSlot(storage: Storage, slot: number): void {
+  if (!validSlot(slot)) return;
+  try {
+    storage.removeItem(slotKey(slot));
+    if (storage.getItem(ACTIVE_SLOT_KEY) === String(slot)) storage.removeItem(ACTIVE_SLOT_KEY);
   } catch {
     /* ignore */
   }
+}
+
+export function hasAnySave(storage: Storage): boolean {
+  return listSlots(storage).some((s) => s.state !== null);
+}
+
+/** Slot of the most recent write (falls back to the stored active slot), null when nothing is saved. */
+export function latestSlot(storage: Storage): number | null {
+  const filled = listSlots(storage).filter((s) => s.state !== null);
+  if (filled.length === 0) return null;
+  let active: number | null = null;
+  try {
+    const raw = storage.getItem(ACTIVE_SLOT_KEY);
+    active = raw ? parseInt(raw, 10) : null;
+  } catch {
+    active = null;
+  }
+  const best = filled.reduce((a, b) => ((b.savedAt ?? 0) > (a.savedAt ?? 0) ? b : a));
+  if (active !== null && filled.some((s) => s.slot === active && (s.savedAt ?? 0) >= (best.savedAt ?? 0))) return active;
+  return best.slot;
+}
+
+export function firstEmptySlot(storage: Storage): number | null {
+  return listSlots(storage).find((s) => s.state === null)?.slot ?? null;
 }

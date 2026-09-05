@@ -114,8 +114,11 @@ manual labor  →  better tools  →  semi-automation  →  employees  →  full
 * **Goals**: the fax/CRT ledger in your back room lists 14 milestones with cash rewards, crew status and
   today's street talk; each morning you get yesterday's numbers.
 * **Day / night**: 1 real second = 1 game minute. Night brings neon, club crowds and lamp-lit streets.
-* **Save / load**: autosave every minute and after every sale; NEW GAME / CONTINUE / RESET SAVE on the
-  title screen; save from the pause menu. Stored in `localStorage`.
+* **Save / load**: three save slots in `localStorage`, each shown with a run summary and its save time.
+  Autosave every minute and after every sale into the slot you are playing; CONTINUE loads the newest
+  slot, LOAD GAME picks (or deletes) one, NEW GAME takes the first free slot or asks which to overwrite,
+  and the pause menu saves to the current slot or to any slot you choose. Saves from older builds move
+  into slot 1 automatically.
 
 ## Architecture
 

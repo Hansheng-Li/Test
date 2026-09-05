@@ -24,7 +24,7 @@ import { CUSTOMER_MAP } from '../data/customers';
 import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, HANDLER_HIRE_PRICE, VEHICLE_PRICE, MOTEL_PRICE, FRONT_PRICE, FRONT_DAILY_INCOME, FRONT_DAILY_SUSPICION, ITEMS } from '../data/items';
 import { computeRecipe, parseRecipeKey, Effect } from '../data/products';
 import { GameState, Order, PlacedStation } from './GameState';
-import { createNewState, saveToStorage, loadFromStorage, hasSave, clearSave } from '../systems/SaveSystem';
+import { createNewState, saveToSlot, loadFromSlot, listSlots, clearSlot, hasAnySave, latestSlot, firstEmptySlot, migrateLegacySave } from '../systems/SaveSystem';
 import { InteractionSystem, Interactable } from '../systems/InteractionSystem';
 import { addItem, countItem, removeItem, resolveItem, depositToStorage, withdrawFromStorage, packagedInInventory, looseProductsInInventory } from '../systems/InventorySystem';
 import { buyFromShop, buyDelivered, spendCash, PurchaseResult } from '../systems/EconomySystem';
@@ -106,6 +106,8 @@ export class Game implements GameAPI {
   private dealerStarvedTimer = 0;
   openPanelId: string | null = null;
   running = false;
+  /** Save slot (1-3) the current run writes to. */
+  activeSlot = 1;
   civilians: Civilian[] = [];
   police: Police[] = [];
   /** District 3's patrol cruisers, driving their loops on rails (a second one works the beach under curfew). */
@@ -224,14 +226,20 @@ export class Game implements GameAPI {
       p.onCloseRequest = () => this.closePanel();
     }
     this.cutscene = new Cutscene(root);
+    migrateLegacySave(localStorage);
+    this.activeSlot = latestSlot(localStorage) ?? 1;
     this.menu = new Menu(root, {
-      newGame: () => this.startNewGame(true),
+      newGame: (slot) => this.startNewGame(true, slot),
       quit: () => this.quitToTitle(),
-      continueGame: () => this.continueGame(),
-      resetSave: () => clearSave(localStorage),
+      continueGame: (slot) => this.continueGame(slot),
+      deleteSlot: (slot) => clearSlot(localStorage, slot),
       resume: () => this.resume(),
-      save: () => { this.save(); this.toast(t('Game saved.')); },
-      hasSave: () => hasSave(localStorage),
+      save: (slot) => { this.save(slot); this.toast(t('Saved to slot {n}.', { n: this.activeSlot })); },
+      hasSave: () => hasAnySave(localStorage),
+      slots: () => {
+        const current = this.running ? this.activeSlot : latestSlot(localStorage);
+        return listSlots(localStorage).map((sl) => ({ slot: sl.slot, summary: sl.state ? this.describeRun(sl.state) : null, savedAt: sl.savedAt, current: sl.slot === current }));
+      },
       saveSummary: () => this.saveSummary(),
       runStats: () => (this.running ? this.describeRun(this.state) : null),
       getSettings: () => this.settings,
@@ -284,7 +292,8 @@ export class Game implements GameAPI {
     this.renderer.setAnimationLoop(() => this.frame());
   }
 
-  startNewGame(intro = false): void {
+  startNewGame(intro = false, slot?: number): void {
+    this.activeSlot = slot ?? firstEmptySlot(localStorage) ?? this.activeSlot;
     this.state = createNewState();
     this.applyStateToWorld();
     this.orderTimer = 40;
@@ -317,7 +326,8 @@ export class Game implements GameAPI {
 
   /** One line about the save on the title screen, e.g. "DAY 3 · $1,240 · 4 CUSTOMERS · 2 PROPERTIES". */
   private saveSummary(): string | null {
-    const s = loadFromStorage(localStorage);
+    const slot = latestSlot(localStorage);
+    const s = slot ? loadFromSlot(localStorage, slot) : null;
     return s ? this.describeRun(s) : null;
   }
 
@@ -369,12 +379,14 @@ export class Game implements GameAPI {
     this.camera.lookAt(cx, 6, cz);
   }
 
-  continueGame(): void {
-    const s = loadFromStorage(localStorage);
-    if (!s) {
+  continueGame(slot?: number): void {
+    const n = slot ?? latestSlot(localStorage);
+    const s = n ? loadFromSlot(localStorage, n) : null;
+    if (!s || !n) {
       this.startNewGame();
       return;
     }
+    this.activeSlot = n;
     this.state = s;
     this.applyStateToWorld();
     this.orderTimer = 20;
@@ -2344,7 +2356,7 @@ export class Game implements GameAPI {
     this.cancelPlacement();
     // the penalty is persisted right away so closing the tab during the BUSTED sequence cannot undo it
     this.state.player = { x: 70, y: 0.3, z: -24, yaw: Math.PI };
-    saveToStorage(this.state, localStorage);
+    saveToSlot(this.state, localStorage, this.activeSlot);
   }
 
   private updateArrest(dt: number): void {
@@ -2677,7 +2689,8 @@ export class Game implements GameAPI {
     mat.needsUpdate = true;
   }
 
-  save(): void {
+  save(slot?: number): void {
+    if (slot) this.activeSlot = slot;
     if (this.settingsSaveTimer !== null) {
       clearTimeout(this.settingsSaveTimer);
       this.settingsSaveTimer = null;
@@ -2692,7 +2705,7 @@ export class Game implements GameAPI {
       const spot = this.vehicle!.exitSpot();
       this.state.player = { x: spot.x, y: this.vehicle!.position.y, z: spot.z, yaw: this.vehicle!.cameraYaw };
     }
-    saveToStorage(this.state, localStorage);
+    saveToSlot(this.state, localStorage, this.activeSlot);
   }
 
   // ------------------------------------------------------------------ input
