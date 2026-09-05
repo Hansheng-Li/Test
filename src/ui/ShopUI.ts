@@ -1,7 +1,7 @@
 import { Panel } from './Panel';
 import { GameAPI } from './UIContext';
 import { SHOPS, ITEMS } from '../data/items';
-import { countItem } from '../systems/InventorySystem';
+import { heldEverywhere } from '../systems/InventorySystem';
 import { shopPrice, DELIVERY_FEE } from '../systems/EconomySystem';
 import { iconImg } from './Icons';
 import { t, tn } from '../i18n';
@@ -42,7 +42,7 @@ export class ShopUI extends Panel {
       const owned = def.category === 'equipment' && !e.itemId.endsWith('_kit') && st.upgrades.includes(e.itemId);
       const row = document.createElement('div');
       row.className = 'row';
-      row.innerHTML = `${iconImg(e.itemId, 'icon row-icon')}<span class="name"><b>${tn(def.name)}</b>${def.category !== 'equipment' ? ` <span class="tag">${t('have {n}', { n: countItem(st, e.itemId) })}</span>` : ''}<span class="desc">${tn(def.desc)}</span></span><span class="price">$${this.deliver && def.category !== 'equipment' ? Math.round(shopPrice(st, this.shopId, e.itemId) * (1 + DELIVERY_FEE)) : shopPrice(st, this.shopId, e.itemId)}${shopPrice(st, this.shopId, e.itemId) !== e.price ? ` <span class="tag" style="background:#5a1a1a;color:#ffb3c1">${t('SHORTAGE')}</span>` : ''}</span>`;
+      row.innerHTML = `${iconImg(e.itemId, 'icon row-icon')}<span class="name"><b>${tn(def.name)}</b>${def.category !== 'equipment' ? ` <span class="tag">${(() => { const h = heldEverywhere(st, e.itemId); return h.stored ? t('have {n} · {a} on you · {b} stored', { n: h.carried + h.stored, a: h.carried, b: h.stored }) : t('have {n}', { n: h.carried }); })()}</span>` : ''}<span class="desc">${tn(def.desc)}</span></span><span class="price">$${this.deliver && def.category !== 'equipment' ? Math.round(shopPrice(st, this.shopId, e.itemId) * (1 + DELIVERY_FEE)) : shopPrice(st, this.shopId, e.itemId)}${shopPrice(st, this.shopId, e.itemId) !== e.price ? ` <span class="tag" style="background:#5a1a1a;color:#ffb3c1">${t('SHORTAGE')}</span>` : ''}</span>`;
       const buy = (qty: number): void => {
         const r = this.deliver && def.category !== 'equipment' ? this.api.buyDelivered(this.shopId, e.itemId, qty) : this.api.buy(this.shopId, e.itemId, qty);
         if (!r.ok) {

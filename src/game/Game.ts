@@ -57,7 +57,7 @@ import { STORY_STEP_LABELS } from '../data/story';
 import { STORY_CARDS } from '../data/story';
 import { storyStep, ordersAllowed, claimStoryCard, markStorySeen, storyChecklist, prologueActive } from '../systems/StorySystem';
 import { Panel } from '../ui/Panel';
-import { PagerUI, landmarkName, pagerLine } from '../ui/PagerUI';
+import { PagerUI, landmarkName, pagerLine, orderHint } from '../ui/PagerUI';
 import { InventoryUI } from '../ui/InventoryUI';
 import { ShopUI } from '../ui/ShopUI';
 import { PrepUI, PackUI } from '../ui/StationUI';
@@ -1256,7 +1256,7 @@ export class Game implements GameAPI {
       this.milestoneTimer = 2;
       for (const m of checkMilestones(s)) {
         this.audio.play('jingle_goal');
-        this.toast(t('GOAL: {v0} — +${v1}. ({v2})', { v0: m.title, v1: m.reward, v2: m.hint }), 'cash', 6000);
+        this.toast(t('GOAL: {v0} — +${v1}. ({v2})', { v0: tn(m.title), v1: m.reward, v2: tn(m.hint) }), 'cash', 6000);
       }
       const day = this.clock.day;
       if (day !== s.stats.lastDay) {
@@ -1436,7 +1436,7 @@ export class Game implements GameAPI {
   }
 
   acceptOrder(id: number): void {
-    if (!acceptOrder(this.state, id)) return;
+    if (!acceptOrder(this.state, id, this.clock.totalMinutes)) return;
     const o = this.state.orders.find((x) => x.id === id)!;
     this.spawnCustomerFor(o);
     this.audio.play('confirm');
@@ -2994,7 +2994,7 @@ export class Game implements GameAPI {
       const loose = looseProductsInInventory(s);
       if (loose.length) return t('Package {v0} at the PACKAGING table (need {v1} baggies).', { v0: describeRequest(s, o), v1: o.qty });
       const hasBase = ['pulp_sunset', 'wax_velvet', 'gel_neon'].some((id) => countItem(s, id) > 0);
-      if (hasBase) return t('Prep {v0} at the PREP TABLE{v1}.', { v0: describeRequest(s, o), v1: o.effects.length ? t(' — use modifiers to get {effects}', { effects: o.effects.map(tn).join('+') }) : '' });
+      if (hasBase) return t('Prep {v0} at the PREP TABLE{v1}.', { v0: describeRequest(s, o), v1: o.effects.length ? t(' — {hint}', { hint: orderHint(o) }) : '' });
       return t('Buy supplies from Rico at the Container Yard (docks) for {v0}.', { v0: describeRequest(s, o) });
     }
     if (s.runner?.activeOrderId !== null && s.runner?.hired) return t('Dizzy is out on a delivery. Prep more stock while you wait.');
@@ -3039,6 +3039,9 @@ export class Game implements GameAPI {
 
   playerXZ(): { x: number; z: number } {
     return { x: this.player.position.x, z: this.player.position.z };
+  }
+  playerYaw(): number {
+    return this.driving && this.ride ? this.ride.cameraYaw : this.player.yaw;
   }
   policeXZ(): { x: number; z: number }[] {
     const out = this.police.map((p) => ({ x: p.position.x, z: p.position.z }));

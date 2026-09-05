@@ -45,6 +45,14 @@ export function countItem(state: GameState, id: string): number {
   return n;
 }
 
+/** Units of an item everywhere the player keeps things: backpack plus every storage (shelves, trunk, warehouse…). */
+export function heldEverywhere(state: GameState, id: string): { carried: number; stored: number } {
+  const carried = countItem(state, id);
+  let stored = 0;
+  for (const items of Object.values(state.storage ?? {})) for (const s of items) if (s.id === id) stored += s.qty;
+  return { carried, stored };
+}
+
 /** How many more units of an item fit. */
 export function spaceFor(state: GameState, id: string): number {
   ensureInventory(state);

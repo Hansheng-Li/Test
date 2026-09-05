@@ -197,6 +197,12 @@ Design rules that shaped the code:
   starter box holds a baseball bat. Select the bat on the hotbar and left-click to swing: a cop in the arc
   goes down for four seconds and cannot arrest you (heat +18, and he comes up chasing), civilians scatter
   (heat +6), the rest of the block takes notice.
+- Every order tells you how to make it: a dashed hint under WANTS names the modifiers that give the
+  requested effects (or says plain base is fine), effect tags are bold and colour-coded everywhere, and the
+  objective line repeats the hint at the prep table. Accepting an order guarantees 2.5 to 5 real minutes
+  (2 for a VIP rush) whatever the customer first offered. Shop rows show what you hold everywhere
+  (backpack and every storage), the paper map draws you as an arrow that points where you look, and shop
+  signs sit above the door line.
 - Orders read as cards, not beeper code: the customer's face and name, then labelled rows for what they
   want, what they pay, where and by when, and their note; the HUD beeper shows the same in two lines. Panels
   use a larger face with more line height, backpack slots put the icon left of the text, and at most three

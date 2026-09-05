@@ -1,7 +1,7 @@
 import { Panel } from './Panel';
 import { GameAPI, esc } from './UIContext';
 import { resolveItem, storageOf, storageCapacity, storageUsed } from '../systems/InventorySystem';
-import { iconImg } from './Icons';
+import { iconImg, effectTag } from './Icons';
 import { t, tn } from '../i18n';
 import { ITEMS } from '../data/items';
 import { LANDMARKS } from '../data/city';
@@ -74,7 +74,7 @@ export class InventoryUI extends Panel {
       for (const r of recipes) {
         const row = document.createElement('div');
         row.className = 'row';
-        row.innerHTML = `<span class="name"><b>${esc(r.customName ?? r.defaultName)}</b> <span class="tag">${r.base}</span>${r.effects.map((e) => `<span class="tag effect">${tn(e)}</span>`).join('')}<span class="desc">${r.mods.length ? t('mods: {list}', { list: r.mods.map((m) => tn(ITEMS[m]?.name ?? m)).join(' → ') }) : t('plain base')}</span></span><span class="price">$${r.value}/u</span>`;
+        row.innerHTML = `<span class="name"><b>${esc(r.customName ?? r.defaultName)}</b> <span class="tag">${r.base}</span>${r.effects.map((e) => effectTag(e)).join('')}<span class="desc">${r.mods.length ? t('mods: {list}', { list: r.mods.map((m) => tn(ITEMS[m]?.name ?? m)).join(' → ') }) : t('plain base')}</span></span><span class="price">$${r.value}/u</span>`;
         const rename = this.button(t('RENAME'), () => {
           const inp = document.createElement('input');
           inp.type = 'text';

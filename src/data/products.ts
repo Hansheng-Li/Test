@@ -127,3 +127,30 @@ export function recipeKeyFromItem(id: string): string | null {
   if (id.startsWith('pkg:')) return id.slice(4);
   return null;
 }
+
+/**
+ * The shortest modifier sequence (up to MAX_MODIFIERS) that gives a base every requested effect,
+ * or null when no combination can. Used for "add X to get Y" hints on pagers and objectives.
+ */
+export function suggestMods(base: BaseId, effects: Effect[]): string[] | null {
+  const satisfies = (mods: string[]): boolean => {
+    const r = computeRecipe(base, mods);
+    return effects.every((e) => r.effects.includes(e));
+  };
+  if (satisfies([])) return [];
+  const ids = Object.keys(MODIFIERS);
+  let frontier: string[][] = [[]];
+  for (let depth = 1; depth <= MAX_MODIFIERS; depth++) {
+    const next: string[][] = [];
+    for (const seq of frontier) {
+      for (const id of ids) {
+        if (seq.includes(id)) continue;
+        const cand = [...seq, id];
+        if (satisfies(cand)) return cand;
+        next.push(cand);
+      }
+    }
+    frontier = next;
+  }
+  return null;
+}

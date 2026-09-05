@@ -20,12 +20,20 @@ export function getLang(): Lang {
  */
 export type Vars = Record<string, string | number | null | undefined>;
 
+const missing = new Set<string>();
+/** English keys shown while the UI was Chinese (for translation audits). */
+export function missingTranslations(): string[] {
+  return Array.from(missing);
+}
+
 export function t(en: string, vars?: Vars): string {
+  if (current === 'zh' && !(en in ZH)) missing.add(en);
   const s = current === 'zh' ? (ZH[en] ?? en) : en;
   return vars ? s.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k] ?? '') : m)) : s;
 }
 
 /** Look up a display name for game data (items, effects, places, customers' jobs) without a fallback warning. */
 export function tn(en: string): string {
+  if (current === 'zh' && !(en in ZH)) missing.add(en);
   return current === 'zh' ? (ZH[en] ?? en) : en;
 }

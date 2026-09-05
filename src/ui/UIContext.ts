@@ -47,6 +47,8 @@ export interface GameAPI {
   rest(): void;
   placeStation(kind: 'prep_table' | 'pack_table' | 'storage'): boolean;
   playerXZ(): { x: number; z: number };
+  /** Player heading (forward is (-sin yaw, -cos yaw)). */
+  playerYaw(): number;
   policeXZ(): { x: number; z: number }[];
   customerXZ(): { id: string; x: number; z: number; orderId: number }[];
   runnerXZ(): { x: number; z: number } | null;

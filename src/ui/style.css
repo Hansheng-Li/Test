@@ -95,7 +95,8 @@ button.big { font-size: 18px; padding: 12px 28px; }
 .sweet .zone { position: absolute; top: 0; bottom: 0; background: rgba(125, 255, 154, 0.35); }
 .sweet .needle { position: absolute; top: 0; bottom: 0; width: 4px; background: #fff; }
 .tag { display: inline-block; background: #3a2a4a; border-radius: 3px; padding: 2px 7px; font-size: 11px; margin-right: 4px; color: var(--purple); letter-spacing: 1px; vertical-align: middle; }
-.tag.effect { background: #1c3a3a; color: var(--cyan); }
+.tag.effect { background: rgba(0,0,0,0.45); color: var(--cyan); border: 1.5px solid var(--cyan); font-size: 12px; font-weight: bold; letter-spacing: 1px; padding: 3px 8px; }
+.mod-hint { display: inline-block; margin-top: 6px; padding: 4px 10px; border-radius: 4px; background: rgba(255,209,102,0.12); border: 1px dashed #ffd166; color: #ffe9a8; font-size: 13px; }
 input[type=text] { font-family: var(--font); background: #120a20; color: var(--cream); border: 1px solid var(--pink); padding: 6px 8px; border-radius: 4px; font-size: 14px; width: 100%; }
 #menu { position: fixed; inset: 0; background: radial-gradient(ellipse at 50% 30%, rgba(58,26,90,0.55) 0%, rgba(18,8,31,0.82) 70%); display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 12px; pointer-events: auto; z-index: 20; overflow-y: auto; padding: 40px 0; box-sizing: border-box; }
 #menu h1 { font-size: 64px; margin: 0; letter-spacing: 10px; color: var(--pink); text-shadow: 0 0 20px var(--pink), 0 0 40px rgba(255,79,216,0.5); font-family: Impact, 'Arial Black', sans-serif; }

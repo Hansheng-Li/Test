@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createNewState } from '../src/systems/SaveSystem';
 import { addItem, countItem } from '../src/systems/InventorySystem';
 import { executePrep, executePackage, nameRecipe, recipeDisplayName } from '../src/systems/ProductionSystem';
-import { computeRecipe } from '../src/data/products';
+import { computeRecipe, suggestMods } from '../src/data/products';
 
 describe('production', () => {
   it('prep consumes base + modifiers and creates loose product', () => {
@@ -77,5 +77,18 @@ describe('stir minigame bonus', () => {
     addItem(s, 'mod_flux', 1);
     const refine = executePrep(s, { inputItem: 'prod:SUNSET', mods: ['mod_flux'], units: 1, bonusUnits: 2 });
     expect(refine.units).toBe(1);
+  });
+});
+
+describe('modifier suggestions', () => {
+  it('names the shortest modifier path to the requested effects', () => {
+    expect(suggestMods('SUNSET', ['ENERGY'])).toEqual([]);
+    expect(suggestMods('SUNSET', [])).toEqual([]);
+    const social = suggestMods('SUNSET', ['SOCIAL'])!;
+    expect(social.length).toBe(1);
+    expect(computeRecipe('SUNSET', social).effects).toContain('SOCIAL');
+    const both = suggestMods('SUNSET', ['ENERGY', 'SOCIAL'])!;
+    expect(computeRecipe('SUNSET', both).effects).toEqual(expect.arrayContaining(['ENERGY', 'SOCIAL']));
+    expect(both.length).toBeLessThanOrEqual(3);
   });
 });

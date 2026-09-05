@@ -118,7 +118,7 @@ export function generateOrder(state: GameState, opts: OrderGenOptions): Order | 
   const finalQty = vip ? Math.min(12, qty * 2) : qty;
   const finalUnit = vip ? Math.round(unit * 1.6) : unit;
   const windowStart = now + 5;
-  const windowEnd = now + (vip ? 50 : 90 + Math.floor(rng() * 90));
+  const windowEnd = now + (vip ? 120 : 150 + Math.floor(rng() * 120));
   const order: Order = {
     id: state.nextOrderId++,
     customerId: c.id,
@@ -261,10 +261,20 @@ function pick(rng: () => number, arr: string[]): string {
   return arr[Math.floor(rng() * arr.length)];
 }
 
-export function acceptOrder(state: GameState, orderId: number): boolean {
+/** Game minutes an accepted order is guaranteed to stay open (1 real second = 1 game minute). */
+export const MIN_ACCEPT_WINDOW = 150;
+export const MAX_ACCEPT_WINDOW = 300;
+export const VIP_ACCEPT_WINDOW = 120;
+
+/** Accepting never leaves you with a few seconds: the window is stretched to at least 2.5–5 real minutes. */
+export function acceptOrder(state: GameState, orderId: number, now?: number): boolean {
   const o = state.orders.find((x) => x.id === orderId);
   if (!o || o.status !== 'pending') return false;
   o.status = 'accepted';
+  if (now !== undefined) {
+    const guaranteed = o.vip ? VIP_ACCEPT_WINDOW : Math.min(MAX_ACCEPT_WINDOW, MIN_ACCEPT_WINDOW + o.qty * 15);
+    o.windowEnd = Math.max(o.windowEnd, now + guaranteed);
+  }
   return true;
 }
 

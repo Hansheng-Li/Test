@@ -9,7 +9,8 @@ import { relationshipTier } from '../systems/CustomerSystem';
 import { Order } from '../game/GameState';
 import { activeEvent, describeEvent } from '../systems/EventSystem';
 import { t, tn } from '../i18n';
-import { faceImg } from './Icons';
+import { faceImg, effectTag } from './Icons';
+import { MODIFIERS, suggestMods } from '../data/products';
 
 export function landmarkName(id: string): string {
   if (id === 'street') return t('on the street');
@@ -22,11 +23,25 @@ export function pagerLine(order: Order, request: string): string {
   return `${c.name.split(' ')[0]} · ${order.qty}× ${request} · $${order.price}${order.vip ? ` · ${t('VIP RUSH')}` : ''}\n${landmarkName(order.locationId)} · ${t('by {time}', { time: GameClock.formatMinutes(order.windowEnd) })}`;
 }
 
+/** What it takes to make the request: the modifiers that give the asked-for effects, or the named product's recipe. */
+export function orderHint(order: Order): string {
+  if (order.recipeKey) {
+    const mods = order.recipeKey.split('+').slice(1);
+    return mods.length ? t('Your named product: {base} + {mods}', { base: order.base, mods: mods.map((m) => tn(MODIFIERS[m]?.name ?? m)).join(' → ') }) : t('Your named product: plain {base}', { base: order.base });
+  }
+  if (!order.effects.length) return t('Plain {base} is fine: no modifiers needed.', { base: order.base });
+  const mods = suggestMods(order.base, order.effects);
+  if (mods === null) return t('No modifier mix on {base} gives that.', { base: order.base });
+  if (mods.length === 0) return t('Plain {base} already has it: no modifiers needed.', { base: order.base });
+  return t('At the prep table add {mods} to get {effects}.', { mods: mods.map((m) => tn(MODIFIERS[m].name)).join(' → '), effects: order.effects.map(tn).join('+') });
+}
+
 /** The labelled body of an order card: wants / pays / where / by, plus the customer's note. */
 function orderGrid(order: Order, request: string): string {
   const notes = PAGER_NOTES[order.customerId] ?? [];
   const note = notes.length ? notes[order.id % notes.length] : '';
-  return `<div class="order-grid"><span class="k">${t('WANTS')}</span><span class="v">${order.qty}× ${esc(request)}</span><span class="k">${t('PAYS')}</span><span class="v money">$${order.price}</span><span class="k">${t('WHERE')}</span><span class="v">${landmarkName(order.locationId)}</span><span class="k">${t('BY')}</span><span class="v">${GameClock.formatMinutes(order.windowStart)} – ${GameClock.formatMinutes(order.windowEnd)}</span></div>${note ? `<div class="note">“${tn(note)}”</div>` : ''}`;
+  const hint = orderHint(order);
+  return `<div class="order-grid"><span class="k">${t('WANTS')}</span><span class="v">${order.qty}× ${esc(request)}${order.effects.length ? ' ' + order.effects.map((e) => effectTag(e)).join('') : ''}${hint ? `<br/><span class="mod-hint">${hint}</span>` : ''}</span><span class="k">${t('PAYS')}</span><span class="v money">$${order.price}</span><span class="k">${t('WHERE')}</span><span class="v">${landmarkName(order.locationId)}</span><span class="k">${t('BY')}</span><span class="v">${GameClock.formatMinutes(order.windowStart)} – ${GameClock.formatMinutes(order.windowEnd)}</span></div>${note ? `<div class="note">“${tn(note)}”</div>` : ''}`;
 }
 
 /** The pager: incoming orders, accepted orders, runner dispatch. */
@@ -88,7 +103,6 @@ export class PagerUI extends Panel {
         (o.vip ? ` <span class="tag" style="background:#5a3a00;color:#ffd166">${t('VIP · BIG MONEY · TIGHT WINDOW')}</span>` : '') +
         (o.bored ? ` <span class="tag" style="background:#1a3a5a;color:#9ecbff">${t('BORED OF THE USUAL · WANTS {effects}', { effects: o.effects.map(tn).join('+') })}</span>` : '') +
         `<span class="tag">${tn(c.personality).toUpperCase()}</span><span class="tag">${tn(relationshipTier(cs.relationship)).toUpperCase()} ${cs.relationship}</span>` +
-        (o.effects.length ? o.effects.map((e) => `<span class="tag effect">${tn(e)}</span>`).join('') : '') +
         `</div>${orderGrid(o, describeRequest(st, o))}</div>`;
       card.appendChild(head);
       const actions = document.createElement('div');

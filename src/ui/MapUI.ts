@@ -207,8 +207,24 @@ export class MapUI extends Panel {
     g.beginPath();
     g.arc(this.px(p.x), this.pz(p.z), 11 * s, 0, Math.PI * 2);
     g.fill();
-    dot(p.x, p.z, '#d50000', '', 5.5);
-    this.text(g, t('YOU'), this.px(p.x), this.pz(p.z) - 9 * s, 16, '#b71c1c');
+    // an arrow, not a dot: the way you are facing (forward is (-sin yaw, -cos yaw))
+    const yaw = this.api.playerYaw();
+    g.save();
+    g.translate(this.px(p.x), this.pz(p.z));
+    g.rotate(Math.atan2(-Math.sin(yaw), -Math.cos(yaw)) - Math.PI / 2 + Math.PI);
+    g.beginPath();
+    g.moveTo(0, -9 * s);
+    g.lineTo(6 * s, 7 * s);
+    g.lineTo(0, 3 * s);
+    g.lineTo(-6 * s, 7 * s);
+    g.closePath();
+    g.fillStyle = '#d50000';
+    g.fill();
+    g.strokeStyle = '#fff';
+    g.lineWidth = 2.5;
+    g.stroke();
+    g.restore();
+    this.text(g, t('YOU'), this.px(p.x), this.pz(p.z) - 13 * s, 16, '#b71c1c');
     // legend: swatches, not bullets
     const items: [string, string, 'dot' | 'box'][] = [['#d50000', 'you', 'dot'], ['#e91e63', 'customer waiting', 'dot'], ['#00c2a8', 'runner', 'dot'], ['#ffd166', 'shops', 'box'], ['#8ef0a5', 'your property', 'box'], ['#1e6fd9', 'payphone', 'box'], ['#e67e22', 'bus stop (B)', 'box'], ['#1e88e5', 'police (scanner)', 'dot']];
     // (click anywhere on the map to drop a marker; the hint sits under the legend)

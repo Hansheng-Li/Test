@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createNewState } from '../src/systems/SaveSystem';
 import { addItem, countItem } from '../src/systems/InventorySystem';
-import { generateOrder, acceptOrder, completeSale, expireOrders, orderMatchesItem, counterOffer, rollTrend, streetSale, cheapestValueFor } from '../src/systems/OrderSystem';
+import { generateOrder, acceptOrder, completeSale, expireOrders, orderMatchesItem, counterOffer, rollTrend, streetSale, cheapestValueFor, MIN_ACCEPT_WINDOW, VIP_ACCEPT_WINDOW } from '../src/systems/OrderSystem';
 import { offerSample } from '../src/systems/CustomerSystem';
 import { computeRecipe } from '../src/data/products';
 
@@ -190,7 +190,7 @@ describe('VIP rush orders', () => {
     const o = generateOrder(s, { now: 1000, customerId: 'moe', rng: seq([0.5, 0.9, 0.0, 0.0, 0.05]) })!;
     expect(o.vip).toBe(true);
     expect(o.qty).toBe(6); // (2 + 1 regular boost) x2
-    expect(o.windowEnd - o.createdMinute).toBe(50);
+    expect(o.windowEnd - o.createdMinute).toBe(120);
     const plain = createNewState();
     plain.customers['moe'].relationship = 20;
     const p = generateOrder(plain, { now: 1000, customerId: 'moe', rng: seq([0.5, 0.9, 0.0, 0.0, 0.5]) })!;
@@ -237,5 +237,26 @@ describe('trend as demand', () => {
         expect(cheapestValueFor(o.base, o.effects, s)).not.toBe(Infinity);
       }
     }
+  });
+});
+
+describe('accepted orders keep a real window', () => {
+  it('stretches a short window to the guaranteed minimum but never shortens a long one', () => {
+    const s = createNewState();
+    const o = generateOrder(s, { now: s.clockMinutes, customerId: 'moe', simple: true, rng: seq([0.1]) })!;
+    const now = s.clockMinutes;
+    expect(o.windowEnd - now).toBeGreaterThanOrEqual(150);
+    o.windowEnd = now + 30;
+    acceptOrder(s, o.id, now);
+    expect(o.windowEnd).toBe(now + MIN_ACCEPT_WINDOW + o.qty * 15);
+    const o2 = generateOrder(s, { now, customerId: 'tasha', simple: true, rng: seq([0.1]) })!;
+    o2.windowEnd = now + 900;
+    acceptOrder(s, o2.id, now);
+    expect(o2.windowEnd).toBe(now + 900);
+    const o3 = generateOrder(s, { now, customerId: 'kenji', simple: true, rng: seq([0.1]) })!;
+    o3.vip = true;
+    o3.windowEnd = now + 10;
+    acceptOrder(s, o3.id, now);
+    expect(o3.windowEnd).toBe(now + VIP_ACCEPT_WINDOW);
   });
 });

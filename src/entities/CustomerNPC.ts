@@ -6,6 +6,7 @@ import { Effect } from '../data/products';
 import { makeLabel } from '../world/Interiors';
 import { labelTexture } from '../world/Textures';
 import * as THREE from 'three';
+import { t, tn } from '../i18n';
 
 export type CustomerVisualState = 'WAITING' | 'TALK' | 'REACT' | 'LEAVE' | 'DONE';
 
@@ -15,7 +16,7 @@ export type CustomerVisualState = 'WAITING' | 'TALK' | 'REACT' | 'LEAVE' | 'DONE
  */
 /** Marker label per relationship tier (labelTexture caches by text and colour). */
 function meetTexture(tier = 'stranger'): THREE.Texture {
-  return labelTexture(tier === 'stranger' ? '$ MEET' : `$ MEET · ${tier.toUpperCase()}`, tier === 'friend' || tier === 'family' ? '#ffd166' : '#7dff9a');
+  return labelTexture(tier === 'stranger' ? t('$ MEET') : t('$ MEET · {tier}', { tier: tn(tier).toUpperCase() }), tier === 'friend' || tier === 'family' ? '#ffd166' : '#7dff9a');
 }
 
 export class CustomerNPC extends NPC {

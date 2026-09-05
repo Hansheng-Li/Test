@@ -569,7 +569,7 @@ function buildBuilding(spec: BuildingSpec, pb: PropBuilder, night: NightToggle, 
   // awning for shops
   if (spec.style === 'shop' || spec.style === 'motel') {
     const awn = new THREE.Mesh(boxGeo(dir.x !== 0 ? 1.6 : w * 0.9, 0.15, dir.z !== 0 ? 1.6 : d * 0.9), lambert(spec.sign?.color ?? '#ff6fb0'));
-    awn.position.set(x + dir.x * (w / 2 + 0.8), y0 + 2.9, z + dir.z * (d / 2 + 0.8));
+    awn.position.set(x + dir.x * (w / 2 + 0.8), y0 + 2.55, z + dir.z * (d / 2 + 0.8));
     pb.group.add(awn);
   }
 
@@ -579,8 +579,14 @@ function buildBuilding(spec: BuildingSpec, pb: PropBuilder, night: NightToggle, 
     const signMat = new THREE.MeshLambertMaterial({ map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.5 });
     const isX = dir.x !== 0;
     const span = isX ? d : w;
-    const sw = Math.min(span * 0.7, 12);
-    const sh = sw / 4;
+    // the sign sits above the door line (2.6 m) even on a one-storey shop, shrinking to fit
+    let sw = Math.min(span * 0.7, 12);
+    let sh = sw / 4;
+    const maxSh = Math.max(0.8, height - 2.75 - 0.3);
+    if (sh > maxSh) {
+      sh = maxSh;
+      sw = sh * 4;
+    }
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(sw, sh), signMat);
     const signY = Math.min(y0 + height - sh / 2 - 0.3, y0 + fh + sh / 2 + 0.6);
     sign.position.set(x + dir.x * (w / 2 + 0.06), signY, z + dir.z * (d / 2 + 0.06));

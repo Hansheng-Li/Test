@@ -1,4 +1,5 @@
 import { FACES, faceIndexFor } from '../world/Faces';
+import { tn } from '../i18n';
 /**
  * Item icons: Kenney Generic Items (CC0), renamed per item id under public/assets/icons/items.
  * Packaged product, loose product and station kits share one icon each. A missing file simply
@@ -20,4 +21,22 @@ export function iconImg(itemId: string, cls = 'icon'): string {
 export function faceImg(key: string, color: string, cls = 'avatar'): string {
   const face = FACES[faceIndexFor(key)];
   return `<span class="${cls}" style="background:${color}"><img src="/assets/textures/faces/${face.file}.png" alt="" onerror="this.style.display='none'"/></span>`;
+}
+
+/** Effect colours: the same hue everywhere an effect is named, so a tag reads at a glance. */
+export const EFFECT_COLORS: Record<string, string> = {
+  ENERGY: '#ff9a3c',
+  CHILL: '#b388ff',
+  SOCIAL: '#ff6fb0',
+  FOCUS: '#4ff2e8',
+  DREAMY: '#c9a7ff',
+  CONFIDENT: '#ffd166',
+  CHAOTIC: '#ff5c5c',
+  GLOW: '#7dff9a',
+};
+
+/** A bold, coloured effect tag. */
+export function effectTag(effect: string, cls = 'tag effect'): string {
+  const c = EFFECT_COLORS[effect] ?? '#4ff2e8';
+  return `<span class="${cls}" style="border-color:${c};color:${c}">${tn(effect)}</span>`;
 }
