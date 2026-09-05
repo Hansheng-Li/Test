@@ -39,7 +39,7 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | `Y` / `X` | Accept / decline the newest page without opening the pager |
 | `M` | Paper map of Sol Palma |
 | `1`–`8` | Select hotbar slot |
-| Left click | Swing the baseball bat (when it is the selected hotbar item) |
+| Left click | Swing the baseball bat / fire the pistol (whichever is the selected hotbar item) |
 | `B` | Place equipment (inside your warehouse, with a station kit in your backpack) |
 | `N` | Radio: cycles SOL PALMA FM → THE WAVE → FUNK CITY → SIGNAL ZERO → off (walkman on foot, car stereo while driving) |
 | any key | Skips a cutscene (Escape pauses instead) |
@@ -196,6 +196,10 @@ Design rules that shaped the code:
   starter box holds a baseball bat. Select the bat on the hotbar and left-click to swing: a cop in the arc
   goes down for four seconds and cannot arrest you (heat +18, and he comes up chasing), civilians scatter
   (heat +6), the rest of the block takes notice.
+- Sol Palma Pawn sells a pistol ($150, comes with a six-round magazine; rounds are $2 apiece). Select it
+  and left-click to fire a straight shot: a cop hit goes down for eight seconds (heat +35), a civilian hit
+  runs (heat +15), and every shot is heard: heat +6, the block within 25 m scatters, and every officer
+  within 40 m comes running. Nobody dies in Sol Palma; they get up angrier.
 - Chapter one is paced by hand: Rico's note on the pager, prep and bag the starter pulp, Tasha's first
   page (only after the product is bagged), the first sale, a restock trip to Rico at the Container Yard,
   then the second sale; only then does the pager open up. Story beats arrive as dialogue cards (the

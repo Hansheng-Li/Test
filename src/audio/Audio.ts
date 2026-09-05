@@ -1,6 +1,6 @@
 import { Radio } from './Radio';
 
-export type SfxName = 'pager' | 'cash' | 'click' | 'error' | 'siren' | 'seal' | 'mix' | 'arrest' | 'unlock' | 'step' | 'horn' | 'bump' | 'thud' | 'open' | 'close' | 'confirm' | 'collect' | 'door' | 'bag' | 'page' | 'jingle_goal' | 'jingle_customer' | 'jingle_bust' | 'jingle_property' | 'jingle_intro' | 'switch' | 'tick' | 'dice' | 'chips';
+export type SfxName = 'pager' | 'cash' | 'click' | 'error' | 'siren' | 'seal' | 'mix' | 'arrest' | 'unlock' | 'step' | 'horn' | 'bump' | 'thud' | 'open' | 'close' | 'confirm' | 'collect' | 'door' | 'bag' | 'page' | 'jingle_goal' | 'jingle_customer' | 'jingle_bust' | 'jingle_property' | 'jingle_intro' | 'switch' | 'tick' | 'dice' | 'chips' | 'shot';
 
 /** CC0 sample files (see public/assets/LICENSES.md). Missing files fall back to the synth versions. */
 const SAMPLES: Partial<Record<SfxName, { files: string[]; gain: number; synthFallback?: SfxName }>> = {
@@ -298,6 +298,25 @@ export class AudioSystem {
     this.ambientGain.gain.setTargetAtTime(opts.night ? 0.07 : 0.12, ctx.currentTime, 0.5);
   }
 
+  /** A short decaying noise burst through a lowpass: the crack of a pistol. */
+  private noiseBurst(dur: number, gain: number, cutoff: number): void {
+    if (!this.ctx || !this.master) return;
+    const ctx = this.ctx;
+    const len = Math.floor(ctx.sampleRate * dur);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = cutoff;
+    const g = ctx.createGain();
+    g.gain.value = gain;
+    src.connect(filt).connect(g).connect(this.master);
+    src.start();
+  }
+
   private tone(freq: number, start: number, dur: number, type: OscillatorType = 'square', gain = 0.2, endFreq?: number): void {
     if (!this.ctx || !this.master) return;
     const ctx = this.ctx;
@@ -446,6 +465,10 @@ export class AudioSystem {
         break;
       case 'bump':
         this.tone(70, 0, 0.18, 'sawtooth', 0.2, 40);
+        break;
+      case 'shot':
+        this.noiseBurst(0.14, 0.5, 1800);
+        this.tone(120, 0, 0.12, 'sawtooth', 0.25, 40);
         break;
       default:
         break;

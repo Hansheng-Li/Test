@@ -4,7 +4,7 @@ import { FACES, faceIndexFor } from '../world/Faces';
  * Packaged product, loose product and station kits share one icon each. A missing file simply
  * leaves the slot text-only (the <img> hides itself on error).
  */
-const ICONS = new Set(['pulp_sunset', 'wax_velvet', 'gel_neon', 'mod_flux', 'mod_velvet_drops', 'mod_solar', 'mod_static', 'mod_sparks', 'mod_glow', 'baggies', 'eq_mixer', 'eq_sealer', 'eq_backpack', 'eq_brickphone', 'eq_scanner', 'bat']);
+const ICONS = new Set(['pulp_sunset', 'wax_velvet', 'gel_neon', 'mod_flux', 'mod_velvet_drops', 'mod_solar', 'mod_static', 'mod_sparks', 'mod_glow', 'baggies', 'eq_mixer', 'eq_sealer', 'eq_backpack', 'eq_brickphone', 'eq_scanner', 'bat', 'pistol', 'rounds']);
 
 export function iconFor(itemId: string): string {
   const key = itemId.startsWith('pkg:') ? 'pkg' : itemId.startsWith('prod:') ? 'prod' : itemId.endsWith('_kit') ? 'kit' : ICONS.has(itemId) ? itemId : 'kit';

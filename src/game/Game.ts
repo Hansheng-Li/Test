@@ -20,6 +20,7 @@ import { buildPlacedStation, InteriorContext } from '../world/Interiors';
 import { WorldObject } from '../world/WorldTypes';
 import { SPAWN, LANDMARKS, SAFEHOUSE_DOOR, BUILDINGS, WAREHOUSE_SIGN, CAR_SALE_SPOT, PROPERTY_ANCHORS, SUPPLIER_SPOT, STARTER_CAR_SPOT, zoneAt } from '../data/city';
 import { swingTargets, BAT_STUN_SECONDS, BAT_HEAT_COP, BAT_HEAT_CIVILIAN } from '../systems/MeleeSystem';
+import { pickShot, SHOT_STUN_SECONDS, SHOT_HEAT_COP, SHOT_HEAT_CIVILIAN, SHOT_HEAT_NOISE, SHOT_PANIC_RADIUS, SHOT_ALARM_RADIUS, MAGAZINE } from '../systems/ShootSystem';
 import { makeFigure, makeLabel } from '../world/Interiors';
 import { CUSTOMER_MAP } from '../data/customers';
 import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, HANDLER_HIRE_PRICE, VEHICLE_PRICE, MOTEL_PRICE, FRONT_PRICE, FRONT_DAILY_INCOME, FRONT_DAILY_SUSPICION, ITEMS } from '../data/items';
@@ -148,6 +149,11 @@ export class Game implements GameAPI {
   private batView: THREE.Group;
   /** Swing animation progress, 1 → 0. */
   private swingT = 0;
+  /** First-person pistol, a child of the camera. */
+  private pistolView: THREE.Group;
+  private muzzle: THREE.Mesh;
+  private shotCooldown = 0;
+  private recoil = 0;
   boomboxOn = false;
   /** Car stereo stays on between rides unless you switch it off. */
   carRadioOn = true;
@@ -234,6 +240,22 @@ export class Game implements GameAPI {
       this.batView.scale.setScalar(0.8);
       this.batView.visible = false;
       this.camera.add(this.batView);
+    }
+    this.pistolView = new THREE.Group();
+    {
+      const steel = lambert('#3a3a44');
+      const slide = new THREE.Mesh(boxGeo(0.05, 0.06, 0.26), steel);
+      slide.position.set(0, 0.03, -0.05);
+      const grip = new THREE.Mesh(boxGeo(0.045, 0.12, 0.06), lambert('#4a2e1c'));
+      grip.position.set(0, -0.06, 0.06);
+      this.muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), lambert('#ffe08a', { emissive: '#ffcc55', emissiveIntensity: 2 }));
+      this.muzzle.position.set(0, 0.03, -0.2);
+      this.muzzle.visible = false;
+      this.pistolView.add(slide, grip, this.muzzle);
+      this.pistolView.position.set(0.24, -0.26, -0.5);
+      this.pistolView.rotation.set(0.05, 0.08, 0);
+      this.pistolView.visible = false;
+      this.camera.add(this.pistolView);
     }
     this.dayNight = new DayNight(this.scene, this.city.night);
     this.dayNight.setLampPositions(this.city.lampPositions);
@@ -947,7 +969,7 @@ export class Game implements GameAPI {
 
     // interaction
     const target = this.driving || this.hiding || this.cutscene.active ? null : this.interaction.update(this.camera, this.camera.position);
-    this.hud.setPrompt(uiOpen || this.arrested ? null : this.hiding ? t('[E] CLIMB OUT') : this.driving ? (Math.abs(this.ride!.speed) < 1 ? t(this.inCar ? '[E] GET OUT · SPACE HORN · SHIFT BRAKE' : '[E] GET OFF · SHIFT BRAKE') : null) : target ? target.prompt() : this.placement ? '[CLICK] PLACE · [R] ROTATE · [ESC] CANCEL' : null);
+    this.hud.setPrompt(uiOpen || this.arrested ? null : this.hiding ? t('[E] CLIMB OUT') : this.driving ? (Math.abs(this.ride!.speed) < 1 ? t(this.inCar ? '[E] GET OUT · SPACE HORN · SHIFT BRAKE' : '[E] GET OFF · SHIFT BRAKE') : null) : target ? target.prompt() : this.placement ? '[CLICK] PLACE · [R] ROTATE · [ESC] CANCEL' : this.state.inventory[this.hud.selectedSlot]?.id === 'pistol' ? t('[CLICK] FIRE · {n} ROUNDS', { n: countItem(this.state, 'rounds') }) : null);
     if (this.hiding) this.updateHiding(dt);
     // E works whenever no panel or menu is up, locked or not: closing a panel with Escape leaves the mouse free
     if (!uiOpen && !this.arrested && !this.menu.visible && this.input.wasPressed('KeyE')) {
@@ -1174,8 +1196,21 @@ export class Game implements GameAPI {
     }
 
     // the bat: shown when selected, left click swings (pointer must be captured)
-    const batOut = !uiOpen && !this.driving && !this.hiding && !this.arrested && !this.cutscene.active && !this.menu.visible && this.state.inventory[this.hud.selectedSlot]?.id === 'bat';
+    const handsFree = !uiOpen && !this.driving && !this.hiding && !this.arrested && !this.cutscene.active && !this.menu.visible;
+    const held = this.state.inventory[this.hud.selectedSlot]?.id;
+    const batOut = handsFree && held === 'bat';
     this.batView.visible = batOut;
+    // the pistol: left click fires one round
+    const pistolOut = handsFree && held === 'pistol';
+    this.pistolView.visible = pistolOut;
+    this.shotCooldown -= dt;
+    if (pistolOut && !this.placement && this.shotCooldown <= 0 && this.input.locked && this.input.wasPressed('Mouse0')) this.fireShot();
+    if (this.recoil > 0) {
+      this.recoil = Math.max(0, this.recoil - dt * 6);
+      this.pistolView.rotation.x = 0.05 + this.recoil * 0.35;
+      this.pistolView.position.z = -0.5 + this.recoil * 0.06;
+      this.muzzle.visible = this.recoil > 0.7;
+    }
     if (batOut && !this.placement && this.swingT <= 0 && this.input.locked && this.input.wasPressed('Mouse0')) this.swingBat();
     if (this.swingT > 0) {
       this.swingT = Math.max(0, this.swingT - dt * 3.2);
@@ -1721,6 +1756,10 @@ export class Game implements GameAPI {
   buy(shopId: string, itemId: string, qty: number): PurchaseResult {
     const r = buyFromShop(this.state, shopId, itemId, qty);
     if (r.ok && shopId === 'supplier') this.state.flags.boughtFromRico = true;
+    if (r.ok && itemId === 'pistol') {
+      addItem(this.state, 'rounds', MAGAZINE);
+      this.toast(t('The pistol comes with a magazine of {n} rounds. More at the counter, $2 apiece.', { n: MAGAZINE }), 'info', 6000);
+    }
     if (r.ok && ITEMS[itemId].category === 'equipment' && !itemId.endsWith('_kit')) this.toast(t('Bought {v0}: {v1}', { v0: ITEMS[itemId].name, v1: ITEMS[itemId].desc }), 'cash', 5000);
     return r;
   }
@@ -2368,6 +2407,52 @@ export class Game implements GameAPI {
       // a beating in the street clears the block
       for (const c of peds) if (c.state !== 'FLEE' && c.distanceTo(px, pz) < 12) c.reactTo(px, pz, Math.random() < 0.5);
     } else this.audio.play('switch');
+  }
+
+  /** Left click with the pistol out: one round, a straight shot, and the whole block hears it. */
+  private fireShot(): void {
+    const s = this.state;
+    if (countItem(s, 'rounds') <= 0) {
+      this.audio.play('click');
+      this.toast(t('Out of rounds. Sol Palma Pawn sells them at $2 apiece.'), 'warn', 4000);
+      this.shotCooldown = 0.4;
+      return;
+    }
+    removeItem(s, 'rounds', 1);
+    this.shotCooldown = 0.45;
+    this.recoil = 1;
+    this.audio.play('shot');
+    const px = this.player.position.x;
+    const pz = this.player.position.z;
+    const yaw = this.player.yaw;
+    const dx = -Math.sin(yaw);
+    const dz = -Math.cos(yaw);
+    const peds: Civilian[] = [...this.pedestrians(), ...this.wanderers.values()];
+    const cops = this.police.filter((p) => !p.stunned);
+    const targets = [...cops.map((p) => ({ x: p.position.x, z: p.position.z })), ...peds.map((c) => ({ x: c.position.x, z: c.position.z }))];
+    const hit = pickShot(px, pz, dx, dz, targets);
+    const eyeY = this.player.position.y + 1.5;
+    if (hit && this.city.colliders.lineOfSight(px, eyeY, pz, targets[hit.index].x, 1.2, targets[hit.index].z, 12)) {
+      if (hit.index < cops.length) {
+        const p = cops[hit.index];
+        p.stun(SHOT_STUN_SECONDS);
+        addHeat(s, SHOT_HEAT_COP);
+        this.hud.flash(t('OFFICER DOWN'), '#ff5c5c');
+        this.toast(t('You shot an officer. Every unit in Sol Palma is coming for you.'), 'warn', 7000);
+      } else {
+        const c = peds[hit.index - cops.length];
+        c.reactTo(px, pz, true);
+        addHeat(s, SHOT_HEAT_CIVILIAN);
+      }
+    }
+    // the noise alone: the block scatters and every cop in earshot comes running
+    addHeat(s, SHOT_HEAT_NOISE);
+    if (!s.flags.firedShot) {
+      s.flags.firedShot = true;
+      this.toast(t('Shots fired. The block is running and District 3 heard it.'), 'warn', 6000);
+    }
+    for (const c of peds) if (c.state !== 'FLEE' && c.distanceTo(px, pz) < SHOT_PANIC_RADIUS) c.reactTo(px, pz, true);
+    for (const p of this.police) if (p.distanceTo(px, pz) < SHOT_ALARM_RADIUS) p.alarm(px, pz);
   }
 
   // ------------------------------------------------------------------ placement mode (warehouse)

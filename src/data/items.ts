@@ -21,6 +21,8 @@ export const ITEMS: Record<string, ItemDef> = {
   mod_static: { id: 'mod_static', name: 'Static Dust', category: 'supply', value: 9, stack: 20, desc: 'Modifier. Adds CHAOTIC. Melts CHILL into DREAMY.' },
   mod_sparks: { id: 'mod_sparks', name: 'Blue Sparks', category: 'supply', value: 10, stack: 20, desc: 'Modifier. Adds FOCUS. Tames CHAOTIC into FOCUS, DREAMY into GLOW.' },
   mod_glow: { id: 'mod_glow', name: 'Glow Powder', category: 'supply', value: 12, stack: 20, desc: 'Modifier. Adds GLOW. Softens ENERGY into DREAMY.' },
+  pistol: { id: 'pistol', name: 'Pistol', category: 'misc', value: 150, stack: 1, desc: 'Left click fires. Loud: every cop within earshot comes running. Needs rounds.' },
+  rounds: { id: 'rounds', name: 'Rounds', category: 'misc', value: 2, stack: 30, desc: 'Pistol ammunition, one per shot.' },
   bat: { id: 'bat', name: 'Baseball Bat', category: 'misc', value: 0, stack: 1, desc: 'Left click swings. Knocks a cop down for a few seconds; everyone nearby notices.' },
   baggies: { id: 'baggies', name: 'Zip Baggies', category: 'supply', value: 1, stack: 50, desc: 'One baggie per packaged unit.' },
   eq_mixer: { id: 'eq_mixer', name: 'Turbo Mixer', category: 'equipment', value: 220, stack: 1, desc: 'Prep table works twice as fast and yields +1 unit per batch.' },
@@ -67,6 +69,8 @@ export const SHOPS: Record<string, { name: string; entries: ShopEntry[] }> = {
   pawn: {
     name: 'Sol Palma Pawn',
     entries: [
+      { itemId: 'pistol', price: 150 },
+      { itemId: 'rounds', price: 2 },
       { itemId: 'eq_backpack', price: 180 },
       { itemId: 'eq_mixer', price: 220 },
       { itemId: 'eq_scanner', price: 260 },

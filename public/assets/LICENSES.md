@@ -33,7 +33,7 @@ Fetched from the community mirror https://github.com/ETdoFresh/kenney.nl
 | File | Source pack |
 | --- | --- |
 | icons/items/*.png (pulp_sunset, wax_velvet, gel_neon, mod_*, baggies, pkg, prod, eq_*, kit) | Generic Items (160 assets), renamed per item |
-| icons/items/bat.png | drawn for this project (CC0) |
+| icons/items/bat.png, pistol.png, rounds.png | drawn for this project (CC0) |
 
 ## Textures — Kenney, CC0
 | File | Source pack |

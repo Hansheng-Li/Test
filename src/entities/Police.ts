@@ -71,6 +71,13 @@ export class Police extends NPC {
     return this.stunTimer > 0;
   }
 
+  /** Heard a shot or saw a colleague go down: straight into a chase toward that spot. */
+  alarm(x: number, z: number): void {
+    if (this.stunTimer > 0) return;
+    this.lastSeen.set(x, 0, z);
+    if (this.pstate !== 'CHASE') this.enter('CHASE', ['Shots fired! Shots fired!', 'GUN! Everybody down!', 'All units, shooter downtown!']);
+  }
+
   /** Bat hit: down for a few seconds, then straight into a chase. */
   stun(seconds: number): void {
     this.stunTimer = seconds;
