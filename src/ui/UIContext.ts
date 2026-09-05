@@ -1,0 +1,70 @@
+import { GameState } from '../game/GameState';
+import { PurchaseResult } from '../systems/EconomySystem';
+import { PrepPlan, PrepResult, PackageResult } from '../systems/ProductionSystem';
+import { SfxName } from '../audio/Audio';
+import { DicePick, DiceResult } from '../systems/DiceSystem';
+import { BlackjackHand, SlotResult } from '../systems/CasinoSystem';
+
+/** Escape player-typed text (product/crew names) before it goes into innerHTML. */
+export function esc(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+export type ToastKind = 'info' | 'cash' | 'warn' | 'pager';
+
+/** What UI panels are allowed to ask the game to do. Implemented by Game. */
+export interface GameAPI {
+  readonly state: GameState;
+  now(): number;
+  toast(msg: string, kind?: ToastKind): void;
+  sfx(name: SfxName): void;
+  closePanel(): void;
+  /** Take the bus from the current stop to another district's stop. */
+  rideBus(stopId: string): void;
+  /** One throw of street dice. */
+  playDice(bet: number, pick: DicePick): DiceResult;
+  /** Back-room blackjack: null when the bet cannot be placed. */
+  blackjackDeal(bet: number): BlackjackHand | null;
+  blackjackHit(hand: BlackjackHand): BlackjackHand;
+  blackjackStand(hand: BlackjackHand): BlackjackHand;
+  blackjackDouble(hand: BlackjackHand): BlackjackHand | null;
+  spinSlots(bet: number): SlotResult;
+  acceptOrder(id: number): void;
+  haggle(id: number, markup: number): void;
+  declineOrder(id: number): void;
+  sendRunner(id: number): void;
+  buy(shopId: string, itemId: string, qty: number): PurchaseResult;
+  buyDelivered(shopId: string, itemId: string, qty: number): PurchaseResult;
+  /** Sol Palma Pawn markers: borrow a tier amount / pay some of it back. */
+  takeLoan(amount: number): boolean;
+  repayLoan(amount: number): number;
+  prep(plan: PrepPlan): PrepResult;
+  packageProduct(key: string, qty: number): PackageResult;
+  nameRecipe(key: string, name: string): boolean;
+  deposit(property: string, id: string, qty: number): number;
+  withdraw(property: string, id: string, qty: number): number;
+  hireRunner(): boolean;
+  callAround(): void;
+  assignWorker(recipeKey: string | null): boolean;
+  dealerGive(itemId: string, qty: number): number;
+  dealerTake(itemId: string, qty: number): number;
+  dealerAssign(customerId: string, on: boolean): boolean;
+  dealerCollect(): number;
+  buyWarehouse(): boolean;
+  rest(): void;
+  placeStation(kind: 'prep_table' | 'pack_table' | 'storage'): boolean;
+  playerXZ(): { x: number; z: number };
+  /** Player heading (forward is (-sin yaw, -cos yaw)). */
+  playerYaw(): number;
+  policeXZ(): { x: number; z: number }[];
+  customerXZ(): { id: string; x: number; z: number; orderId: number }[];
+  runnerXZ(): { x: number; z: number } | null;
+  hasScanner(): boolean;
+  setCrewName(name: string): void;
+  /** Point the compass and the radar at a place until the player gets there. */
+  setWaypoint(x: number, z: number, label: string, closePanel?: boolean): void;
+  /** Follow the chapter, one order or one goal with the compass; null clears. */
+  track(kind: 'step' | 'order' | 'goal' | null, id?: string | number): void;
+  /** The HUD objective line. */
+  objective(): string;
+}

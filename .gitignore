@@ -1,0 +1,8 @@
+node_modules
+dist
+cursor_md_folder
+test-results
+playwright-report
+.DS_Store
+*.log
+src/.env

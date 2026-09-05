@@ -1,0 +1,220 @@
+import { describe, it, expect } from 'vitest';
+import { createNewState } from '../src/systems/SaveSystem';
+import { generateOrder, acceptOrder, counterOffer, completeSale, expireOrders } from '../src/systems/OrderSystem';
+import { hireDealer, giveDealerStock, collectDealerCash, tickDealer, assignDealerCustomer } from '../src/systems/DealerSystem';
+import { applyArrest } from '../src/systems/HeatSystem';
+import { offerSample } from '../src/systems/CustomerSystem';
+import { checkMilestones } from '../src/systems/MilestoneSystem';
+import { executePrep, executePackage } from '../src/systems/ProductionSystem';
+import { addItem, countItem } from '../src/systems/InventorySystem';
+import { computeRecipe } from '../src/data/products';
+
+const seq = (vals: number[]) => { let i = 0; return () => vals[Math.min(i++, vals.length - 1)]; };
+
+/** Things a hostile player (or a buggy caller) would try; every one must be a no-op, not a payday. */
+describe('adversarial: money and state cannot be created by repeating calls', () => {
+  it('a pager order cannot be completed twice or with fewer units than asked', () => {
+    const s = createNewState();
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    const o = generateOrder(s, { now: s.clockMinutes, customerId: 'tasha', simple: true, rng: seq([0.1]) })!;
+    o.qty = 3;
+    acceptOrder(s, o.id);
+    addItem(s, 'pkg:SUNSET', 2);
+    expect(completeSale(s, o.id, s.clockMinutes).ok).toBe(false);
+    expect(countItem(s, 'pkg:SUNSET')).toBe(2);
+    addItem(s, 'pkg:SUNSET', 1);
+    const cashBefore = s.cash;
+    expect(completeSale(s, o.id, s.clockMinutes).ok).toBe(true);
+    expect(s.cash).toBeGreaterThan(cashBefore);
+    const after = s.cash;
+    expect(completeSale(s, o.id, s.clockMinutes).ok).toBe(false);
+    expect(s.cash).toBe(after);
+  });
+
+  it('haggling is one attempt per order', () => {
+    const s = createNewState();
+    const o = generateOrder(s, { now: s.clockMinutes, customerId: 'tasha', simple: true, rng: seq([0.1]) })!;
+    const r1 = counterOffer(s, o.id, 0.01, () => 0.99);
+    expect(r1?.outcome).toBe('accepted');
+    expect(counterOffer(s, o.id, 0.01, () => 0.99)).toBeNull();
+  });
+
+  it('dealer cash can only be collected once and malformed stock is refused', () => {
+    const s = createNewState();
+    s.cash = 5000;
+    hireDealer(s, 1000);
+    expect(giveDealerStock(s, 'baggies', 5)).toBe(0); // not a packaged product
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    addItem(s, 'pkg:SUNSET', 4);
+    expect(giveDealerStock(s, 'pkg:SUNSET', 99)).toBe(4);
+    assignDealerCustomer(s, 'tasha');
+    tickDealer(s, s.clockMinutes + 10000, () => 0.1);
+    const owed = s.dealer!.cash;
+    expect(owed).toBeGreaterThan(0);
+    const before = s.cash;
+    expect(collectDealerCash(s)).toBe(Math.round(owed));
+    expect(collectDealerCash(s)).toBe(0);
+    expect(s.cash).toBe(before + Math.round(owed));
+  });
+
+  it('an arrest never drives cash negative', () => {
+    const s = createNewState();
+    s.cash = 10;
+    const r = applyArrest(s);
+    expect(r.fine).toBe(10);
+    expect(s.cash).toBe(0);
+    s.cash = 0;
+    applyArrest(s);
+    expect(s.cash).toBe(0);
+  });
+
+  it('samples cannot be given to an already unlocked customer and the second sample always unlocks', () => {
+    const s = createNewState();
+    s.recipes['VELVET'] = { ...computeRecipe('VELVET', []) };
+    addItem(s, 'pkg:VELVET', 3);
+    const locked = Object.values(s.customers).find((c) => !c.unlocked)!;
+    const r1 = offerSample(s, locked.id, 'pkg:VELVET');
+    expect(r1.ok).toBe(true);
+    if (!r1.unlocked) expect(offerSample(s, locked.id, 'pkg:VELVET').unlocked).toBe(true);
+    expect(offerSample(s, locked.id, 'pkg:VELVET').reason).toBe('already_unlocked');
+    expect(countItem(s, 'pkg:VELVET')).toBeGreaterThanOrEqual(1);
+  });
+
+  it('milestone rewards are paid once even if the condition keeps holding', () => {
+    const s = createNewState();
+    s.stats.sales = 1;
+    const first = checkMilestones(s);
+    expect(first.some((m) => m.id === 'first_sale')).toBe(true);
+    const cash = s.cash;
+    expect(checkMilestones(s)).toEqual([]);
+    expect(s.cash).toBe(cash);
+  });
+
+  it('prep and packaging never mint units without inputs', () => {
+    const s = createNewState();
+    expect(executePrep(s, { inputItem: 'pulp_sunset', mods: [], units: 1 }).ok).toBe(false);
+    addItem(s, 'pulp_sunset', 1);
+    expect(executePrep(s, { inputItem: 'pulp_sunset', mods: [], units: 5 }).reason).toBe('no_input');
+    expect(executePrep(s, { inputItem: 'pulp_sunset', mods: ['mod_flux'], units: 1 }).reason).toBe('no_mods');
+    expect(executePackage(s, 'SUNSET', 1).reason).toBe('no_product');
+    expect(executePrep(s, { inputItem: 'pulp_sunset', mods: [], units: 1, bonusUnits: 99 }).units).toBeLessThanOrEqual(3);
+  });
+
+  it('the order list stays bounded and finished orders are the ones trimmed', () => {
+    const s = createNewState();
+    for (let i = 0; i < 80; i++) s.orders.push({ id: i + 1, customerId: 'tasha', base: 'SUNSET', effects: [], qty: 1, price: 10, locationId: 'pier', windowStart: 0, windowEnd: 1, status: i < 5 ? 'accepted' : 'completed', createdMinute: 0 });
+    expireOrders(s, 0);
+    expect(s.orders.length).toBeLessThanOrEqual(35);
+    expect(s.orders.filter((o) => o.status === 'accepted')).toHaveLength(5);
+  });
+});
+
+describe('adversarial: typed names cannot carry markup', () => {
+  it('nameRecipe strips markup characters and esc() neutralises what a hostile save carries', async () => {
+    const { nameRecipe } = await import('../src/systems/ProductionSystem');
+    const { esc } = await import('../src/ui/UIContext');
+    const s = createNewState();
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    expect(nameRecipe(s, 'SUNSET', '<img src=x onerror=alert(1)>')).toBe(true);
+    expect(s.recipes['SUNSET'].customName).not.toMatch(/[<>&"'`]/);
+    expect(nameRecipe(s, 'SUNSET', '<>')).toBe(false);
+    expect(esc('<b>&"x')).toBe('&lt;b&gt;&amp;&quot;x');
+  });
+});
+
+describe('adversarial: time jumps', () => {
+  it('the dealer plays the rounds a sleep or arrest skipped, capped', () => {
+    const s = createNewState();
+    s.cash = 5000;
+    hireDealer(s, 1000);
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    addItem(s, 'pkg:SUNSET', 40);
+    giveDealerStock(s, 'pkg:SUNSET', 40);
+    assignDealerCustomer(s, 'tasha');
+    const start = s.dealer!.lastTickMinute;
+    const r = tickDealer(s, start + 12 * 60, () => 0.1);
+    expect(r.sales.length).toBe(8);
+    expect(s.dealer!.sales).toBe(8);
+    expect(tickDealer(s, start + 12 * 60 + 10, () => 0.1).sales.length).toBe(0);
+  });
+});
+
+describe('design: customer wallets', () => {
+  it('a corner customer cannot afford top-shelf product until the relationship is there', () => {
+    const s = createNewState();
+    s.cash = 5000;
+    hireDealer(s, 1000);
+    const rich = computeRecipe('NEON', ['mod_sparks', 'mod_glow', 'mod_solar']);
+    s.recipes[rich.key] = { ...rich };
+    addItem(s, 'pkg:' + rich.key, 10);
+    giveDealerStock(s, 'pkg:' + rich.key, 10);
+    assignDealerCustomer(s, 'tasha');
+    const start = s.dealer!.lastTickMinute;
+    const r0 = tickDealer(s, start + 100, () => 0.1);
+    expect(r0.sales).toEqual([]);
+    expect(r0.tooPricey).toEqual(['tasha']);
+    s.customers.tasha.relationship = 40;
+    const r1 = tickDealer(s, start + 200, () => 0.1);
+    expect(r1.sales.length).toBe(1);
+    expect(r1.sales[0].qty).toBe(1);
+  });
+});
+
+describe('design: late orders and the runner', () => {
+  it('a customer already past the window cannot be handed to Dizzy, and a late arrival pays 30% less', async () => {
+    const { hireRunner, assignRunner, tickRunner } = await import('../src/systems/RunnerSystem');
+    const { storageAdd } = await import('../src/systems/InventorySystem');
+    const s = createNewState();
+    s.cash = 1000;
+    hireRunner(s, 600);
+    s.recipes['SUNSET'] = { ...computeRecipe('SUNSET', []) };
+    storageAdd(s, 'safehouse', 'pkg:SUNSET', 20);
+    const o = generateOrder(s, { now: s.clockMinutes, customerId: 'moe', simple: true, rng: () => 0.1 })!;
+    acceptOrder(s, o.id);
+    s.clockMinutes = o.windowEnd + 5;
+    expect(assignRunner(s, o.id)).toEqual({ ok: false, reason: 'late' });
+    s.clockMinutes = o.windowEnd - 5;
+    expect(assignRunner(s, o.id).ok).toBe(true);
+    s.clockMinutes = o.windowEnd + 10; // Dizzy shows up late
+    const cash = s.cash;
+    const r = tickRunner(s, 10000, () => 0.9);
+    expect(r.completed?.earned).toBe(Math.round(o.price * 0.7) - Math.round(Math.round(o.price * 0.7) * 0.2));
+    expect(s.cash - cash).toBe(r.completed!.earned);
+  });
+});
+
+describe('street dice', () => {
+  it('pays even money, triple on snake eyes for LOW, and the house takes seven', async () => {
+    const { rollDice } = await import('../src/systems/DiceSystem');
+    const s = createNewState();
+    s.cash = 1000;
+    // rng values map to die faces 1..6 via floor(r*6)
+    const r1 = rollDice(s, 50, 'high', seq([0.9, 0.9])); // 6+6 = 12
+    expect(r1.payout).toBe(1);
+    expect(s.cash).toBe(1050);
+    const r2 = rollDice(s, 50, 'low', seq([0.0, 0.0])); // 1+1 snake eyes
+    expect(r2.payout).toBe(3);
+    expect(s.cash).toBe(1200);
+    const r3 = rollDice(s, 50, 'high', seq([0.5, 0.34])); // 4+3 = 7
+    expect(r3.payout).toBe(0);
+    expect(s.cash).toBe(1150);
+    expect(s.stats.diceNet).toBe(150);
+    expect(s.stats.diceRolls).toBe(3);
+    expect(s.heat).toBe(6);
+    expect(rollDice(s, 5000, 'high').reason).toBe('bad_bet');
+    s.cash = 5;
+    expect(rollDice(s, 10, 'high').reason).toBe('no_cash');
+    expect(s.cash).toBe(5);
+  });
+
+  it('is a money sink: expected value is negative', async () => {
+    const { rollDice } = await import('../src/systems/DiceSystem');
+    let rs = 12345;
+    const rng = () => { rs = (rs * 1103515245 + 12345) & 0x7fffffff; return rs / 0x7fffffff; };
+    const s = createNewState();
+    s.cash = 1e9;
+    for (let i = 0; i < 20000; i++) rollDice(s, 10, i % 2 ? 'high' : 'low', rng);
+    expect(s.stats.diceNet!).toBeLessThan(0);
+    expect(s.stats.diceNet! / 200000).toBeGreaterThan(-0.2);
+  });
+});

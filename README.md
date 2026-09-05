@@ -1,2 +1,355 @@
-# Test
-This is a repo for test git skill
+# SUNSET SYNDICATE
+
+*A first-person underground-business simulator set in the fictional Florida coastal city of **Sol Palma**, 1996.*
+
+You arrive with $80, a pager and a rented back room behind a laundromat. You start by personally
+prepping, bagging and hand-delivering fictional products to a handful of named customers. Every dollar
+gets reinvested: better tools, a warehouse, a runner who delivers for you, and eventually a city-wide
+operation that runs while you manage the bigger problems (police heat, product trends, customers who
+cancel while you are halfway across town).
+
+> **Content note:** every product, ingredient, effect and process in this game is fictional and
+> abstract. There are no real-world recipes or instructions of any kind.
+
+---
+
+## Quick start
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+npm run build      # type-check + production bundle in dist/
+npm test           # Vitest logic tests (economy, production, orders, heat, runner, save/load)
+npm run test:e2e   # Playwright smoke test (game boots, HUD shows, no startup errors)
+```
+
+Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointer Lock).
+
+## Controls
+
+| Key | Action |
+| --- | --- |
+| `W A S D` | Move |
+| Mouse | Look |
+| `Shift` | Toggle sprint on foot (no need to hold it); handbrake in the car, which drifts at speed |
+| `Space` | Jump (also: STIR / SEAL inside station panels) |
+| `E` | Interact (talk, buy, use station, sell, open storage…) |
+| `Tab` | Backpack, product book, customer book |
+| `P` | Pager (accept / decline / haggle, send the runner) |
+| `Y` / `X` | Accept / decline the newest page without opening the pager |
+| `J` | Journal: chapter checklist and goals, a directory of places and people (GUIDE ME sets the compass), the key table |
+| `M` | Paper map of Sol Palma (click anywhere on it to drop a marker the compass and radar point at) |
+| `1`–`8` | Select hotbar slot |
+| Left click | Swing the baseball bat / fire the pistol (whichever is the selected hotbar item) |
+| `B` | Place equipment (inside your warehouse, with a station kit in your backpack) |
+| `N` | Radio: cycles SOL PALMA FM → THE WAVE → FUNK CITY → SIGNAL ZERO → off (walkman on foot, car stereo while driving) |
+| any key | Skips a cutscene (Escape pauses instead) |
+| `H` | Hide/show the HUD (screenshot mode) |
+| `W S A D` / `Shift` / `F` / `Space` | In the car: drive / handbrake & drift / nitro (a five-bar charge that refills when unused) / horn |
+| `R` | Rotate equipment in placement mode |
+| `Esc` | Close panel / pause menu (save, how to play, settings: sensitivity & volumes) |
+| `F3` | Performance overlay (fps, draw calls, triangles) |
+
+A compass at the top of the screen points at the current target (the waiting customer, Rico when you need
+supplies, the right table when you need to prep or bag, or Vince when he is holding cash).
+
+## The first five minutes
+
+1. Open the **STARTER BOX** in your back room (3× Sunset Pulp, 6× Zip Baggies).
+2. Use the **PREP TABLE**: pick the pulp, press START, tap `Space` when the needle is in the green zone
+   (3 good stirs = +1 bonus unit, 5 = +2).
+3. Give the result a street name (it shows up on pagers, in your backpack and in sale messages).
+4. Bag it at the **PACKAGING** table (one press per unit until you buy a Heat Sealer).
+5. Your pager beeps: `2x SUNSET · $68 · DEL MAR RECORDS · BY 17:40 -TASHA`. Press `P`, ACCEPT.
+6. Walk to Del Mar Records, find Tasha, press `E`. Cash, relationship, and a cartoon reaction.
+
+## Progression loop
+
+```
+manual labor  →  better tools  →  semi-automation  →  employees  →  full automation  →  management problems
+   (you)         Turbo Mixer       Heat Sealer         Runner         Warehouse +         heat, cancellations,
+                 Backpack          Brick Phone         (Dizzy)        placed stations     rival trends (roadmap)
+```
+
+* **Supplies**: Rico's van at the container yard sells base supplies and street modifiers; Quick Stop 24
+  sells baggies and "candy-aisle" modifiers; Sol Palma Pawn sells equipment and station kits.
+* **Products**: 3 fictional bases (**SUNSET / VELVET / NEON**) × 6 modifiers (Flux Chips, Velvet Drops,
+  Solar Tabs, Static Dust, Blue Sparks, Glow Powder). Modifiers are applied in order and *transform* existing
+  effect tags, so `VELVET + Flux + Drops` ≠ `VELVET + Drops + Flux`. Named combos (Beach Party, Lava Lamp,
+  Wall Street…) pay a bonus. Every product can be given a custom street name.
+* **Customers**: 12 persistent named NPCs with personality, preferred product/effects, price generosity,
+  reliability and risk. Deals raise relationship → bigger orders, better prices, friends-of-friends unlock.
+* **Orders** arrive on the pager (accept / decline / haggle for +10–35 %), have a meeting spot and a
+  time window. Payphones let you "call around" for work; the Brick Phone raises order frequency.
+* **Customers walk the city** on their own schedule (night owls after dark, day people by day). Locked
+  customers can be won over with a free sample of a packaged product (their taste decides); unlocked
+  customers buy straight out of your backpack in street deals.
+* **Street talk & news**: every day one effect is "hot" (+25 % on sales), and from day 2 a world event
+  may hit — police crackdown in a zone, a supply shortage that doubles Rico's price, a beach club
+  night that pays +30 % after dark, a port authority inspection that seizes a quarter of the product on
+  your warehouse shelves (once you own it and have a reputation), or Sal's rival crew working one of your
+  customers for the day — no pages from them until you show up in person and close a deal.
+* **Police & Heat**: witnessed deals and loud customer reactions raise Heat (0–100). Officers escalate
+  through PATROL → NOTICE → INVESTIGATE → APPROACH → SEARCH → CHASE. At medium heat they stop and
+  search you: carrying contraband means arrest, being clean means they lose interest. Break line of
+  sight, dive into an alley dumpster (E), or get home. Arrest = contraband confiscated + fine + suspicion + 6 lost hours. Never a game over.
+  Long-term suspicion puts extra patrols on the street (4 → 6 officers).
+* **Property**: buy **Warehouse 7** ($1,800) at the docks, then place shelves, prep stations and
+  packaging tables inside it (grid-snapped placement mode).
+* **Automation**: hire **Dizzy** ($600) near the Ocean View Motel. Stock packaged product in storage,
+  then use *SEND RUNNER* on any accepted order. Dizzy walks there, closes the deal and keeps 20 %.
+  Once you own the warehouse, hire **Marisol** ($900) at the Port Authority: assign her a recipe at a prep
+  table and she turns stored supplies + baggies into packaged product around the clock. Hire **Vince**
+  ($1,000) near Neptune Arcade as a dealer: hand him stock, assign up to five customers, and they stop
+  paging you — he sells on his corner and holds the cash until you collect it (and sometimes gets shaken
+  down by the cops; leave him without stock for too long and a rival crew poaches his customers). Dizzy
+  takes a queue of deliveries; once you own the warehouse Rico delivers supplies there for a 20 % fee. Supplies in, dealer out — the loop you used to do by hand now runs itself.
+* **Legit front**: buy the Lucky Laundromat ($2,200) — clean income every morning and your long-term
+  suspicion cools down 12 points a day.
+* **Second stash**: rent Room 6 at the Ocean View Motel ($1,200) for beach-side storage and a bed.
+* **Wheels**: the '88 sedan at Rojas Auto Repair ($900) crosses town in seconds, honks pedestrians out
+  of the way, and stays wherever you park it.
+* **Boredom**: sell a customer the same product three times in a row and they start asking for a
+  different effect (and refuse the usual on the street) — keep experimenting.
+* **VIP rush orders**: regulars sometimes page a double-size order at +60 % pay with a 50-minute window.
+* **Name your crew** at the ledger: it goes up in neon on Warehouse 7.
+* **Goals**: the fax/CRT ledger in your back room lists 14 milestones with cash rewards, crew status and
+  today's street talk; each morning you get yesterday's numbers.
+* **Day / night**: 1 real second = 1 game minute. Night brings neon, club crowds and lamp-lit streets.
+* **Save / load**: three save slots in `localStorage`, each shown with a run summary and its save time.
+  Autosave every minute and after every sale into the slot you are playing; CONTINUE loads the newest
+  slot, LOAD GAME picks (or deletes) one, NEW GAME takes the first free slot or asks which to overwrite,
+  and the pause menu saves to the current slot or to any slot you choose. Saves from older builds move
+  into slot 1 automatically.
+
+## Architecture
+
+Vanilla TypeScript + Vite + Three.js (WebGLRenderer). No physics engine, no UI framework, no external assets.
+
+```
+src/
+  main.ts                 bootstrap
+  game/Game.ts            orchestrator: loop, wiring, GameAPI for the UI
+  game/GameState.ts       plain serializable state (everything the save contains)
+  core/                   Input (pointer lock + key codes), GameClock, EventBus
+  player/                 first-person controller (AABB body, step-up, sprint, jump, head bob)
+  physics/Colliders.ts    tiny AABB world with a broad-phase grid, moveBody, lineOfSight
+  world/                  City builder (hand-authored layout in data/city.ts), procedural textures,
+                          props (InstancedMesh palms/lamps), interiors, waypoint graph, DayNight
+  entities/               NPC base + Civilian FSM, Police FSM, CustomerNPC reactions, RunnerNPC
+  systems/                pure gameplay logic operating on GameState:
+                          Inventory, Economy, Production, Customer, Order, Heat, Runner, Save, Interaction
+  ui/                     DOM/CSS HUD, pager, backpack/storage, shops, prep & packaging stations, map, menu
+  data/                   items & shops, product chemistry, customers, city layout
+  audio/                  WebAudio sfx (CC0 samples with synth fallbacks), ambience, 5-station radio with DJ chatter and a news desk
+tests/                    Vitest behavioural tests for the systems
+e2e/                      Playwright smoke test
+```
+
+Design rules that shaped the code:
+
+* Gameplay logic never touches Three.js objects; `Game.ts` is the only place that maps state to meshes.
+  The state is a plain JSON object, which keeps save/load trivial and leaves the door open for co-op later.
+* Rendering is cheap on purpose: shared Lambert materials, cached CanvasTextures, InstancedMesh for palms,
+  lamps and road dashes, a static-merge pass that folds ~1,900 prop meshes into ~460 draw buckets,
+  one shadow-casting directional light, a pool of six point lights that follow the
+  player between street lamps, and distance-based LOD for pedestrian updates.
+* Interaction uses a distance + view-cone test against registered anchors rather than mesh raycasting.
+
+## Implemented systems (MVP v0.1)
+
+- Compact 460 m × 380 m district: beach strip, downtown, industrial docks; 32 buildings, 6 interiors
+  (back room, Quick Stop 24, Sol Palma Pawn, Ocean View Motel room, Warehouse 7, Club Mirage), alleys,
+  piers, container yard, 8 payphones, police station exterior.
+- First-person movement with collision, curbs/steps, sprint, jump.
+- Reusable interactable system with contextual prompts.
+- 8-slot inventory with stacks, categories, storage transfer, Courier Backpack upgrade.
+- Three vendors, equipment upgrades, warehouse purchase, station kits and placement mode.
+- Pager order system with time windows, accept/decline, expiry, cancellations, payphone "call around".
+- 12 customers with relationships, tiers, friend-unlock chains, sample unlocks, street deals, haggling,
+  preferences, custom-name reactions; they wander their home zones when not waiting for you.
+- Prep table stir minigame, packaging table sealing, deterministic modifier chemistry, combo names,
+  player-named products shown everywhere.
+- Heat + suspicion, 4 patrol officers with a 7-state FSM, stop-and-search, chase, arrest with soft penalties.
+- 26 ambient pedestrians with wander/wait/react/flee, 7 club dancers at night.
+- Runner employee (Dizzy) with visible deliveries and a 20 % cut; production worker (Marisol) who
+  converts warehouse storage into packaged product; dealer (Vince) with stock, assigned customers,
+  automatic corner sales and shakedown events.
+- Customers carry a wallet ($75 + $6 per relationship point, more when generous): dealer rounds and
+  street deals only move what they can afford, so premium product needs real relationships first.
+- Haggling is one attempt per order with a mood factor (the REL and personality tags are hints, not a
+  table); it unlocks after your second sale. The runner queues at most two runs and one in twenty
+  deliveries goes wrong.
+- Daily trend bonus, world events twice a day (crackdown / shortage / club night), pedestrian gossip about
+  your named products, 14 milestone goals with rewards, morning summaries.
+- Street dice behind Neptune Arcade: call HIGH or LOW for $10-$200 a throw (seven is the house, snake
+  eyes on LOW pay triple); a money sink with Kenney casino sounds, a little heat per throw and a Hot Hand
+  milestone.
+- Sol Palma Transit: a bus stop per district (marked B on the map) rides you across town for $5 and
+  twelve minutes behind a fade, unless a cop is on your heels.
+- The sedan has a trunk: press F beside the parked car for a 24-unit stash that travels with you. Get
+  busted in or next to the car and the officers pop the trunk too.
+- Teddy the handler (Warehouse 7 office, needs Vince): every hour he carries up to 20 packaged units from
+  warehouse storage to Vince's corner, so Marisol → Teddy → Vince runs while you work the street. One trip
+  in twenty meets a patrol and the bag is lost. The cash pickup from Vince stays yours.
+- You start with wheels and a weapon: Rico's old hatchback waits in the alley outside the back-room door
+  (E to get in; slower and softer than the '88 sedan, no trunk, and it saves where you leave it), and the
+  starter box holds a baseball bat. Select the bat on the hotbar and left-click to swing: a cop in the arc
+  goes down for four seconds and cannot arrest you (heat +18, and he comes up chasing), civilians scatter
+  (heat +6), the rest of the block takes notice.
+- Neptune's back room spills onto the sidewalk beside the arcade: a blackjack table ($20–200 a hand,
+  dealer draws to 17, blackjack pays 3:2, double down on the first two cards, H/S keys) and the Sunset
+  Sevens slot machine ($5 or $20 a pull, 7-7-7 pays 50×, about 92% return). Both draw a little heat per
+  hand and count toward the Card Sharp milestone.
+- Every order tells you how to make it: a dashed hint under WANTS names the modifiers that give the
+  requested effects (or says plain base is fine), effect tags are bold and colour-coded everywhere, and the
+  objective line repeats the hint at the prep table. Accepting an order guarantees 2.5 to 5 real minutes
+  (2 for a VIP rush) whatever the customer first offered. Shop rows show what you hold everywhere
+  (backpack and every storage), the paper map draws you as an arrow that points where you look, and shop
+  signs sit above the door line.
+- Orders read as cards, not beeper code: the customer's face and name, then labelled rows for what they
+  want, what they pay, where and by when, and their note; the HUD beeper shows the same in two lines. Panels
+  use a larger face with more line height, backpack slots put the icon left of the text, and at most three
+  toasts stack at once.
+- The journal (J) is the game's table of contents: the chapter-one checklist (also shown in the HUD
+  objective box until the chapter is done), what to do right now, active orders and the next goals; a
+  directory of every key place and customer hangout with what it is for, the price of what it sells and
+  the distance to it; every contact with their face, role, price and hire status, plus the customers you
+  know; and the full key table. GUIDE ME on any row points the compass and the radar at it until you arrive,
+  and every task (the chapter, an order, a goal) has a TRACK button: the compass follows the tracked one,
+  and tracking is saved with the run.
+- A radar in the bottom-right corner: heading-up, roads and blocks, your property in green, shops in
+  gold, waiting customers, parked cars, the runner, and cops (nearby or alarmed ones; every one of them
+  with the scanner). The objective shows as a diamond, or an arrow on the rim when it is out of range,
+  and a cyan N marks north.
+- Street furniture obeys the road grid: no palm or lamp post stands on the asphalt, pedestrians who walk
+  into a corner step aside and re-plan after a second and a half, and a crowd never stacks into one spot
+  (a gentle push keeps them a shoulder apart). Parked cars wear dark tires with light hub caps.
+- Any car parked on the street can be taken: walk up, E, and it is yours (GTA rules). A cop with a view
+  adds heat 25, otherwise 8; you keep up to four stolen cars, the oldest gets towed, and they save where
+  you leave them. Cruisers outside the station and the taxis keep their livery.
+- Sol Palma Pawn sells a pistol ($150, comes with a six-round magazine; rounds are $2 apiece). Select it
+  and left-click to fire a straight shot: a cop hit goes down for eight seconds (heat +35), a civilian hit
+  runs (heat +15), and every shot is heard: heat +6, the block within 25 m scatters, and every officer
+  within 40 m comes running. Nobody dies in Sol Palma; they get up angrier.
+- Chapter one is paced by hand: Rico's note on the pager, prep and bag the starter pulp, Tasha's first
+  page (only after the product is bagged), the first sale, a restock trip to Rico at the Container Yard,
+  then the second sale; only then does the pager open up. Story beats arrive as dialogue cards (the
+  speaker's face on the left, text on the right) that never freeze the game: click, Enter, or E with
+  nothing in reach turns the page. Pager messages show the customer's face too.
+- A quiet music bed (three of the CC0 radio tracks, cycling) plays whenever the radio is off and you are
+  in the city; it fades under the radio, cutscenes, arrests and menus. Settings → Music volume (radio off)
+  sets it, 0 turns it off.
+- Simplified Chinese UI by default (English in Settings → Language, switches live): menus, HUD, every panel,
+  prompts, objectives, toasts, item and place names, customer lines. Radio DJs and WSOL still broadcast in
+  English as part of the 1996 Florida setting.
+- Car chases: drive past a cruiser while the city is hot and it leaves its loop to pursue the sedan along
+  the road grid (a shade slower than you on the straights, faster in the corners). Sit still within reach
+  and you are pulled over: a clean car costs nothing, contraband in the backpack or trunk is a bust. Lose
+  it by outrunning it, breaking line of sight for eight seconds, or leaving the roads for the alleys
+  (Burnt Rubber milestone).
+- Rojas resprays the sedan for $150 (six colours in a fixed rack, saved with the car): heat drops by
+  30 and any officer chasing you loses the trail. Bring the car into the lot, then press E at the sign.
+- A District 3 patrol cruiser (Kenney police model, box fallback) drives a loop around the downtown
+  blocks: it brakes for whoever is in its lane, counts as a witness to deals it can see, lights up when
+  the city is hot or under curfew and radios the nearest idle officer to your position once it spots
+  you. Shows on the scanner map.
+- Fog mornings: one morning in three (seeded) the bay fogs in from 05:00 until about 08:30. The horizon
+  pulls in to a block and every sight range in the city (officers, the cruiser, deal witnesses) drops by
+  up to 45%. WSOL reads the forecast.
+- Curfew nights (from the fourth night, one night in five): District 3 puts two extra officers on the
+  street and a second cruiser on the beach loop until 06:00, every deal draws 50% more heat and
+  officers notice you sooner, but customers pay +20% after dark. Announced on the pager, the radio and the ledger; idle officers clock off at dawn, one
+  mid-chase does not vanish.
+- Markers at Sol Palma Pawn: borrow $300, $800 or $1,500 (bigger sizes need a track record) and pay back
+  +25% within three days. Overdue markers grow 20% a day, add heat and the collectors take any cash
+  above bus fare; the balance is capped so a broke player is never buried. Shown in the ledger.
+- Every block figure wears a CC0 face from the Kenney Blocky Characters pack (customers keep the same
+  face between sessions, officers share the moustache); heads are tinted to the face's skin tone.
+- Interiors dressed with the Kenney Furniture Kit (CC0): sofa, TV and bookcase in the back room, a lounge
+  chair in the motel, bar stools and a lounge corner in Club Mirage, a desk and fridge in the warehouse
+  office. Merged statically (about 30 extra draw calls), solid pieces block movement, rooms keep their
+  box furniture if a model fails to load.
+- Drivable arcade sedan (Kenney CC0 model, box fallback) with a chase camera that orbits with the mouse
+  and pulls in at walls; horn, headlights and persisted parking spot. Streets are lined with Kenney
+  sedans, hatchbacks, SUVs, taxis and vans merged into a handful of draw calls.
+- GTA-style radio: three CC0 music stations, a procedural pirate synth loop and WSOL 880, a news/talk
+  station that reads the day back to you (top story per world event, police blotter by heat, weather from
+  the rain calendar, traffic, and the outfit everybody is talking about); each music station has its own DJ,
+  fake 1996 commercials for in-game businesses and topical lines (police heat, world events); stations
+  keep running while you are tuned elsewhere and the last station is remembered.
+- CC0 sample sound effects (Kenney) for footsteps, cash, UI, doors, jingles for goals/customers/busts,
+  with the original procedural synth sounds as fallback when a file is missing.
+- Accelerated day/night with neon, lit windows, lamp pool, fog and sunset tint. Showers roll in about
+  one event slot in four (per-save seed): rain streaks, greyer sky and denser fog, a rain bed that is
+  muffled indoors and in the car, and heat that cools 20% faster while it lasts.
+- Skippable cutscenes: an opening flyover over Sol Palma with title cards, and a BUSTED / 6 HOURS LATER
+  sequence on arrest. The title screen orbits the live city at sunset with a CC0 theme (starts on the first
+  click) and shows the save at a glance; the menu has HOW TO PLAY, SETTINGS and a CREDITS page listing
+  every CC0 asset.
+- Engine drone while driving; Club Mirage streams a CC0 track that is muffled from the street and
+  full-range inside.
+- localStorage save/load with validation and repair of partial saves.
+- 106 Vitest tests covering behavioural contracts + six Playwright e2e specs (smoke, first sale, automation, crew,
+  police, UI).
+
+## Known limitations
+
+* Art is entirely procedural box geometry; characters are stylised block figures.
+* The car uses a square collision footprint and bounces off walls; there is no damage model.
+* Police navigate by steering toward the player through the collision world; when they get wedged on
+  props they detour along the sidewalk graph for a few seconds, then give up if they still cannot see you.
+* Balance is tuned for a 30–45 minute demonstration, not long-term play.
+* Headless/software-rendered browsers run far below 60 fps; a normal desktop GPU is expected.
+
+## Roadmap
+
+1. **Second worker and dealer**, and a handler route that also feeds the motel stash.
+2. **Animated characters** (Kenney CC0 rigs) for customers, police and crew.
+3. Radio commercials that rotate with the day and react to shortages.
+4. **Co-op** (one player produces, one sells, one manages, one drives) on top of the serializable state.
+5. More interiors and richer NPC schedules.
+
+## Development report (v0.1)
+
+**Implemented** — everything listed under *Implemented systems*, built in nine iterations after the MVP:
+haggling, wandering customers with samples and street deals, dealer network, world events, milestones,
+crew naming, drivable sedan, procedural radio, motel and laundromat properties, VIP orders, boredom,
+stamina, dumpster hiding, warehouse inspections, settings, and five code-review rounds of fixes.
+
+**Tested** — 56 Vitest behavioural tests (economy, production chemistry, orders, haggling, samples,
+street deals, dealer, worker, runner queue, heat/arrest, events, milestones, save repair and migration);
+Playwright smoke, core-loop, warehouse/worker, runner/dealer, police and front-end e2e; scripted browser regressions for warehouse placement, worker, dealer,
+runner queue, motel, car, hiding, arrest; a 6-game-hour automated soak of the late-game economy with
+reload; screenshot passes for every district by day and night.
+
+**v0.2 (audio-visual pass)** — four-station radio with DJ chatter, commercials and topical lines;
+Kenney CC0 sample sound effects and jingles with synth fallbacks; Kenney car models for the player's
+sedan, parked cars and police cruisers, with a chase camera; skippable cutscenes (opening flyover,
+property purchases, crew sign, arrest) that can be switched off in SETTINGS; live 3D title screen with
+theme music and a credits page; engine drone, club music by proximity, surf and distant sirens; a
+seventh code-review round (car orientation, mirrored-wheel winding, radio cycle, cutscene cancel on
+quit, sample preloading). Verified with scripted headless-browser passes for every new feature plus
+the existing Vitest and Playwright suites.
+
+**v0.3 (adversarial pass)** — hostile-save fuzzing, monkey testing with state invariants, injection probes,
+a 120-minute scripted-player balance simulation and two review agents drove: full save repair, a stored-XSS
+fix, night-only sleeping, the dumpster line-of-sight rule, customer wallets, haggle mood noise, runner
+limits and mishaps, late-order grace, half-day event slots with a v3 save migration, per-save seeds,
+witnessed deals that trigger a stop-and-search, and a 60% triangle cut on parked cars.
+
+**Known issues** — see *Known limitations*; additionally pointer-lock recovery after a browser-forced
+exit can need one extra click, and the software-rendered headless browser used for CI-style checks runs
+at ~4 fps, so timing-sensitive checks there rely on frame counting.
+
+**Next 5 priorities** — 1. a persistent rival crew with territory (beyond the daily event); 2. handler employee
+and multi-worker warehouses; 3. richer NPC schedules (customers at work/home/club by hour);
+4. co-op on top of the serialisable state; 5. more original radio stations and interiors.
+
+## Licensing
+
+All code, textures and world geometry in this repository are original. The only third-party content is in
+`public/assets/` and every file there is CC0 1.0 (public domain): Kenney sound effects, music jingles and
+car models, and music by HoliznaCC0, Komiku and Loyalty Freak Music. The full per-file attribution table is in
+[`public/assets/LICENSES.md`](public/assets/LICENSES.md). None of these files is required: if they are
+missing the game falls back to the procedural sounds and the synth radio loop.
