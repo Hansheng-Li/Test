@@ -26,10 +26,10 @@ export class Vehicle {
   /** Body materials Rojas can respray (box body + hood, or the model's paint* materials). */
   private paintMats: THREE.MeshLambertMaterial[] = [];
   private hornCooldown = 0;
-  maxSpeed = 22.4;
-  reverseMax = -6;
-  accel = 12;
-  brake = 22;
+  maxSpeed = 29;
+  reverseMax = -7;
+  accel = 15.5;
+  brake = 26;
   friction = 3.5;
   lastHit = 0;
   /** Direction the car actually travels; lags behind `yaw` while drifting. */
@@ -39,6 +39,8 @@ export class Vehicle {
   /** 0..1 nitro charge; F burns it, it refills when unused. */
   nitro = 1;
   boosting = false;
+  /** Blue exhaust flames, shown while boosting. */
+  private flames: THREE.Group;
 
   /** Half-width of the collision body. */
   private bodyRadius = 1.05;
@@ -76,15 +78,17 @@ export class Vehicle {
       this.mesh.add(pivot);
       this.wheels.push(pivot as unknown as THREE.Mesh);
     }
+    this.flames = buildFlames();
+    this.mesh.add(this.flames);
     this.position.set(x, 0.15, z);
     this.yaw = yaw;
     this.travelYaw = yaw;
     if (kind === 'beater') {
       // Rico's old hatchback: slower, softer brakes, rust for paint
-      this.maxSpeed = 15.4;
-      this.reverseMax = -5;
-      this.accel = 8.5;
-      this.brake = 17;
+      this.maxSpeed = 20;
+      this.reverseMax = -6;
+      this.accel = 11;
+      this.brake = 20;
       this.bodyRadius = 0.95;
       this.setPaint('#9a5b34');
     }
@@ -140,6 +144,7 @@ export class Vehicle {
       this.wheels.push(pivot as unknown as THREE.Mesh);
     }
     this.mesh.add(model);
+    this.mesh.add(this.flames);
     this.setNight(this.night);
   }
 
@@ -189,6 +194,13 @@ export class Vehicle {
         if (Math.abs(this.speed) > 3) result = result ?? 'hit';
         this.speed *= -0.25;
       }
+    }
+    // nitro flames flicker behind the car while boosting
+    this.flames.visible = this.boosting;
+    if (this.boosting) {
+      const k = 0.7 + Math.random() * 0.6;
+      this.flames.scale.set(1, 1, k);
+      this.flames.children.forEach((f, i) => { f.rotation.z = (Math.random() - 0.5) * 0.3 + (i === 0 ? 0.1 : -0.1); });
     }
     // wheel spin + steer visuals
     for (let i = 0; i < this.wheels.length; i++) {
@@ -244,4 +256,29 @@ export class Vehicle {
   get mph(): number {
     return Math.abs(this.speed) * 2.237;
   }
+}
+
+/** Two blue-white exhaust flames pointing backwards (local -z), additive so they glow over anything. */
+function buildFlames(): THREE.Group {
+  const g = new THREE.Group();
+  const core = new THREE.MeshBasicMaterial({ color: '#dff6ff', transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
+  const outer = new THREE.MeshBasicMaterial({ color: '#2f7fff', transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false });
+  const coneOuter = new THREE.ConeGeometry(0.16, 1.6, 8);
+  coneOuter.rotateX(Math.PI / 2);
+  coneOuter.translate(0, 0, -0.8);
+  const coneCore = new THREE.ConeGeometry(0.07, 1.1, 6);
+  coneCore.rotateX(Math.PI / 2);
+  coneCore.translate(0, 0, -0.55);
+  for (const x of [-0.5, 0.5]) {
+    const o = new THREE.Mesh(coneOuter, outer);
+    o.position.set(x, 0.42, -2.1);
+    const c = new THREE.Mesh(coneCore, core);
+    c.position.set(x, 0.42, -2.1);
+    g.add(o, c);
+  }
+  const glow = new THREE.PointLight('#4f9bff', 6, 9, 1.6);
+  glow.position.set(0, 0.5, -2.6);
+  g.add(glow);
+  g.visible = false;
+  return g;
 }

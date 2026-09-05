@@ -12,7 +12,7 @@ export interface Milestone {
 /** Short, readable goals that teach the progression loop and pay a little seed money. */
 export const MILESTONES: Milestone[] = [
   { id: 'first_sale', title: 'First Sale', hint: 'Complete a pager order.', reward: 25, done: (s) => s.stats.sales >= 1 },
-  { id: 'named', title: 'Brand Name', hint: 'Give a product a street name.', reward: 20, done: (s) => Object.values(s.recipes).some((r) => !!r.customName) },
+  { id: 'variety', title: 'Second Flavour', hint: 'Prep a VELVET or NEON product.', reward: 20, done: (s) => Object.values(s.recipes).some((r) => r.base !== 'SUNSET') },
   { id: 'mixed', title: 'Chemist', hint: 'Prep a product with two modifiers.', reward: 60, done: (s) => Object.values(s.recipes).some((r) => r.mods.length >= 2) },
   { id: 'combo', title: 'Signature Blend', hint: 'Discover a named combo (e.g. Beach Party).', reward: 100, done: (s) => Object.values(s.recipes).some((r) => !!r.comboName) },
   { id: 'five_customers', title: 'People Person', hint: 'Have 6 unlocked customers.', reward: 80, done: (s) => Object.values(s.customers).filter((c) => c.unlocked).length >= 6 },

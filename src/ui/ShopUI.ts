@@ -1,8 +1,8 @@
 import { Panel } from './Panel';
 import { GameAPI } from './UIContext';
 import { SHOPS, ITEMS } from '../data/items';
-import { heldEverywhere } from '../systems/InventorySystem';
-import { shopPrice, DELIVERY_FEE } from '../systems/EconomySystem';
+import { heldEverywhere, countItem } from '../systems/InventorySystem';
+import { shopPrice, DELIVERY_FEE, sellPrice } from '../systems/EconomySystem';
 import { iconImg } from './Icons';
 import { t, tn } from '../i18n';
 import { LOAN_TIERS, LOAN_INTEREST, LOAN_DAYS, LOAN_LATE_INTEREST, loanTierAvailable, loanDaysLeft } from '../systems/LoanSystem';
@@ -61,6 +61,12 @@ export class ShopUI extends Panel {
         row.appendChild(this.button(t('BUY 1'), () => buy(1), 'primary'));
         row.appendChild(this.button(t('BUY 5'), () => buy(5)));
         if (this.deliver || e.itemId === 'baggies') row.appendChild(this.button(t('BUY 20'), () => buy(20)));
+        const have = countItem(st, e.itemId);
+        const unit = sellPrice(st, this.shopId, e.itemId);
+        if (have > 0 && unit > 0) {
+          row.appendChild(this.button(t('SELL 1 (${n})', { n: unit }), () => { this.api.sell(this.shopId, e.itemId, 1); this.render(); }, 'cyan'));
+          if (have > 1) row.appendChild(this.button(t('SELL ALL (${n})', { n: unit * have }), () => { this.api.sell(this.shopId, e.itemId, have); this.render(); }, 'cyan'));
+        }
       }
       body.appendChild(row);
     }

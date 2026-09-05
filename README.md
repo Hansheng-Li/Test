@@ -45,7 +45,7 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | `N` | Radio: cycles SOL PALMA FM → THE WAVE → FUNK CITY → SIGNAL ZERO → off (walkman on foot, car stereo while driving) |
 | any key | Skips a cutscene (Escape pauses instead) |
 | `H` | Hide/show the HUD (screenshot mode) |
-| `W S A D` / `Shift` / `F` / `Space` | In the car: drive / handbrake & drift / nitro (a five-bar charge that refills when unused) / horn |
+| `W S A D` / `Shift` / `F` / `Space` | In the car: drive / handbrake & drift / nitro (a five-bar charge that refills when unused, with blue flames) / horn |
 | `R` | Rotate equipment in placement mode |
 | `Esc` | Close panel / pause menu (save, how to play, settings: sensitivity & volumes) |
 | `F3` | Performance overlay (fps, draw calls, triangles) |
@@ -197,6 +197,12 @@ Design rules that shaped the code:
   starter box holds a baseball bat. Select the bat on the hotbar and left-click to swing: a cop in the arc
   goes down for four seconds and cannot arrest you (heat +18, and he comes up chasing), civilians scatter
   (heat +6), the rest of the block takes notice.
+- Nothing gets stuck: same items always merge into one stack, every stack in the backpack has DISCARD
+  buttons (products ask first), and shops buy back what they sell at half price (Rico takes pulp and
+  modifiers, Quick Stop takes baggies, the pawn shop takes rounds), so a full backpack next to a full
+  shelf is never a dead end. Products keep their default names; the naming prompt is gone.
+- Cars are another 30% quicker (the sedan tops out near 65 mph) and nitro shows: two blue-white exhaust
+  flames flicker behind the car, a blue glow lights the road, and the lens widens while F is held.
 - Neptune's back room spills onto the sidewalk beside the arcade: a blackjack table ($20–200 a hand,
   dealer draws to 17, blackjack pays 3:2, double down on the first two cards, H/S keys) and the Sunset
   Sevens slot machine ($5 or $20 a pull, 7-7-7 pays 50×, about 92% return). Both draw a little heat per

@@ -30,8 +30,8 @@ import { computeRecipe, parseRecipeKey, Effect } from '../data/products';
 import { GameState, Order, PlacedStation } from './GameState';
 import { createNewState, saveToSlot, loadFromSlot, listSlots, clearSlot, hasAnySave, latestSlot, firstEmptySlot, migrateLegacySave, MAX_STOLEN_CARS } from '../systems/SaveSystem';
 import { InteractionSystem, Interactable } from '../systems/InteractionSystem';
-import { addItem, countItem, removeItem, resolveItem, depositToStorage, withdrawFromStorage, packagedInInventory, looseProductsInInventory } from '../systems/InventorySystem';
-import { buyFromShop, buyDelivered, spendCash, PurchaseResult } from '../systems/EconomySystem';
+import { addItem, countItem, removeItem, resolveItem, depositToStorage, withdrawFromStorage, packagedInInventory, looseProductsInInventory, compactInventory } from '../systems/InventorySystem';
+import { buyFromShop, buyDelivered, spendCash, PurchaseResult, sellToShop } from '../systems/EconomySystem';
 import { executePrep, executePackage, nameRecipe, recipeDisplayName, PrepPlan, PrepResult, PackageResult } from '../systems/ProductionSystem';
 import { generateOrder, acceptOrder, declineOrder, activeOrders, pendingOrders, completeSale, expireOrders, findFulfillingItem, describeRequest, counterOffer, rollTrend, LATE_GRACE_MINUTES } from '../systems/OrderSystem';
 import { decayHeat, witnessedDeal, applyArrest, addHeat, heatLevel, searchTrunk } from '../systems/HeatSystem';
@@ -470,6 +470,7 @@ export class Game implements GameAPI {
     }
     this.activeSlot = n;
     this.state = s;
+    compactInventory(s);
     // a run that is already past chapter one never replays its cards
     if (storyStep(s) === 'done') markStorySeen(s);
     this.dialogue.clear();
@@ -1838,6 +1839,27 @@ export class Game implements GameAPI {
     return r;
   }
 
+  sell(shopId: string, itemId: string, qty: number): number {
+    const got = sellToShop(this.state, shopId, itemId, qty);
+    if (got > 0) {
+      this.audio.play('cash');
+      this.toast(t('Sold {n}x {item} for ${cash}.', { n: Math.min(qty, countItem(this.state, itemId) + qty), item: tn(ITEMS[itemId]?.name ?? itemId), cash: got }), 'cash');
+    } else {
+      this.audio.play('error');
+      this.toast(t('They do not buy that here.'), 'warn');
+    }
+    return got;
+  }
+
+  discard(itemId: string, qty: number): boolean {
+    const ok = removeItem(this.state, itemId, qty);
+    if (ok) {
+      this.audio.play('thud');
+      this.toast(t('Threw away {n}x {item}.', { n: qty, item: tn(resolveItem(this.state, itemId).name) }), 'info', 2500);
+    }
+    return ok;
+  }
+
   prep(plan: PrepPlan): PrepResult {
     return executePrep(this.state, plan);
   }
@@ -2487,6 +2509,12 @@ export class Game implements GameAPI {
       // ease the view back toward the heading when not looking around
       const rel = ((this.player.yaw - v.cameraYaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
       this.player.yaw = v.cameraYaw + rel * Math.max(0, 1 - dt * 1.5);
+    }
+    // nitro: the lens widens a touch so the push reads on screen
+    const wantFov = v.boosting ? 84 : 75;
+    if (Math.abs(this.camera.fov - wantFov) > 0.05) {
+      this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 5);
+      this.camera.updateProjectionMatrix();
     }
     // chase camera: sits behind the car, orbits with the mouse, pulls in when a wall is in the way
     const yaw = this.player.yaw;

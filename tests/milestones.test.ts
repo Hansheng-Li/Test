@@ -15,7 +15,9 @@ describe('milestones', () => {
     expect(checkMilestones(s)).toHaveLength(0);
     s.recipes['SUNSET+mod_velvet_drops+mod_solar'] = { ...computeRecipe('SUNSET', ['mod_velvet_drops', 'mod_solar']), customName: 'BEACH BOMB' };
     const ids = checkMilestones(s).map((m) => m.id).sort();
-    expect(ids).toEqual(['combo', 'mixed', 'named']);
+    expect(ids).toEqual(['combo', 'mixed']);
+    s.recipes['VELVET'] = { ...computeRecipe('VELVET', []) };
+    expect(checkMilestones(s).map((m) => m.id)).toEqual(['variety']);
     expect(MILESTONES.every((m) => m.reward > 0)).toBe(true);
   });
 });

@@ -217,8 +217,6 @@ export class PrepUI extends Panel {
         this.api.sfx('unlock');
         const got = r.bonus ?? 0;
         this.api.toast(t('Prepped {n}x {what}', { n: r.units ?? 0, what: recipeDisplayName(this.api.state, r.recipe.key) }) + (got ? t(' · smooth batch: +{n} bonus unit(s)!', { n: got }) : this.hits >= 1 ? t(' · decent stir.') : ''));
-        const isNew = !this.api.state.recipes[r.recipe.key]?.customName;
-        if (isNew) this.pendingName = r.recipe.key;
         if (countItem(this.api.state, this.input!) === 0) { this.input = null; this.mods = []; }
       } else {
         this.api.sfx('error');

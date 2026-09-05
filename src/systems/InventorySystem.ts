@@ -39,6 +39,24 @@ export function ensureInventory(state: GameState): void {
   while (state.inventory.length < INVENTORY_SLOTS) state.inventory.push(null);
 }
 
+/** Merge partial stacks of the same item so one thing never sits in two slots while it fits in one. */
+export function compactInventory(state: GameState): void {
+  ensureInventory(state);
+  for (let i = 0; i < state.inventory.length; i++) {
+    const a = state.inventory[i];
+    if (!a) continue;
+    const cap = resolveItem(state, a.id).stack;
+    for (let j = i + 1; j < state.inventory.length && a.qty < cap; j++) {
+      const b = state.inventory[j];
+      if (!b || b.id !== a.id) continue;
+      const take = Math.min(cap - a.qty, b.qty);
+      a.qty += take;
+      b.qty -= take;
+      if (b.qty <= 0) state.inventory[j] = null;
+    }
+  }
+}
+
 export function countItem(state: GameState, id: string): number {
   let n = 0;
   for (const s of state.inventory) if (s && s.id === id) n += s.qty;
@@ -85,6 +103,7 @@ export function addItem(state: GameState, id: string, qty: number): number {
       left -= take;
     }
   }
+  compactInventory(state);
   return left;
 }
 
@@ -100,6 +119,7 @@ export function removeItem(state: GameState, id: string, qty: number): boolean {
     left -= take;
     if (s.qty <= 0) state.inventory[i] = null;
   }
+  compactInventory(state);
   return true;
 }
 

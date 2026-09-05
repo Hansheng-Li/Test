@@ -22,31 +22,57 @@ export class InventoryUI extends Panel {
     const body = this.body;
     body.innerHTML = '';
     this.setTitle(this.storageProperty ? (this.storageProperty === 'trunk' ? 'BACKPACK ⇄ SEDAN TRUNK' : t('BACKPACK ⇄ {place} STORAGE', { place: tn(this.storageProperty).toUpperCase() })) : 'BACKPACK');
+    this.el.classList.toggle('storage', !!this.storageProperty);
     const wrap = document.createElement('div');
     wrap.style.display = 'grid';
     wrap.style.gridTemplateColumns = this.storageProperty ? '1fr 1fr' : '1fr';
     wrap.style.gap = '16px';
     body.appendChild(wrap);
+    const discardButtons = (holder: HTMLElement, id: string, qty: number, name: string, valuable: boolean): void => {
+      const ask = (n: number): boolean => !valuable || confirm(t('Throw away {n}x {item}? Products are worth money.', { n, item: name }));
+      holder.appendChild(this.button(t('DISCARD 1'), () => { if (ask(1)) { this.api.discard(id, 1); this.render(); } }, 'warn'));
+      if (qty > 1) holder.appendChild(this.button(t('DISCARD ALL'), () => { if (ask(qty)) { this.api.discard(id, qty); this.render(); } }, 'warn'));
+    };
     // inventory
     const left = document.createElement('div');
     left.innerHTML = `<h3>${t('CARRYING ({n}/8 SLOTS)', { n: st.inventory.filter(Boolean).length })}</h3>`;
-    const grid = document.createElement('div');
-    grid.className = 'grid';
-    st.inventory.forEach((s, i) => {
-      const cell = document.createElement('div');
-      cell.className = 'inv-slot';
-      if (s) {
+    if (this.storageProperty) {
+      // transfer view: one row per stack, buttons in a line, nothing squeezed into a grid cell
+      let any = false;
+      st.inventory.forEach((s) => {
+        if (!s) return;
+        any = true;
         const def = resolveItem(st, s.id);
-        cell.innerHTML = `${iconImg(s.id)}<div class="txt"><b>${esc(tn(def.name))}</b> <span class="qty">×${s.qty}</span><span class="meta">${tn(def.category.replace('_', ' '))}${def.desc ? ' · ' + tn(def.desc) : ''}</span></div>`;
-        if (this.storageProperty) {
-          const b = this.button(t('STORE'), () => { this.api.deposit(this.storageProperty!, s.id, s.qty); this.render(); });
-          b.style.marginTop = '4px';
-          cell.appendChild(b);
-        }
-      } else cell.innerHTML = `<div class="txt"><span class="meta">${t('empty slot {n}', { n: i + 1 })}</span></div>`;
-      grid.appendChild(cell);
-    });
-    left.appendChild(grid);
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `${iconImg(s.id, 'icon row-icon')}<span class="name"><b>${esc(tn(def.name))}</b> <span class="qty">×${s.qty}</span><span class="desc">${tn(def.desc)}</span></span>`;
+        const btns = document.createElement('span');
+        btns.className = 'btns';
+        btns.appendChild(this.button(t('STORE 1'), () => { this.api.deposit(this.storageProperty!, s.id, 1); this.render(); }, 'primary'));
+        if (s.qty > 1) btns.appendChild(this.button(t('STORE ALL'), () => { this.api.deposit(this.storageProperty!, s.id, s.qty); this.render(); }));
+        discardButtons(btns, s.id, s.qty, tn(def.name), def.category === 'product' || def.category === 'packaged_product');
+        row.appendChild(btns);
+        left.appendChild(row);
+      });
+      if (!any) left.innerHTML += `<div class="meta" style="color:#999">${t('Your backpack is empty.')}</div>`;
+    } else {
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+      st.inventory.forEach((s, i) => {
+        const cell = document.createElement('div');
+        cell.className = 'inv-slot';
+        if (s) {
+          const def = resolveItem(st, s.id);
+          cell.innerHTML = `${iconImg(s.id)}<div class="txt"><b>${esc(tn(def.name))}</b> <span class="qty">×${s.qty}</span><span class="meta">${tn(def.category.replace('_', ' '))}${def.desc ? ' · ' + tn(def.desc) : ''}</span></div>`;
+          const btns = document.createElement('div');
+          btns.className = 'cell-btns';
+          discardButtons(btns, s.id, s.qty, tn(def.name), def.category === 'product' || def.category === 'packaged_product');
+          cell.appendChild(btns);
+        } else cell.innerHTML = `<div class="txt"><span class="meta">${t('empty slot {n}', { n: i + 1 })}</span></div>`;
+        grid.appendChild(cell);
+      });
+      left.appendChild(grid);
+    }
     wrap.appendChild(left);
     if (this.storageProperty) {
       const right = document.createElement('div');
@@ -57,11 +83,12 @@ export class InventoryUI extends Panel {
         const def = resolveItem(st, s.id);
         const row = document.createElement('div');
         row.className = 'row';
-        row.innerHTML = `${iconImg(s.id, 'icon row-icon')}<span class="name"><b>${esc(tn(def.name))}</b> x${s.qty}<span class="desc">${tn(def.desc)}</span></span>`;
-        const b1 = this.button(t('TAKE 1'), () => { this.api.withdraw(this.storageProperty!, s.id, 1); this.render(); });
-        const b2 = this.button(t('TAKE ALL'), () => { this.api.withdraw(this.storageProperty!, s.id, s.qty); this.render(); });
-        row.appendChild(b1);
-        row.appendChild(b2);
+        row.innerHTML = `${iconImg(s.id, 'icon row-icon')}<span class="name"><b>${esc(tn(def.name))}</b> <span class="qty">×${s.qty}</span><span class="desc">${tn(def.desc)}</span></span>`;
+        const btns = document.createElement('span');
+        btns.className = 'btns';
+        btns.appendChild(this.button(t('TAKE 1'), () => { this.api.withdraw(this.storageProperty!, s.id, 1); this.render(); }, 'primary'));
+        if (s.qty > 1) btns.appendChild(this.button(t('TAKE ALL'), () => { this.api.withdraw(this.storageProperty!, s.id, s.qty); this.render(); }));
+        row.appendChild(btns);
         right.appendChild(row);
       }
       wrap.appendChild(right);
@@ -75,19 +102,6 @@ export class InventoryUI extends Panel {
         const row = document.createElement('div');
         row.className = 'row';
         row.innerHTML = `<span class="name"><b>${esc(r.customName ?? r.defaultName)}</b> <span class="tag">${r.base}</span>${r.effects.map((e) => effectTag(e)).join('')}<span class="desc">${r.mods.length ? t('mods: {list}', { list: r.mods.map((m) => tn(ITEMS[m]?.name ?? m)).join(' → ') }) : t('plain base')}</span></span><span class="price">$${r.value}/u</span>`;
-        const rename = this.button(t('RENAME'), () => {
-          const inp = document.createElement('input');
-          inp.type = 'text';
-          inp.maxLength = 24;
-          inp.value = r.customName ?? r.defaultName;
-          inp.style.width = '180px';
-          const save = this.button(t('SAVE'), () => { if (inp.value.trim()) this.api.nameRecipe(r.key, inp.value); this.render(); }, 'primary');
-          inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') save.click(); if (e.key === 'Escape') this.render(); });
-          rename.replaceWith(inp, save);
-          inp.focus();
-          inp.select();
-        });
-        row.appendChild(rename);
         book.appendChild(row);
       }
       body.appendChild(book);

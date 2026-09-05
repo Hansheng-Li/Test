@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createNewState } from '../src/systems/SaveSystem';
-import { buyFromShop } from '../src/systems/EconomySystem';
-import { countItem, addItem, spaceFor, depositToStorage, withdrawFromStorage, storageCount } from '../src/systems/InventorySystem';
+import { buyFromShop, sellToShop, sellPrice } from '../src/systems/EconomySystem';
+import { countItem, addItem, spaceFor, depositToStorage, withdrawFromStorage, storageCount, compactInventory } from '../src/systems/InventorySystem';
 
 describe('economy + inventory', () => {
   it('purchasing an item reduces cash and adds it to inventory', () => {
@@ -85,5 +85,40 @@ describe('review fixes', () => {
     s.placedStations.push({ id: 'a', kind: 'storage', x: 0, z: 0, rot: 0 });
     expect(storageCapacity(s, 'warehouse')).toBe(260);
     expect(storageCapacity(s, 'safehouse')).toBe(40);
+  });
+});
+
+describe('selling back and stacking', () => {
+  it('compacts split stacks into one', () => {
+    const s = createNewState();
+    s.inventory[0] = { id: 'baggies', qty: 17 };
+    s.inventory[3] = { id: 'baggies', qty: 16 };
+    s.inventory[5] = { id: 'pulp_sunset', qty: 18 };
+    s.inventory[6] = { id: 'pulp_sunset', qty: 5 };
+    compactInventory(s);
+    expect(s.inventory[0]).toEqual({ id: 'baggies', qty: 33 });
+    expect(s.inventory[3]).toBeNull();
+    // pulp stacks to 20: 18 + 5 becomes 20 + 3
+    expect(s.inventory[5]).toEqual({ id: 'pulp_sunset', qty: 20 });
+    expect(s.inventory[6]).toEqual({ id: 'pulp_sunset', qty: 3 });
+    addItem(s, 'baggies', 2);
+    expect(s.inventory.filter((x) => x && x.id === 'baggies')).toHaveLength(1);
+    expect(countItem(s, 'baggies')).toBe(35);
+  });
+
+  it('shops buy back listed items at half price and refuse the rest', () => {
+    const s = createNewState();
+    s.cash = 0;
+    addItem(s, 'baggies', 10);
+    expect(sellPrice(s, 'store', 'baggies')).toBe(1);
+    expect(sellToShop(s, 'store', 'baggies', 4)).toBe(4);
+    expect(countItem(s, 'baggies')).toBe(6);
+    expect(s.cash).toBe(4);
+    expect(sellToShop(s, 'store', 'baggies', 50)).toBe(6); // caps at what you hold
+    expect(sellToShop(s, 'store', 'baggies', 1)).toBe(0);
+    addItem(s, 'pulp_sunset', 3);
+    expect(sellToShop(s, 'store', 'pulp_sunset', 1)).toBe(0); // Quick Stop does not list pulp
+    expect(sellToShop(s, 'supplier', 'pulp_sunset', 2)).toBe(8); // Rico pays $4 of $9
+    expect(sellPrice(s, 'pawn', 'eq_mixer')).toBe(0); // equipment is never bought back
   });
 });

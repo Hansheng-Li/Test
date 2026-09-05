@@ -35,6 +35,10 @@ export interface GameAPI {
   sendRunner(id: number): void;
   buy(shopId: string, itemId: string, qty: number): PurchaseResult;
   buyDelivered(shopId: string, itemId: string, qty: number): PurchaseResult;
+  /** Sell back to a shop that lists the item; returns the cash received. */
+  sell(shopId: string, itemId: string, qty: number): number;
+  /** Throw a stack (or part of it) away for good. */
+  discard(itemId: string, qty: number): boolean;
   /** Sol Palma Pawn markers: borrow a tier amount / pay some of it back. */
   takeLoan(amount: number): boolean;
   repayLoan(amount: number): number;
