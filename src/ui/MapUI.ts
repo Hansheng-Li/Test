@@ -4,6 +4,7 @@ import { BUS_STOPS, PAYPHONES, BUILDINGS, LANDMARKS, ROADS_X, ROADS_Z, MAP_MIN_X
 import { activeOrders } from '../systems/OrderSystem';
 import { CUSTOMER_MAP } from '../data/customers';
 import { t, tn } from '../i18n';
+import { mapArrowRotation } from '../systems/Heading';
 
 /** Short map names: what fits on a block at a readable size. Anything not listed keeps its full name. */
 const SHORT: Record<string, string> = {
@@ -211,7 +212,7 @@ export class MapUI extends Panel {
     const yaw = this.api.playerYaw();
     g.save();
     g.translate(this.px(p.x), this.pz(p.z));
-    g.rotate(Math.atan2(-Math.sin(yaw), -Math.cos(yaw)) - Math.PI / 2 + Math.PI);
+    g.rotate(mapArrowRotation(yaw));
     g.beginPath();
     g.moveTo(0, -9 * s);
     g.lineTo(6 * s, 7 * s);

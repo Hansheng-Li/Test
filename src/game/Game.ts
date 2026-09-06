@@ -77,6 +77,7 @@ import { offerSample } from '../systems/CustomerSystem';
 import { streetSale, canStreetSell, streetUnitPrice } from '../systems/OrderSystem';
 import { lambert, boxGeo, cylGeo } from '../world/Materials';
 import { signTexture } from '../world/Textures';
+import { compassAngle } from '../systems/Heading';
 
 const CIVILIAN_COLORS = ['#e91e63', '#9c27b0', '#3f51b5', '#03a9f4', '#009688', '#8bc34a', '#ffeb3b', '#ff9800', '#795548', '#ffffff', '#f44336', '#00bcd4'];
 const SKINS = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac'];
@@ -3006,11 +3007,7 @@ export class Game implements GameAPI {
       this.hud.setCompass(null, 0, 0);
       return;
     }
-    // player forward is (-sin yaw, -cos yaw); angle of target relative to forward, clockwise positive
-    const bearing = Math.atan2(-dx, -dz);
-    let rel = bearing - this.player.yaw;
-    rel = Math.atan2(Math.sin(rel), Math.cos(rel));
-    this.hud.setCompass(t.label, -rel, dist);
+    this.hud.setCompass(t.label, compassAngle(this.player.position.x, this.player.position.z, this.player.yaw, t.x, t.z), dist);
   }
 
   private computeObjective(): string {
