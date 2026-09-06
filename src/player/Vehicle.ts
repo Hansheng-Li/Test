@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CollisionWorld } from '../physics/Colliders';
 import { Input } from '../core/Input';
 import { lambert, boxGeo, cylGeo } from '../world/Materials';
+import { stepCar, newCarSim, slipAngle, type CarSim, type CarSpec, type CarEvents } from '../systems/CarSystem';
 
 export interface VehicleState {
   owned: boolean;
@@ -11,34 +12,26 @@ export interface VehicleState {
 }
 
 /**
- * Arcade car: accelerate / brake / steer with simple friction, a square AABB
- * footprint for collisions and a bounce when you hit something. No suspension,
- * no drift model — it is a 1996 sedan for getting across Sol Palma faster.
+ * Arcade car: the pure model in systems/CarSystem (throttle, kart-style drift, nitro) drives a
+ * square AABB footprint through the collision world, with a bounce when you hit something.
+ * The visuals live here: wheels, paint, headlights, nitro flames.
  */
 export class Vehicle {
   mesh: THREE.Group;
   position = new THREE.Vector3();
-  yaw = 0;
-  speed = 0;
-  private steer = 0;
+  /** Live driving model: speed, heading, drift and nitro state. */
+  sim: CarSim;
   private wheels: THREE.Mesh[] = [];
   private headlights: THREE.MeshLambertMaterial;
   /** Body materials Rojas can respray (box body + hood, or the model's paint* materials). */
   private paintMats: THREE.MeshLambertMaterial[] = [];
   private hornCooldown = 0;
-  maxSpeed = 29;
-  reverseMax = -7;
-  accel = 15.5;
-  brake = 26;
-  friction = 3.5;
+  spec: CarSpec = { maxSpeed: 29, reverseMax: -7, accel: 15.5, brake: 26, friction: 3.5 };
   lastHit = 0;
-  /** Direction the car actually travels; lags behind `yaw` while drifting. */
-  private travelYaw = 0;
-  /** True while the handbrake is sliding the car sideways. */
-  drifting = false;
-  /** 0..1 nitro charge; F burns it, it refills when unused. */
-  nitro = 1;
-  boosting = false;
+  /** Events from the last update (drift start/end, boost-out, nitro start) for sound and effects. */
+  events: CarEvents = { driftStart: false, driftEnd: false, boostOut: false, nitroStart: false };
+  /** True while the tyres are sliding: a drift, or the handbrake locking them at speed. */
+  skidding = false;
   /** Blue exhaust flames, shown while boosting. */
   private flames: THREE.Group;
 
@@ -81,18 +74,52 @@ export class Vehicle {
     this.flames = buildFlames();
     this.mesh.add(this.flames);
     this.position.set(x, 0.15, z);
-    this.yaw = yaw;
-    this.travelYaw = yaw;
+    this.sim = newCarSim(yaw);
     if (kind === 'beater') {
       // Rico's old hatchback: slower, softer brakes, rust for paint
-      this.maxSpeed = 20;
-      this.reverseMax = -6;
-      this.accel = 11;
-      this.brake = 20;
+      this.spec = { maxSpeed: 20, reverseMax: -6, accel: 11, brake: 20, friction: 3.5 };
       this.bodyRadius = 0.95;
       this.setPaint('#9a5b34');
     }
     this.sync();
+  }
+
+  get yaw(): number {
+    return this.sim.yaw;
+  }
+  set yaw(v: number) {
+    this.sim.yaw = v;
+    this.sim.travelYaw = v;
+  }
+  get speed(): number {
+    return this.sim.speed;
+  }
+  set speed(v: number) {
+    this.sim.speed = v;
+  }
+  get maxSpeed(): number {
+    return this.spec.maxSpeed;
+  }
+  get drifting(): boolean {
+    return this.sim.drifting;
+  }
+  get nitro(): number {
+    return this.sim.nitro;
+  }
+  get boosting(): boolean {
+    return this.sim.boosting;
+  }
+  /** Seconds left on the drift boost-out. */
+  get kick(): number {
+    return this.sim.kick;
+  }
+  /** Nose angle relative to the travel direction (positive = nose left of travel). */
+  get slip(): number {
+    return slipAngle(this.sim);
+  }
+  /** World positions of the rear tyres' contact patches (for skid marks). */
+  rearWheels(): { x: number; z: number }[] {
+    return [this.local(-0.85, -1.35), this.local(0.85, -1.35)];
   }
 
   /** Respray: recolour whichever body the car currently has. */
@@ -151,38 +178,25 @@ export class Vehicle {
   /** Drive with keyboard. Returns 'hit' on a wall bump, 'horn' when honking. */
   update(dt: number, input: Input): 'hit' | 'horn' | null {
     let result: 'hit' | 'horn' | null = null;
-    const fwd = input.isDown('KeyW') || input.isDown('ArrowUp');
-    const back = input.isDown('KeyS') || input.isDown('ArrowDown');
     const left = input.isDown('KeyA') || input.isDown('ArrowLeft');
     const right = input.isDown('KeyD') || input.isDown('ArrowRight');
-    const handbrake = input.isDown('ShiftLeft');
+    const handbrake = input.isDown('ShiftLeft') || input.isDown('ShiftRight');
     this.hornCooldown -= dt;
     if (input.wasPressed('Space') && this.hornCooldown <= 0) {
       this.hornCooldown = 0.6;
       result = 'horn';
     }
-    // nitro: Ctrl burns the charge for a big push; it refills slowly when unused
-    this.boosting = input.isDown('KeyF') && this.nitro > 0.02 && fwd && this.speed > 1;
-    if (this.boosting) this.nitro = Math.max(0, this.nitro - dt / 2.5);
-    else this.nitro = Math.min(1, this.nitro + dt / 9);
-    const top = this.maxSpeed * (this.boosting ? 1.3 : 1);
-    if (fwd) this.speed += this.accel * (this.boosting ? 2.2 : 1) * dt;
-    else if (back) this.speed -= (this.speed > 0 ? this.brake : this.accel * 0.6) * dt;
-    else this.speed -= Math.sign(this.speed) * Math.min(Math.abs(this.speed), this.friction * dt);
-    // handbrake at speed: the rear steps out (drift); at low speed it just brakes
-    this.drifting = handbrake && Math.abs(this.speed) > 7;
-    if (handbrake) this.speed -= Math.sign(this.speed) * Math.min(Math.abs(this.speed), (this.drifting ? this.friction * 2.5 : this.brake * 1.2) * dt);
-    this.speed = Math.max(this.reverseMax, Math.min(top, this.speed));
-    const targetSteer = (left ? 1 : 0) - (right ? 1 : 0);
-    this.steer += (targetSteer - this.steer) * Math.min(1, dt * 8);
-    const steerRate = (this.drifting ? 3.2 : 1.8) * Math.min(1, Math.abs(this.speed) / 6);
-    this.yaw += this.steer * steerRate * dt * Math.sign(this.speed || 1);
-    // the travel direction follows the nose: instantly with grip, lazily in a drift
-    let rel = this.yaw - this.travelYaw;
-    rel = Math.atan2(Math.sin(rel), Math.cos(rel));
-    this.travelYaw += rel * Math.min(1, dt * (this.drifting ? 2.2 : 14));
-    const vx = Math.sin(this.travelYaw) * this.speed;
-    const vz = Math.cos(this.travelYaw) * this.speed;
+    const s = this.sim;
+    this.events = stepCar(s, this.spec, {
+      throttle: input.isDown('KeyW') || input.isDown('ArrowUp'),
+      reverse: input.isDown('KeyS') || input.isDown('ArrowDown'),
+      steer: (left ? 1 : 0) - (right ? 1 : 0),
+      handbrake,
+      nitro: input.isDown('KeyF'),
+    }, dt);
+    this.skidding = s.drifting || (handbrake && Math.abs(s.speed) > 4) || (s.kick > 0 && Math.abs(this.slip) > 0.12);
+    const vx = Math.sin(s.travelYaw) * s.speed;
+    const vz = Math.cos(s.travelYaw) * s.speed;
     const pos = { x: this.position.x, y: this.position.y, z: this.position.z };
     const vel = { x: vx, y: -2, z: vz };
     const before = { x: pos.x, z: pos.z };
@@ -190,23 +204,25 @@ export class Vehicle {
     this.position.set(pos.x, pos.y, pos.z);
     if (res.hitWall) {
       const moved = Math.hypot(pos.x - before.x, pos.z - before.z);
-      if (moved < Math.abs(this.speed) * dt * 0.5) {
-        if (Math.abs(this.speed) > 3) result = result ?? 'hit';
-        this.speed *= -0.25;
+      if (moved < Math.abs(s.speed) * dt * 0.5) {
+        if (Math.abs(s.speed) > 3) result = result ?? 'hit';
+        s.speed *= -0.25;
+        s.travelYaw = s.yaw;
       }
     }
-    // nitro flames flicker behind the car while boosting
-    this.flames.visible = this.boosting;
-    if (this.boosting) {
-      const k = 0.7 + Math.random() * 0.6;
+    // nitro flames flicker behind the car while boosting; the drift boost-out shows a shorter lick
+    const flame = s.boosting ? 1 : s.kick > 0 ? 0.55 : 0;
+    this.flames.visible = flame > 0;
+    if (flame > 0) {
+      const k = (0.7 + Math.random() * 0.6) * flame;
       this.flames.scale.set(1, 1, k);
       this.flames.children.forEach((f, i) => { f.rotation.z = (Math.random() - 0.5) * 0.3 + (i === 0 ? 0.1 : -0.1); });
     }
-    // wheel spin + steer visuals
+    // wheel spin + steer visuals (in a drift the fronts point where the driver is steering, exaggerated)
     for (let i = 0; i < this.wheels.length; i++) {
       const w = this.wheels[i];
-      w.rotation.y = i < 2 ? this.steer * 0.5 : 0;
-      w.rotation.x += (this.speed * dt) / 0.36;
+      w.rotation.y = i < 2 ? s.steer * (s.drifting ? 0.7 : 0.5) : 0;
+      w.rotation.x += (s.speed * dt) / 0.36;
     }
     this.sync();
     return result;
@@ -214,7 +230,7 @@ export class Vehicle {
 
   sync(): void {
     this.mesh.position.copy(this.position);
-    this.mesh.rotation.y = this.yaw;
+    this.mesh.rotation.y = this.sim.yaw;
   }
 
   /** Local (x right, z forward) offset to world space. */

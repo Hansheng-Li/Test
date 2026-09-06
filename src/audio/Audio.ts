@@ -1,6 +1,6 @@
 import { Radio } from './Radio';
 
-export type SfxName = 'pager' | 'cash' | 'click' | 'error' | 'siren' | 'seal' | 'mix' | 'arrest' | 'unlock' | 'step' | 'horn' | 'bump' | 'thud' | 'open' | 'close' | 'confirm' | 'collect' | 'door' | 'bag' | 'page' | 'jingle_goal' | 'jingle_customer' | 'jingle_bust' | 'jingle_property' | 'jingle_intro' | 'switch' | 'tick' | 'dice' | 'chips' | 'shot' | 'card';
+export type SfxName = 'pager' | 'cash' | 'click' | 'error' | 'siren' | 'seal' | 'mix' | 'arrest' | 'unlock' | 'step' | 'horn' | 'bump' | 'thud' | 'open' | 'close' | 'confirm' | 'collect' | 'door' | 'bag' | 'page' | 'jingle_goal' | 'jingle_customer' | 'jingle_bust' | 'jingle_property' | 'jingle_intro' | 'switch' | 'tick' | 'dice' | 'chips' | 'shot' | 'card' | 'whoosh';
 
 /** CC0 sample files (see public/assets/LICENSES.md). Missing files fall back to the synth versions. */
 const SAMPLES: Partial<Record<SfxName, { files: string[]; gain: number; synthFallback?: SfxName }>> = {
@@ -59,6 +59,8 @@ export class AudioSystem {
   private engineOsc: OscillatorNode | null = null;
   private engineSub: OscillatorNode | null = null;
   private engineFilter: BiquadFilterNode | null = null;
+  private skidGain: GainNode | null = null;
+  private skidFilter: BiquadFilterNode | null = null;
   private clubEl: HTMLAudioElement | null = null;
   private clubMusicGain: GainNode | null = null;
   private clubFilter: BiquadFilterNode | null = null;
@@ -346,6 +348,32 @@ export class AudioSystem {
     this.ambientGain.gain.setTargetAtTime(opts.night ? 0.07 : 0.12, ctx.currentTime, 0.5);
   }
 
+  /** Tyre screech while sliding: looped noise through a resonant bandpass that rises with the slide. */
+  setSkid(on: boolean, intensity: number): void {
+    if (!this.ctx || !this.master) return;
+    const ctx = this.ctx;
+    if (!this.skidGain) {
+      this.skidGain = ctx.createGain();
+      this.skidGain.gain.value = 0;
+      this.skidFilter = ctx.createBiquadFilter();
+      this.skidFilter.type = 'bandpass';
+      this.skidFilter.frequency.value = 1500;
+      this.skidFilter.Q.value = 9;
+      const len = ctx.sampleRate * 2;
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      src.connect(this.skidFilter).connect(this.skidGain).connect(this.master);
+      src.start();
+    }
+    const k = Math.max(0, Math.min(1, intensity));
+    this.skidGain.gain.setTargetAtTime(on ? 0.05 + k * 0.1 : 0, ctx.currentTime, on ? 0.05 : 0.12);
+    if (on) this.skidFilter!.frequency.setTargetAtTime(1200 + k * 900, ctx.currentTime, 0.1);
+  }
+
   /** A car horn: two detuned sawtooth voices a major third apart, rounded off by a lowpass. */
   private hornTone(): void {
     if (!this.ctx || !this.master) return;
@@ -537,6 +565,11 @@ export class AudioSystem {
         break;
       case 'bump':
         this.tone(70, 0, 0.18, 'sawtooth', 0.2, 40);
+        break;
+      case 'whoosh':
+        // nitro ignition: a longer, darker rush than the pistol crack
+        this.noiseBurst(0.5, 0.45, 700);
+        this.tone(90, 0, 0.45, 'sawtooth', 0.12, 220);
         break;
       case 'shot':
         this.noiseBurst(0.14, 0.5, 1800);

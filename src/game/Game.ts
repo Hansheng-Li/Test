@@ -5,6 +5,7 @@ import { STATIONS } from '../audio/Radio';
 import { loadModel, instanceModel, upgradeParkedCars, CAR_SCALE } from '../world/Models';
 import { Cutscene, Shot } from './Cutscene';
 import { Weather } from '../world/Weather';
+import { SkidMarks } from '../world/SkidMarks';
 import { dressInteriors } from '../world/Dressing';
 import { BusUI } from '../ui/BusUI';
 import { DiceUI } from '../ui/DiceUI';
@@ -181,6 +182,9 @@ export class Game implements GameAPI {
   cutscene: Cutscene;
   private titleAngle = 0;
   private weather!: Weather;
+  /** Tyre marks left by drifting cars. */
+  skid = new SkidMarks();
+  private boostLevel = 0;
   private wasRaining = false;
   /** This frame's shower state, computed once in frame(). */
   private rainNow = false;
@@ -234,6 +238,7 @@ export class Game implements GameAPI {
     this.city = buildCity();
     this.scene.add(this.city.group);
     this.weather = new Weather(this.scene);
+    this.scene.add(this.skid.mesh);
     void dressInteriors(this.scene, this.city);
     void upgradeParkedCars(this.city, this.stolenSpots);
     // every parked car can be taken (GTA rules): one prompt per spot
@@ -1180,6 +1185,13 @@ export class Game implements GameAPI {
     const dClub = Math.hypot(this.player.position.x - club.x, this.player.position.z - club.z);
     this.audio.update(dt, { club: Math.max(0, 1 - dClub / 45), beach: Math.max(0, Math.min(1, (this.player.position.x - 140) / 40)), night: this.clock.isNight, insideClub: this.playerInsideBuilding('club'), heat: this.state.heat });
     this.audio.setEngine(this.inCar, this.ride ? Math.abs(this.ride.speed) / this.ride.maxSpeed : 0);
+    const v = this.driving ? this.ride : null;
+    this.audio.setSkid(!!v && v.skidding && Math.abs(v.speed) > 3, v ? Math.min(1, Math.abs(v.slip) / 0.6 + Math.abs(v.speed) / 40) : 0);
+    this.skid.update(dt);
+    // speed lines ease in on nitro and flash briefly on a drift boost-out
+    const wantBoost = v ? (v.boosting ? 1 : v.kick > 0 ? 0.45 : 0) : 0;
+    this.boostLevel += (wantBoost - this.boostLevel) * Math.min(1, dt * (wantBoost > this.boostLevel ? 10 : 4));
+    this.hud.setBoost(this.boostLevel);
     this.audio.setRain(this.weather.intensity * (this.playerInsideAnyInterior() || this.inCar ? 0.3 : 1));
     const raining = this.rainNow;
     if (raining !== this.wasRaining) {
@@ -1301,7 +1313,7 @@ export class Game implements GameAPI {
     }
 
     this.hud.setClickHint(!this.input.locked && !uiOpen && !this.arrested);
-    this.hud.speedText = this.driving && this.ride ? `${Math.round(this.ride.mph)} MPH · ${t('NITRO')} ${'▮'.repeat(Math.round(this.ride.nitro * 5))}${'▯'.repeat(5 - Math.round(this.ride.nitro * 5))}${this.ride.drifting ? ' · ' + t('DRIFT') : ''}` : this.player.sprintOn ? t('SPRINT') : null;
+    this.hud.speedText = this.driving && this.ride ? `${Math.round(this.ride.mph)} MPH · ${t('NITRO')} ${'▮'.repeat(Math.round(this.ride.nitro * 5))}${'▯'.repeat(5 - Math.round(this.ride.nitro * 5))}${this.ride.drifting ? ' · ' + t('DRIFT') + ' ⚡' : this.ride.kick > 0 ? ' · ' + t('BOOST') : ''}` : this.player.sprintOn ? t('SPRINT') : null;
     this.hud.stamina = this.player.stamina;
     this.updateCompass();
     this.updateMinimap();
@@ -2413,7 +2425,7 @@ export class Game implements GameAPI {
     const cx = CAR_SALE_SPOT.x;
     const cz = CAR_SALE_SPOT.z + 4;
     this.playShots([{ from: [cx + 9, 3.5, cz + 9], to: [cx + 5, 2, cz + 4.5], lookFrom: [cx, 0.8, cz], dur: 4, text: "'88 SEDAN", sub: t('yours · E to get in · N radio') }]);
-    this.toast(t('You own a car. W/S drive · A/D steer · SHIFT handbrake (drift at speed) · F nitro · SPACE horn · E get out. It saves where you leave it.'), 'cash', 8000);
+    this.toast(t('You own a car. W/S drive · A/D steer · SHIFT+A/D drift (charges nitro, let go for a boost) · F nitro · SPACE horn · E get out. It saves where you leave it.'), 'cash', 8000);
     this.syncVehicle();
     this.save();
   }
@@ -2464,7 +2476,7 @@ export class Game implements GameAPI {
     this.cancelPlacement();
     if (v.kind === 'beater' && !this.state.flags.droveStarter) {
       this.state.flags.droveStarter = true;
-      this.toast(t("Rico's hatchback: W/S drive · A/D steer · SHIFT handbrake (drift at speed) · F nitro · SPACE horn · E get out. It saves where you leave it."), 'info', 7000);
+      this.toast(t("Rico's hatchback: W/S drive · A/D steer · SHIFT+A/D drift (charges nitro, let go for a boost) · F nitro · SPACE horn · E get out. It saves where you leave it."), 'info', 7000);
     }
   }
 
@@ -2507,15 +2519,33 @@ export class Game implements GameAPI {
     if (this.input.locked && !uiOpen) {
       this.player.yaw -= dx * this.player.sensitivity;
       this.player.pitch = Math.max(-0.6, Math.min(0.5, this.player.pitch - dy * this.player.sensitivity));
-      // ease the view back toward the heading when not looking around
-      const rel = ((this.player.yaw - v.cameraYaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-      this.player.yaw = v.cameraYaw + rel * Math.max(0, 1 - dt * 1.5);
+      // ease the view back toward the heading when not looking around; in a drift the camera follows
+      // the direction of travel so the car visibly swings sideways across the screen
+      const base = v.drifting || v.kick > 0 ? v.sim.travelYaw + Math.PI : v.cameraYaw;
+      const rel = ((this.player.yaw - base + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      this.player.yaw = base + rel * Math.max(0, 1 - dt * (v.drifting ? 4 : 1.5));
     }
-    // nitro: the lens widens a touch so the push reads on screen
-    const wantFov = v.boosting ? 84 : 75;
+    // nitro: the lens widens so the push reads on screen; a drift boost-out gets a smaller kick
+    const wantFov = v.boosting ? 90 : v.kick > 0 ? 81 : 75;
     if (Math.abs(this.camera.fov - wantFov) > 0.05) {
-      this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * 5);
+      this.camera.fov += (wantFov - this.camera.fov) * Math.min(1, dt * (wantFov > this.camera.fov ? 9 : 4));
       this.camera.updateProjectionMatrix();
+    }
+    // drift and nitro sounds and the tyre marks
+    {
+      const ev = v.events;
+      if (ev.nitroStart) this.audio.play('whoosh');
+      if (ev.boostOut) {
+        this.audio.play('whoosh');
+        this.hud.flash(tn('BOOST'), '#7fd0ff', 0.7);
+      }
+      if (v.skidding && Math.abs(v.speed) > 3 && !uiOpen) {
+        const y = v.position.y + 0.02; // the car's y is the ground under it
+        v.rearWheels().forEach((w, i) => this.skid.point(i, w.x, y, w.z));
+      } else {
+        this.skid.lift(0);
+        this.skid.lift(1);
+      }
     }
     // chase camera: sits behind the car, orbits with the mouse, pulls in when a wall is in the way
     const yaw = this.player.yaw;
@@ -2529,6 +2559,7 @@ export class Game implements GameAPI {
     }
     t = Math.max(0.3, t - 0.08); // stay a little clear of the wall so the near plane does not clip it
     this.camera.position.set(look.x + (desired.x - look.x) * t, look.y + (desired.y - look.y) * t, look.z + (desired.z - look.z) * t);
+    if (v.boosting) this.camera.position.x += (Math.random() - 0.5) * 0.05, this.camera.position.y += (Math.random() - 0.5) * 0.05;
     this.camera.rotation.order = 'YXZ';
     // aim a little ahead of the car so the road, not the roof, fills the screen
     this.camera.lookAt(look.x - Math.sin(yaw) * 4, look.y + 0.2, look.z - Math.cos(yaw) * 4);

@@ -31,7 +31,7 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | --- | --- |
 | `W A S D` | Move |
 | Mouse | Look |
-| `Shift` | Toggle sprint on foot (no need to hold it); handbrake in the car, which drifts at speed |
+| `Shift` | Toggle sprint on foot (no need to hold it); handbrake in the car: hold it while steering at speed to drift |
 | `Space` | Jump (also: STIR / SEAL inside station panels) |
 | `E` | Interact (talk, buy, use station, sell, open storage…) |
 | `Tab` | Backpack, product book, customer book |
@@ -45,7 +45,7 @@ Desktop Chrome / Edge recommended. Click the canvas to capture the mouse (Pointe
 | `N` | Radio: cycles SOL PALMA FM → THE WAVE → FUNK CITY → SIGNAL ZERO → off (walkman on foot, car stereo while driving) |
 | any key | Skips a cutscene (Escape pauses instead) |
 | `H` | Hide/show the HUD (screenshot mode) |
-| `W S A D` / `Shift` / `F` / `Space` | In the car: drive / handbrake & drift / nitro (a five-bar charge that refills when unused, with blue flames) / horn |
+| `W S A D` / `Shift` / `F` / `Space` | In the car: drive / handbrake & kart-style drift (charges the nitro; let go for a boost-out) / nitro (five bars, blue flames, speed lines) / horn |
 | `R` | Rotate equipment in placement mode |
 | `Esc` | Close panel / pause menu (save, how to play, settings: sensitivity & volumes) |
 | `F3` | Performance overlay (fps, draw calls, triangles) |
@@ -203,6 +203,16 @@ Design rules that shaped the code:
   shelf is never a dead end. Products keep their default names; the naming prompt is gone.
 - Cars are another 30% quicker (the sedan tops out near 65 mph) and nitro shows: two blue-white exhaust
   flames flicker behind the car, a blue glow lights the road, and the lens widens while F is held.
+- Drifting works like a kart racer: hold Shift while steering above 15 mph and the nose swings up to
+  about 50° past the direction of travel, the slide keeps turning on its own (steer into it to tighten,
+  counter-steer to hold the line), the chase camera follows the travel direction so the car swings across
+  the screen, the tyres screech and leave black marks that fade over forty seconds, and every half second
+  of drift fills a fifth of the nitro bar. Let go after half a second or more for a BOOST-OUT (a short
+  flame lick and a few mph over the top). Nitro itself now kicks the car forward the instant F goes down,
+  with a whoosh, a wider lens, a shake and speed lines rushing past the edges; an empty bar must refill to
+  a quarter before it fires again, and it refills slowly on its own (14 s) or fast by drifting (2.5 s).
+- The paper map's facing arrow rotated with the wrong formula (it pointed west when you faced north); the
+  compass, radar and map now share one tested heading helper.
 - Neptune's back room spills onto the sidewalk beside the arcade: a blackjack table ($20–200 a hand,
   dealer draws to 17, blackjack pays 3:2, double down on the first two cards, H/S keys) and the Sunset
   Sevens slot machine ($5 or $20 a pull, 7-7-7 pays 50×, about 92% return). Both draw a little heat per

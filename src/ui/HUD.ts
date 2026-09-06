@@ -55,6 +55,7 @@ export class HUD {
       <div id="flash"></div>
       <div id="radio"><div class="st"></div><div class="tr"></div><div class="dj"></div></div>
       <div id="vignette"></div>
+      <div id="speedlines"></div>
       <div id="clickhint" style="display:none;position:absolute;left:50%;top:62%;transform:translateX(-50%);background:var(--panel);border:2px solid var(--cyan);padding:10px 18px;border-radius:6px;font-size:16px;letter-spacing:1px"></div>`;
     parent.appendChild(this.root);
     this.cashEl = this.root.querySelector('#hud-cash .val')!;
@@ -111,6 +112,17 @@ export class HUD {
   }
 
   speedText: string | null = null;
+  private boostShown = -1;
+
+  /** Speed lines rushing past the edges of the screen: 0 off, 1 full nitro. */
+  setBoost(level: number): void {
+    const k = Math.round(Math.max(0, Math.min(1, level)) * 20) / 20;
+    if (k === this.boostShown) return;
+    this.boostShown = k;
+    const el = this.root.querySelector('#speedlines') as HTMLElement;
+    el.style.opacity = String(k);
+    el.classList.toggle('on', k > 0);
+  }
 
   update(state: GameState, clockText: string, day: number, objective: string, orderText: string | null, dt: number, steps: { label: string; state: 'done' | 'now' | 'next' }[] | null = null): void {
     const stepsKey = steps ? steps.map((s) => s.state + s.label).join('|') : '';

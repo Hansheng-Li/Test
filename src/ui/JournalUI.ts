@@ -18,7 +18,7 @@ type Tab = 'tasks' | 'places' | 'people' | 'controls';
 const KEYS: [string, string][] = [
   ['W A S D', 'Move'],
   ['Mouse', 'Look around'],
-  ['Shift', 'Toggle sprint · handbrake in the car (drifts at speed)'],
+  ['Shift', 'Toggle sprint · handbrake in the car (drift while steering: it charges the nitro)'],
   ['Space', 'Jump · stir and seal inside station panels · horn in the car'],
   ['E', 'Interact: talk, buy, use a station, sell, get in a car'],
   ['Left click', 'Swing the bat / fire the pistol (selected on the hotbar)'],
