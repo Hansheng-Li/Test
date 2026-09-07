@@ -50,7 +50,7 @@ export class Menu {
 
   constructor(
     parent: HTMLElement,
-    private actions: { newGame: (slot?: number) => void; continueGame: (slot?: number) => void; deleteSlot: (slot: number) => void; resume: () => void; save: (slot?: number) => void; quit: () => void; hasSave: () => boolean; slots: () => MenuSlot[]; saveSummary: () => string | null; runStats: () => string | null; getSettings: () => Record<SettingKey, number>; setSetting: (key: SettingKey, value: number) => void },
+    private actions: { newGame: (slot?: number) => void; continueGame: (slot?: number) => void; deleteSlot: (slot: number) => void; resume: () => void; save: (slot?: number) => void; quit: () => void; hasSave: () => boolean; slots: () => MenuSlot[]; backupSlot: (slot: number) => void; restoreSlot: (slot: number, json: string) => boolean; saveSummary: () => string | null; runStats: () => string | null; getSettings: () => Record<SettingKey, number>; setSetting: (key: SettingKey, value: number) => void },
   ) {
     this.el = document.createElement('div');
     this.el.id = 'menu';
@@ -242,8 +242,11 @@ export class Menu {
       if (this.slotMode === 'load') {
         if (sl.summary) {
           btn('LOAD', () => this.actions.continueGame(sl.slot), 'primary');
+          btn('BACKUP', () => this.actions.backupSlot(sl.slot));
           btn('DELETE', () => { if (confirm(t('Delete slot {n}?', { n: sl.slot }))) { this.actions.deleteSlot(sl.slot); this.refresh(); } });
         }
+        // a backup file can be read back into any slot, on any browser or address
+        btn('RESTORE…', () => this.pickBackup(sl.slot, !!sl.summary));
       } else if (this.slotMode === 'new') {
         btn('START HERE', () => { if (!sl.summary || confirm(t('Overwrite slot {n}?', { n: sl.slot }))) this.actions.newGame(sl.slot); }, sl.summary ? '' : 'primary');
       } else {
@@ -255,6 +258,22 @@ export class Menu {
       }
       el.appendChild(row);
     }
+  }
+
+  /** Ask for a backup file and hand its text to the game. */
+  private pickBackup(slot: number, occupied: boolean): void {
+    if (occupied && !confirm(t('Overwrite slot {n}?', { n: slot }))) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      void file.text().then((text) => {
+        if (this.actions.restoreSlot(slot, text)) this.refresh();
+      });
+    });
+    input.click();
   }
 
   /** Show one of the fold-out panels, hiding the others. */

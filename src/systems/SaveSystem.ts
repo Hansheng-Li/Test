@@ -285,6 +285,42 @@ export function clearSlot(storage: Storage, slot: number): void {
   }
 }
 
+/** A save slot written out as a file: the wrapper the game can read back on any origin. */
+export interface SaveFile {
+  game: 'sunset-syndicate';
+  version: number;
+  savedAt: number;
+  state: GameState;
+}
+
+/** JSON text for a backup file, or null when the slot is empty. */
+export function exportSlot(storage: Storage, slot: number): string | null {
+  const info = readSlot(storage, slot);
+  if (!info.state) return null;
+  const file: SaveFile = { game: 'sunset-syndicate', version: SAVE_VERSION, savedAt: info.savedAt ?? Date.now(), state: info.state };
+  return JSON.stringify(file);
+}
+
+/**
+ * Read a backup file (or a bare state, so a slot copied straight out of localStorage also works)
+ * and write it into a slot. Returns false when the text is not a save this game can read.
+ */
+export function importSlot(storage: Storage, slot: number, json: string, now = Date.now()): boolean {
+  if (!validSlot(slot)) return false;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(json);
+  } catch {
+    return false;
+  }
+  if (!raw || typeof raw !== 'object') return false;
+  const wrapped = raw as { state?: unknown; savedAt?: unknown };
+  const body = wrapped.state && typeof wrapped.state === 'object' ? wrapped.state : raw;
+  const state = deserialize(JSON.stringify(body));
+  if (!state) return false;
+  return saveToSlot(state, storage, slot, isFiniteNum(wrapped.savedAt) ? wrapped.savedAt : now);
+}
+
 export function hasAnySave(storage: Storage): boolean {
   return listSlots(storage).some((s) => s.state !== null);
 }

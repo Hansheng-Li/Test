@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createNewState, serialize, saveToSlot, loadFromSlot, listSlots, clearSlot, hasAnySave, latestSlot, firstEmptySlot, migrateLegacySave, slotKey, SAVE_KEY, ACTIVE_SLOT_KEY, SLOT_COUNT, Storage } from '../src/systems/SaveSystem';
+import { createNewState, serialize, exportSlot, importSlot, saveToSlot, loadFromSlot, listSlots, clearSlot, hasAnySave, latestSlot, firstEmptySlot, migrateLegacySave, slotKey, SAVE_KEY, ACTIVE_SLOT_KEY, SLOT_COUNT, Storage } from '../src/systems/SaveSystem';
 
 function memStorage(): Storage & { map: Map<string, string> } {
   const map = new Map<string, string>();
@@ -101,5 +101,41 @@ describe('save slots', () => {
     expect(migrateLegacySave(st)).toBe(true);
     expect(st.getItem(SAVE_KEY)).toBeNull();
     expect(hasAnySave(st)).toBe(false);
+  });
+});
+
+describe('backup files', () => {
+  it('exports a slot and reads it back into another one, on a storage that never saw the run', () => {
+    const a = memStorage();
+    const state = createNewState();
+    state.cash = 4321;
+    state.crewName = 'SUNSET CO';
+    saveToSlot(state, a, 2, 1000);
+    const json = exportSlot(a, 2)!;
+    expect(json).toContain('sunset-syndicate');
+    const b = memStorage();
+    expect(importSlot(b, 1, json)).toBe(true);
+    const back = loadFromSlot(b, 1)!;
+    expect(back.cash).toBe(4321);
+    expect(back.crewName).toBe('SUNSET CO');
+    expect(listSlots(b)[0].savedAt).toBe(1000); // the backup keeps its own save time
+  });
+
+  it('also accepts a bare state (a slot copied straight out of localStorage)', () => {
+    const s = createNewState();
+    s.cash = 99;
+    const store = memStorage();
+    expect(importSlot(store, 3, JSON.stringify(s))).toBe(true);
+    expect(loadFromSlot(store, 3)!.cash).toBe(99);
+  });
+
+  it('refuses junk and empty slots instead of wiping what is there', () => {
+    const store = memStorage();
+    expect(exportSlot(store, 1)).toBe(null);
+    saveToSlot(createNewState(), store, 1);
+    expect(importSlot(store, 1, 'not json')).toBe(false);
+    expect(importSlot(store, 1, '{"nope":1}')).toBe(false);
+    expect(importSlot(store, 9, exportSlot(store, 1)!)).toBe(false);
+    expect(loadFromSlot(store, 1)).not.toBe(null);
   });
 });

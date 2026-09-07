@@ -29,7 +29,7 @@ import { CUSTOMER_MAP } from '../data/customers';
 import { WAREHOUSE_PRICE, RUNNER_HIRE_PRICE, WORKER_HIRE_PRICE, DEALER_HIRE_PRICE, HANDLER_HIRE_PRICE, VEHICLE_PRICE, MOTEL_PRICE, FRONT_PRICE, FRONT_DAILY_INCOME, FRONT_DAILY_SUSPICION, ITEMS } from '../data/items';
 import { computeRecipe, parseRecipeKey, Effect } from '../data/products';
 import { GameState, Order, PlacedStation } from './GameState';
-import { createNewState, saveToSlot, loadFromSlot, listSlots, clearSlot, hasAnySave, latestSlot, firstEmptySlot, migrateLegacySave, MAX_STOLEN_CARS } from '../systems/SaveSystem';
+import { createNewState, saveToSlot, loadFromSlot, listSlots, clearSlot, hasAnySave, latestSlot, firstEmptySlot, migrateLegacySave, exportSlot, importSlot, MAX_STOLEN_CARS } from '../systems/SaveSystem';
 import { InteractionSystem, Interactable } from '../systems/InteractionSystem';
 import { addItem, countItem, removeItem, resolveItem, depositToStorage, withdrawFromStorage, packagedInInventory, looseProductsInInventory, compactInventory } from '../systems/InventorySystem';
 import { buyFromShop, buyDelivered, spendCash, PurchaseResult, sellToShop } from '../systems/EconomySystem';
@@ -321,6 +321,8 @@ export class Game implements GameAPI {
       resume: () => this.resume(),
       save: (slot) => { this.save(slot); this.toast(t('Saved to slot {n}.', { n: this.activeSlot })); },
       hasSave: () => hasAnySave(localStorage),
+      backupSlot: (slot) => this.backupSlot(slot),
+      restoreSlot: (slot, json) => this.restoreSlot(slot, json),
       slots: () => {
         const current = this.running ? this.activeSlot : latestSlot(localStorage);
         return listSlots(localStorage).map((sl) => ({ slot: sl.slot, summary: sl.state ? this.describeRun(sl.state) : null, savedAt: sl.savedAt, current: sl.slot === current }));
@@ -408,6 +410,33 @@ export class Game implements GameAPI {
       this.hud.setVisible(true);
       this.input.requestLock();
     });
+  }
+
+  /** Write a slot out as a .json file the player keeps: saves survive a new browser or a new address. */
+  private backupSlot(slot: number): void {
+    const json = exportSlot(localStorage, slot);
+    if (!json) {
+      this.toast(t('Slot {n} is empty.', { n: slot }), 'warn');
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sunset-syndicate-slot${slot}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    this.toast(t('Slot {n} saved to a file. Keep it: it loads on any browser.', { n: slot }), 'cash', 5000);
+  }
+
+  /** Read a backup file back into a slot. */
+  private restoreSlot(slot: number, json: string): boolean {
+    if (!importSlot(localStorage, slot, json)) {
+      this.toast(t('That file is not a Sunset Syndicate save.'), 'warn', 5000);
+      return false;
+    }
+    this.activeSlot = slot;
+    this.toast(t('Slot {n} restored. Load it from this list.', { n: slot }), 'cash', 5000);
+    return true;
   }
 
   /** One line about the save on the title screen, e.g. "DAY 3 · $1,240 · 4 CUSTOMERS · 2 PROPERTIES". */
@@ -3376,8 +3405,16 @@ export class Game implements GameAPI {
       const spot = this.ride.exitSpot();
       this.state.player = { x: spot.x, y: this.ride.position.y, z: spot.z, yaw: this.ride.cameraYaw };
     }
-    saveToSlot(this.state, localStorage, this.activeSlot);
+    // a write can fail (private browsing, a full quota): say so once instead of losing the run quietly
+    if (!saveToSlot(this.state, localStorage, this.activeSlot)) {
+      if (!this.saveFailed) {
+        this.saveFailed = true;
+        this.toast(t('This browser will not store the save. Use BACKUP in the load menu to keep a copy.'), 'warn', 9000);
+      }
+    } else this.saveFailed = false;
   }
+
+  private saveFailed = false;
 
   // ------------------------------------------------------------------ input
 

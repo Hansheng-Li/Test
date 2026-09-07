@@ -211,6 +211,11 @@ Design rules that shaped the code:
   flame lick and a few mph over the top). Nitro itself now kicks the car forward the instant F goes down,
   with a whoosh, a wider lens, a shake and speed lines rushing past the edges; an empty bar must refill to
   a quarter before it fires again, and it refills slowly on its own (14 s) or fast by drifting (2.5 s).
+- Saves are safer. The dev server now fails instead of quietly moving to another port, because browser
+  storage is keyed by origin: opening the game on a different address or port shows empty slots even
+  though the run is still there under the old one. Each filled slot in LOAD GAME has a BACKUP button
+  that writes the run to a .json file, every slot has RESTORE…, and a save that the browser refuses to
+  store (private window, full quota) now says so instead of failing silently.
 - The paper map's facing arrow rotated with the wrong formula (it pointed west when you faced north); the
   compass, radar and map now share one tested heading helper.
 - Neptune's back room spills onto the sidewalk beside the arcade: a blackjack table ($20–200 a hand,
